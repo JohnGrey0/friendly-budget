@@ -79,6 +79,45 @@ class BudgetTool {
         document.getElementById('subCategory').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addExpense();
         });
+
+        // PDF Export
+        document.getElementById('exportPdf').addEventListener('click', () => {
+            this.exportToPDF();
+        });
+
+        // Analytics period toggle
+        document.getElementById('setBiWeeklyPeriod').addEventListener('click', () => {
+            this.setAnalyticsPeriod('biweekly');
+        });
+
+        document.getElementById('setMonthlyPeriod').addEventListener('click', () => {
+            this.setAnalyticsPeriod('monthly');
+        });
+
+        document.getElementById('setYearlyPeriod').addEventListener('click', () => {
+            this.setAnalyticsPeriod('yearly');
+        });
+
+        // Enter key handling
+        document.getElementById('personName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.addPerson();
+        });
+
+        document.getElementById('biWeeklyPay').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.addPerson();
+        });
+
+        document.getElementById('expenseName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.addExpense();
+        });
+
+        document.getElementById('monthlyAmount').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.addExpense();
+        });
+
+        document.getElementById('subCategory').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.addExpense();
+        });
     }
 
     addPerson() {
@@ -86,7 +125,7 @@ class BudgetTool {
         const biWeeklyPay = parseFloat(document.getElementById('biWeeklyPay').value);
 
         if (!name || isNaN(biWeeklyPay) || biWeeklyPay <= 0) {
-            alert('Please enter a valid name and bi-weekly pay amount.');
+            this.showAlert('Please enter a valid name and bi-weekly pay amount.', 'Invalid Input', 'error');
             return;
         }
 
@@ -112,7 +151,7 @@ class BudgetTool {
         const sharingMethod = document.getElementById('sharingMethod').value;
 
         if (!name || isNaN(monthlyAmount) || monthlyAmount <= 0) {
-            alert('Please enter a valid expense name and monthly amount.');
+            this.showAlert('Please enter a valid expense name and monthly amount.', 'Invalid Input', 'error');
             return;
         }
 
@@ -177,10 +216,20 @@ class BudgetTool {
         this.renderAnalytics(); // Re-render analytics with new period
     }
 
-    removePerson(id) {
-        this.people = this.people.filter(person => person.id !== id);
-        this.saveData();
-        this.render();
+    async removePerson(id) {
+        const person = this.people.find(p => p.id === id);
+        if (!person) return;
+        
+        const confirmed = await this.showConfirm(
+            `Are you sure you want to remove ${person.name} from the budget?`, 
+            'Remove Person'
+        );
+        
+        if (confirmed) {
+            this.people = this.people.filter(person => person.id !== id);
+            this.saveData();
+            this.render();
+        }
     }
 
     editPerson(id) {
@@ -230,7 +279,7 @@ class BudgetTool {
         const newPay = parseFloat(document.getElementById(`editPay_${id}`).value);
 
         if (!newName || isNaN(newPay) || newPay <= 0) {
-            alert('Please enter a valid name and bi-weekly pay amount.');
+            this.showAlert('Please enter a valid name and bi-weekly pay amount.', 'Invalid Input', 'error');
             return;
         }
 
@@ -253,10 +302,20 @@ class BudgetTool {
         personElement.removeAttribute('data-original-content');
     }
 
-    removeExpense(id) {
-        this.expenses = this.expenses.filter(expense => expense.id !== id);
-        this.saveData();
-        this.render();
+    async removeExpense(id) {
+        const expense = this.expenses.find(e => e.id === id);
+        if (!expense) return;
+        
+        const confirmed = await this.showConfirm(
+            `Are you sure you want to remove the expense "${expense.name}"?`, 
+            'Remove Expense'
+        );
+        
+        if (confirmed) {
+            this.expenses = this.expenses.filter(expense => expense.id !== id);
+            this.saveData();
+            this.render();
+        }
     }
 
     calculateMonthlyFromBiWeekly(biWeeklyAmount) {
@@ -394,30 +453,71 @@ class BudgetTool {
         const peopleList = document.getElementById('peopleList');
         
         if (this.people.length === 0) {
-            peopleList.innerHTML = '<div class="empty-state">No people added yet. Add someone to get started!</div>';
+            peopleList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <div class="empty-title">No people added yet</div>
+                    <div class="empty-subtitle">Add someone to get started with your budget!</div>
+                </div>
+            `;
             return;
         }
 
         const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
-        const totalMonthly = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
-        const totalBiWeekly = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
 
-        let html = this.people.map(person => `
-            <div class="person-item" data-person-id="${person.id}">
-                <div class="person-info">
-                    <div class="person-name editable-person-field" data-field="name" data-type="text">${person.name}</div>
-                    <div class="person-details">
-                        Bi-weekly: <span class="editable-person-field" data-field="biWeeklyPay" data-type="number">${this.formatCurrency(person.biWeeklyPay)}</span> | 
-                        Monthly: <span title="Automatically calculated">${this.formatCurrency(person.monthlyPay)}</span> | 
-                        Yearly: <span title="Automatically calculated">${this.formatCurrency(person.yearlyPay)}</span>
-                        ${this.people.length > 1 ? ` (${this.calculatePercentDifference(person.yearlyPay, totalYearly)}%)` : ''}
+        let html = this.people.map((person, index) => {
+            const incomePercentage = totalYearly > 0 ? (person.yearlyPay / totalYearly * 100) : 0;
+            
+            return `
+                <div class="person-item" data-person-id="${person.id}">
+                    <div class="person-header">
+                        <div class="person-avatar">
+                            <div class="avatar-circle" style="background: ${this.getPersonColor(index)}">
+                                ${person.name.charAt(0).toUpperCase()}
+                            </div>
+                        </div>
+                        <div class="person-main-info">
+                            <div class="person-name-container">
+                                <div class="person-name editable-person-field" data-field="name" data-type="text">${person.name}</div>
+                            </div>
+                            <div class="person-income-summary">
+                                <span class="primary-income editable-person-field" data-field="biWeeklyPay" data-type="number">${this.formatCurrency(person.biWeeklyPay)}</span>
+                                <span class="income-period">bi-weekly</span>
+                            </div>
+                        </div>
+                        <div class="person-contribution">
+                            <div class="contribution-percentage">
+                                ${incomePercentage.toFixed(0)}%
+                            </div>
+                            <div class="contribution-label">contribution</div>
+                        </div>
+                    </div>
+                    
+                    <div class="person-details-expanded">
+                        <div class="income-breakdown">
+                            <div class="income-item">
+                                <span class="income-label">Monthly</span>
+                                <span class="income-value">${this.formatCurrency(person.monthlyPay)}</span>
+                            </div>
+                            <div class="income-item">
+                                <span class="income-label">Yearly</span>
+                                <span class="income-value">${this.formatCurrency(person.yearlyPay)}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="income-bar">
+                            <div class="income-bar-fill" style="width: ${incomePercentage}%; background: ${this.getPersonColor(index)}"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="person-actions">
+                        <button class="btn btn-danger btn-small" onclick="budgetTool.removePerson(${person.id})" title="Remove ${person.name}">
+                            <span class="btn-icon">🗑️</span> Remove
+                        </button>
                     </div>
                 </div>
-                <div class="person-actions">
-                    <button class="btn btn-danger" onclick="budgetTool.removePerson(${person.id})">Remove</button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         peopleList.innerHTML = html;
         
@@ -502,14 +602,14 @@ class BudgetTool {
             if (fieldType === 'number') {
                 newValue = parseFloat(newValue);
                 if (isNaN(newValue) || newValue <= 0) {
-                    alert('Please enter a valid amount greater than 0.');
+                    this.showAlert('Please enter a valid amount greater than 0.', 'Invalid Input', 'error');
                     inputElement.focus();
                     return;
                 }
             }
             
             if (fieldName === 'name' && !newValue) {
-                alert('Please enter a person\'s name.');
+                this.showAlert('Please enter a person\'s name.', 'Invalid Input', 'error');
                 inputElement.focus();
                 return;
             }
@@ -646,14 +746,14 @@ class BudgetTool {
             if (type === 'number') {
                 newValue = parseFloat(newValue);
                 if (isNaN(newValue) || newValue <= 0) {
-                    alert('Please enter a valid amount greater than 0.');
+                    this.showAlert('Please enter a valid amount greater than 0.', 'Invalid Input', 'error');
                     inputElement.focus();
                     return;
                 }
             }
             
             if (field === 'name' && !newValue) {
-                alert('Please enter an expense name.');
+                this.showAlert('Please enter an expense name.', 'Invalid Input', 'error');
                 inputElement.focus();
                 return;
             }
@@ -709,8 +809,6 @@ class BudgetTool {
 
         let html = `
             <div class="comprehensive-expense-summary">
-                <h3>Comprehensive Expense Breakdown</h3>
-                
                 <!-- Summary Totals Table -->
                 <div class="summary-totals">
                     <table class="expense-summary-table">
@@ -1491,6 +1589,308 @@ class BudgetTool {
         container.innerHTML = html;
     }    capitalizeCategory(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
+    }
+
+    getPersonColor(index) {
+        const colors = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', 
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+            'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+            'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
+        ];
+        return colors[index % colors.length];
+    }
+
+    // Custom Alert System
+    showAlert(message, title = 'Alert', type = 'info') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('customAlert');
+            const alertTitle = document.getElementById('alertTitle');
+            const alertMessage = document.getElementById('alertMessage');
+            const alertIcon = document.getElementById('alertIcon');
+            const alertHeader = modal.querySelector('.alert-header');
+            const okButton = document.getElementById('alertOkButton');
+            const cancelButton = document.getElementById('alertCancelButton');
+
+            // Set content
+            alertTitle.textContent = title;
+            alertMessage.textContent = message;
+
+            // Set icon and header style based on type
+            alertHeader.className = 'alert-header';
+            switch (type) {
+                case 'warning':
+                    alertIcon.textContent = '⚠️';
+                    alertHeader.classList.add('warning');
+                    break;
+                case 'error':
+                    alertIcon.textContent = '❌';
+                    alertHeader.classList.add('error');
+                    break;
+                case 'success':
+                    alertIcon.textContent = '✅';
+                    alertHeader.classList.add('success');
+                    break;
+                default:
+                    alertIcon.textContent = 'ℹ️';
+                    break;
+            }
+
+            // Show only OK button for alerts
+            okButton.style.display = 'inline-block';
+            cancelButton.style.display = 'none';
+
+            // Show modal
+            modal.style.display = 'block';
+
+            // Handle OK button
+            const handleOk = () => {
+                modal.style.display = 'none';
+                okButton.removeEventListener('click', handleOk);
+                resolve(true);
+            };
+
+            okButton.addEventListener('click', handleOk);
+        });
+    }
+
+    showConfirm(message, title = 'Confirm') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('customAlert');
+            const alertTitle = document.getElementById('alertTitle');
+            const alertMessage = document.getElementById('alertMessage');
+            const alertIcon = document.getElementById('alertIcon');
+            const alertHeader = modal.querySelector('.alert-header');
+            const okButton = document.getElementById('alertOkButton');
+            const cancelButton = document.getElementById('alertCancelButton');
+
+            // Set content
+            alertTitle.textContent = title;
+            alertMessage.textContent = message;
+            alertIcon.textContent = '❓';
+            alertHeader.className = 'alert-header warning';
+
+            // Show both buttons for confirmation
+            okButton.textContent = 'Yes';
+            okButton.style.display = 'inline-block';
+            cancelButton.textContent = 'No';
+            cancelButton.style.display = 'inline-block';
+
+            // Show modal
+            modal.style.display = 'block';
+
+            // Handle buttons
+            const handleOk = () => {
+                modal.style.display = 'none';
+                cleanup();
+                resolve(true);
+            };
+
+            const handleCancel = () => {
+                modal.style.display = 'none';
+                cleanup();
+                resolve(false);
+            };
+
+            const cleanup = () => {
+                okButton.removeEventListener('click', handleOk);
+                cancelButton.removeEventListener('click', handleCancel);
+                okButton.textContent = 'OK';
+            };
+
+            okButton.addEventListener('click', handleOk);
+            cancelButton.addEventListener('click', handleCancel);
+        });
+    }
+
+    // PDF Export functionality
+    async exportToPDF() {
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Title
+            doc.setFontSize(20);
+            doc.setTextColor(102, 126, 234);
+            doc.text('Budget Report', 20, 20);
+            
+            // Date
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+            
+            let yPosition = 45;
+            
+            // People Section
+            if (this.people.length > 0) {
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text('People & Income', 20, yPosition);
+                yPosition += 10;
+                
+                // Table headers
+                doc.setFontSize(10);
+                doc.setTextColor(60, 60, 60);
+                doc.text('Name', 25, yPosition);
+                doc.text('Bi-weekly', 80, yPosition);
+                doc.text('Monthly', 120, yPosition);
+                doc.text('Yearly', 160, yPosition);
+                yPosition += 5;
+                
+                // Draw line under headers
+                doc.line(20, yPosition, 190, yPosition);
+                yPosition += 8;
+                
+                // People data
+                doc.setTextColor(0, 0, 0);
+                this.people.forEach(person => {
+                    doc.text(person.name, 25, yPosition);
+                    doc.text(this.formatCurrency(person.biWeeklyPay), 80, yPosition);
+                    doc.text(this.formatCurrency(person.monthlyPay), 120, yPosition);
+                    doc.text(this.formatCurrency(person.yearlyPay), 160, yPosition);
+                    yPosition += 8;
+                });
+                
+                // Totals
+                const totalBiWeekly = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
+                const totalMonthly = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
+                const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
+                
+                yPosition += 5;
+                doc.line(20, yPosition, 190, yPosition);
+                yPosition += 8;
+                
+                doc.setFont(undefined, 'bold');
+                doc.text('Total Household Income:', 25, yPosition);
+                doc.text(this.formatCurrency(totalBiWeekly), 80, yPosition);
+                doc.text(this.formatCurrency(totalMonthly), 120, yPosition);
+                doc.text(this.formatCurrency(totalYearly), 160, yPosition);
+                doc.setFont(undefined, 'normal');
+                
+                yPosition += 20;
+            }
+            
+            // Expenses Section
+            if (this.expenses.length > 0) {
+                // Check if we need a new page
+                if (yPosition > 200) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text('Expenses', 20, yPosition);
+                yPosition += 10;
+                
+                // Group by category
+                const expensesByCategory = this.expenses.reduce((acc, expense) => {
+                    if (!acc[expense.category]) {
+                        acc[expense.category] = [];
+                    }
+                    acc[expense.category].push(expense);
+                    return acc;
+                }, {});
+                
+                Object.keys(expensesByCategory).forEach(category => {
+                    const categoryExpenses = expensesByCategory[category];
+                    const categoryTotal = categoryExpenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
+                    
+                    // Category header
+                    doc.setFontSize(12);
+                    doc.setTextColor(102, 126, 234);
+                    doc.text(category.charAt(0).toUpperCase() + category.slice(1), 20, yPosition);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text(`Total: ${this.formatCurrency(categoryTotal)} bi-weekly`, 120, yPosition);
+                    yPosition += 8;
+                    
+                    // Category expenses
+                    doc.setFontSize(10);
+                    categoryExpenses.forEach(expense => {
+                        if (yPosition > 270) {
+                            doc.addPage();
+                            yPosition = 20;
+                        }
+                        
+                        doc.text(`  • ${expense.name}`, 25, yPosition);
+                        doc.text(this.formatCurrency(expense.monthlyAmount), 120, yPosition);
+                        doc.text(`(${this.formatCurrency(expense.biWeeklyAmount)} bi-weekly)`, 160, yPosition);
+                        yPosition += 6;
+                    });
+                    
+                    yPosition += 5;
+                });
+                
+                // Total expenses
+                const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
+                const totalMonthlyExpenses = totalBiWeeklyExpenses * this.payPeriods / 12;
+                const totalYearlyExpenses = totalBiWeeklyExpenses * this.payPeriods;
+                
+                yPosition += 10;
+                doc.line(20, yPosition, 190, yPosition);
+                yPosition += 8;
+                
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text('Total Expenses:', 20, yPosition);
+                yPosition += 8;
+                doc.setFontSize(10);
+                doc.text(`Bi-weekly: ${this.formatCurrency(totalBiWeeklyExpenses)}`, 25, yPosition);
+                yPosition += 6;
+                doc.text(`Monthly: ${this.formatCurrency(totalMonthlyExpenses)}`, 25, yPosition);
+                yPosition += 6;
+                doc.text(`Yearly: ${this.formatCurrency(totalYearlyExpenses)}`, 25, yPosition);
+                doc.setFont(undefined, 'normal');
+            }
+            
+            // Summary section
+            if (this.people.length > 0 && this.expenses.length > 0) {
+                yPosition += 20;
+                
+                // Check if we need a new page
+                if (yPosition > 220) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text('Budget Summary', 20, yPosition);
+                yPosition += 15;
+                
+                const totalIncome = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
+                const totalExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
+                const surplus = totalIncome - totalExpenses;
+                const savingsRate = totalIncome > 0 ? ((surplus / totalIncome) * 100) : 0;
+                
+                doc.setFontSize(12);
+                doc.text(`Total Bi-weekly Income: ${this.formatCurrency(totalIncome)}`, 25, yPosition);
+                yPosition += 8;
+                doc.text(`Total Bi-weekly Expenses: ${this.formatCurrency(totalExpenses)}`, 25, yPosition);
+                yPosition += 8;
+                
+                doc.setTextColor(surplus >= 0 ? 40 : 220, surplus >= 0 ? 167 : 53, surplus >= 0 ? 69 : 69);
+                doc.text(`${surplus >= 0 ? 'Surplus' : 'Deficit'}: ${this.formatCurrency(Math.abs(surplus))}`, 25, yPosition);
+                yPosition += 8;
+                
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Savings Rate: ${Math.max(0, savingsRate).toFixed(1)}%`, 25, yPosition);
+            }
+            
+            // Save the PDF
+            const fileName = `budget_report_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(fileName);
+            
+            await this.showAlert('PDF exported successfully!', 'Export Complete', 'success');
+            
+        } catch (error) {
+            console.error('PDF export error:', error);
+            await this.showAlert('Failed to export PDF. Please try again.', 'Export Error', 'error');
+        }
     }
 }
 
