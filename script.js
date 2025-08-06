@@ -37,6 +37,11 @@ class BudgetTool {
             this.addExpense();
         });
 
+        // Clear all expenses
+        document.getElementById('clearAllExpenses').addEventListener('click', () => {
+            this.clearAllExpenses();
+        });
+
         // Apply global sharing method
         document.getElementById('setPercentageSharing').addEventListener('click', () => {
             this.setGlobalSharingMethod('percentage');
@@ -122,6 +127,22 @@ class BudgetTool {
 
         document.getElementById('subCategory').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addExpense();
+        });
+
+        // Event delegation for remove buttons
+        document.addEventListener('click', (e) => {
+            // Handle remove person buttons
+            if (e.target.classList.contains('remove-person-btn') || e.target.closest('.remove-person-btn')) {
+                const button = e.target.classList.contains('remove-person-btn') ? e.target : e.target.closest('.remove-person-btn');
+                const personId = parseInt(button.getAttribute('data-person-id'));
+                this.removePerson(personId);
+            }
+            // Handle remove expense buttons
+            else if (e.target.classList.contains('remove-expense-btn') || e.target.closest('.remove-expense-btn')) {
+                const button = e.target.classList.contains('remove-expense-btn') ? e.target : e.target.closest('.remove-expense-btn');
+                const expenseId = parseInt(button.getAttribute('data-expense-id'));
+                this.removeExpense(expenseId);
+            }
         });
     }
 
@@ -323,6 +344,25 @@ class BudgetTool {
         }
     }
 
+    async clearAllExpenses() {
+        if (this.expenses.length === 0) {
+            await this.showAlert('There are no expenses to clear.', 'No Expenses', 'info');
+            return;
+        }
+
+        const confirmed = await this.showConfirm(
+            `Are you sure you want to remove all ${this.expenses.length} expenses? This action cannot be undone.`, 
+            'Clear All Expenses'
+        );
+        
+        if (confirmed) {
+            this.expenses = [];
+            this.saveData();
+            this.render();
+            await this.showAlert('All expenses have been cleared.', 'Expenses Cleared', 'success');
+        }
+    }
+
     calculateMonthlyFromBiWeekly(biWeeklyAmount) {
         return (biWeeklyAmount * this.payPeriods) / 12;
     }
@@ -519,7 +559,7 @@ class BudgetTool {
                     </div>
                     
                     <div class="person-actions">
-                        <button class="btn btn-danger btn-small" onclick="budgetTool.removePerson(${person.id})" title="Remove ${person.name}">
+                        <button class="btn btn-danger btn-small remove-person-btn" data-person-id="${person.id}" title="Remove ${person.name}">
                             <span class="btn-icon">🗑️</span> Remove
                         </button>
                     </div>
@@ -677,7 +717,7 @@ class BudgetTool {
                     <span class="sharing-badge">${expense.sharingMethod === 'even' ? 'Even Split' : 'By Income %'}</span>
                 </td>
                 <td>
-                    <button class="btn btn-danger" onclick="budgetTool.removeExpense(${expense.id})">Remove</button>
+                    <button class="btn btn-danger remove-expense-btn" data-expense-id="${expense.id}">Remove</button>
                 </td>
             </tr>
         `).join('');
