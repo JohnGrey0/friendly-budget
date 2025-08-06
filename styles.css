@@ -1,0 +1,1092 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    color: white;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.section {
+    margin-bottom: 30px;
+}
+
+.section h2 {
+    color: white;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    backdrop-filter: blur(10px);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+.form-group select,
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-group select:focus,
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.global-sharing-control {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #28a745;
+}
+
+.global-sharing-control label {
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+}
+
+.sharing-toggle-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-toggle {
+    padding: 8px 16px;
+    border: 2px solid #e1e5e9;
+    border-radius: 6px;
+    background: white;
+    color: #6c757d;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.btn-toggle:hover {
+    border-color: #667eea;
+    color: #667eea;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.btn-toggle.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+.btn-toggle.active:hover {
+    color: white;
+    transform: translateY(-1px);
+}
+
+.people-form,
+.expense-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 15px;
+    align-items: end;
+    margin-bottom: 0;
+}
+
+.people-form {
+    grid-template-columns: 2fr 2fr auto;
+}
+
+.expense-form {
+    margin-bottom: 25px;
+}
+
+.people-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.people-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.right-column .form-group {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    border-left: 4px solid #28a745;
+}
+
+.right-column .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+.right-column .form-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+}
+
+.household-summary {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    border-left: 4px solid #667eea;
+    margin-top: 0; /* Reset the alignment since it's now in right column */
+}
+
+.household-summary h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.household-totals-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.total-row:last-child {
+    border-bottom: none;
+    font-weight: 600;
+    font-size: 16px;
+    color: #667eea;
+}
+
+.total-label {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.total-amount {
+    font-weight: 600;
+    color: #333;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+    color: white;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(108, 117, 125, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(255, 107, 107, 0.4);
+}
+
+.people-list {
+    margin-top: 20px;
+}
+
+.person-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 4px solid #667eea;
+}
+
+.person-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.person-edit-form {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.edit-inputs {
+    display: flex;
+    gap: 15px;
+    flex: 1;
+}
+
+.input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.input-group label {
+    font-weight: 600;
+    color: #555;
+    font-size: 14px;
+}
+
+.edit-inputs input {
+    padding: 8px 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.edit-inputs input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.edit-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.person-info {
+    flex: 1;
+}
+
+.person-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.person-details {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.income-summary {
+    background: #e8f5e8;
+    border: 2px solid #28a745;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.income-summary h3 {
+    color: #28a745;
+    margin-bottom: 10px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.table-container {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+th,
+td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #555;
+}
+
+tr:hover {
+    background: #f8f9fa;
+}
+
+.editable-cell {
+    cursor: pointer;
+    position: relative;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.editable-cell:hover {
+    background: #e9ecef;
+    box-shadow: 0 0 0 1px #667eea;
+}
+
+.editable-cell::after {
+    content: "✏️";
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    opacity: 0.3;
+    transition: opacity 0.2s ease;
+}
+
+.editable-cell:hover::after {
+    opacity: 1;
+}
+
+.editable-cell.editing {
+    background: #fff3cd;
+    padding: 0;
+    box-shadow: 0 0 0 2px #ffc107;
+}
+
+.editable-cell.editing::after {
+    display: none;
+}
+
+.inline-edit-input {
+    width: 100%;
+    border: none;
+    padding: 12px;
+    background: transparent;
+    font-size: inherit;
+    font-family: inherit;
+}
+
+.inline-edit-input:focus {
+    outline: 2px solid #667eea;
+    background: white;
+}
+
+.calculated-cell {
+    background: #f8f9fa;
+    font-style: italic;
+    color: #6c757d;
+}
+
+.editable-person-field {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.editable-person-field:hover {
+    background: #e9ecef;
+    box-shadow: 0 0 0 1px #667eea;
+}
+
+.editable-person-field::after {
+    content: "✏️";
+    margin-left: 4px;
+    font-size: 12px;
+    opacity: 0.3;
+    transition: opacity 0.2s ease;
+}
+
+.editable-person-field:hover::after {
+    opacity: 1;
+}
+
+.editable-person-field.editing {
+    background: #fff3cd;
+    padding: 0;
+    box-shadow: 0 0 0 2px #ffc107;
+}
+
+.editable-person-field.editing::after {
+    display: none;
+}
+
+.person-name.editable-person-field {
+    display: inline-block;
+}
+
+.person-name.editable-person-field:hover {
+    background: #e9ecef;
+}
+
+.edit-hint {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%);
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #1565c0;
+}
+
+.edit-hint-icon {
+    font-size: 16px;
+}
+
+.edit-hint-text {
+    font-weight: 500;
+}
+
+/* Subtle pulse animation for very first load to draw attention */
+@keyframes gentle-pulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(102, 126, 234, 0.3); }
+    50% { box-shadow: 0 0 0 1px rgba(102, 126, 234, 0.6); }
+}
+
+.editable-cell:first-child,
+.editable-person-field:first-of-type {
+    animation: gentle-pulse 3s ease-in-out 2s 2;
+}
+
+/* Better visual feedback for calculated vs editable fields */
+.calculated-cell {
+    background: #f8f9fa;
+    font-style: italic;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+/* Responsive adjustments for summary grid */
+@media (max-width: 1024px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.category-summary {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.category-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.person-summary {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.person-summary h4 {
+    color: #856404;
+    margin-bottom: 10px;
+}
+
+.excess-item {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.excess-person {
+    font-weight: 600;
+    color: #155724;
+    margin-bottom: 8px;
+}
+
+.excess-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.amount {
+    font-weight: 600;
+}
+
+.positive {
+    color: #28a745;
+}
+
+.negative {
+    color: #dc3545;
+}
+
+.empty-state {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Combined Expense Summary Table */
+.combined-expense-summary {
+    margin-bottom: 20px;
+}
+
+.combined-expense-summary h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.expense-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.expense-summary-table th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    padding: 15px;
+    text-align: left;
+}
+
+.expense-summary-table td {
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.expense-summary-table tr:last-child td {
+    border-bottom: none;
+}
+
+.expense-summary-table tr:hover {
+    background: #f8f9fa;
+}
+
+.expense-summary-table .amount {
+    font-weight: 600;
+    color: #28a745;
+    text-align: right;
+}
+
+/* Person Category Breakdown Table */
+.category-breakdown-table {
+    margin-top: 10px;
+}
+
+.person-category-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.person-category-table th {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    font-weight: 600;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 13px;
+}
+
+.person-category-table th:first-child {
+    text-align: left;
+    padding-left: 15px;
+}
+
+.person-category-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid #e9ecef;
+    text-align: right;
+    font-size: 14px;
+}
+
+.person-category-table tr:last-child td {
+    border-bottom: none;
+}
+
+.person-category-table tr:hover {
+    background: #f8f9fa;
+}
+
+.person-category-table .person-name {
+    text-align: left;
+    font-weight: 600;
+    padding-left: 15px;
+    color: #333;
+}
+
+.person-category-table .amount {
+    font-weight: 500;
+    color: #666;
+}
+
+.person-category-table .total-cell {
+    font-weight: 700;
+    color: #28a745;
+    background: #f8fff9;
+    border-left: 2px solid #28a745;
+}
+
+/* Responsive adjustments for category table */
+@media (max-width: 768px) {
+    .person-category-table {
+        font-size: 12px;
+    }
+    
+    .person-category-table th,
+    .person-category-table td {
+        padding: 8px 4px;
+    }
+    
+    .person-category-table th:first-child,
+    .person-category-table .person-name {
+        padding-left: 8px;
+    }
+}
+
+/* Sortable Table Headers */
+.sortable {
+    position: relative;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.sortable:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.sortable::after {
+    content: '⇅';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    font-size: 14px;
+    color: currentColor;
+}
+
+.sortable.sort-asc::after {
+    content: '↑';
+    opacity: 1;
+}
+
+.sortable.sort-desc::after {
+    content: '↓';
+    opacity: 1;
+}
+
+/* Adjust padding for sortable headers to make room for sort icon */
+.sortable {
+    padding-right: 30px !important;
+}
+
+/* Special styling for person category table sortable headers */
+.person-category-table .sortable {
+    padding-right: 25px !important;
+}
+
+.person-category-table .sortable::after {
+    right: 5px;
+    font-size: 12px;
+}
+
+/* Excess Funds Table Styling */
+.excess-funds-container {
+    margin-top: 10px;
+}
+
+.excess-funds-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.excess-funds-table th {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    font-weight: 600;
+    padding: 15px 12px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.excess-funds-table th:first-child {
+    text-align: left;
+}
+
+.excess-funds-table td {
+    padding: 15px 12px;
+    border-bottom: 1px solid #e9ecef;
+    text-align: right;
+    font-size: 14px;
+}
+
+.excess-funds-table td.person-name {
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+}
+
+.excess-funds-table tr:hover {
+    background: #f8f9fa;
+}
+
+.excess-funds-table .positive {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.excess-funds-table .negative {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.excess-funds-table tfoot .totals-row {
+    border-top: 2px solid #17a2b8;
+    background: #f8f9fa;
+}
+
+.excess-funds-table tfoot .totals-row td {
+    border-bottom: none;
+    padding: 18px 12px;
+    font-size: 15px;
+}
+
+.excess-funds-table tfoot .totals-row td:first-child {
+    color: #17a2b8;
+    font-weight: 700;
+}
+
+/* Responsive adjustments for excess funds table */
+@media (max-width: 768px) {
+    .excess-funds-table {
+        font-size: 12px;
+    }
+    
+    .excess-funds-table th,
+    .excess-funds-table td {
+        padding: 10px 6px;
+    }
+    
+    .excess-funds-table th {
+        font-size: 12px;
+    }
+    
+    .excess-funds-table tfoot .totals-row td {
+        padding: 12px 6px;
+        font-size: 13px;
+    }
+}
+
+/* Summary Analytics Layout */
+.summary-analytics-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.summary-section h3,
+.analytics-section h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 8px;
+}
+
+.analytics-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    border-left: 4px solid #6f42c1;
+}
+
+.charts-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.chart-item {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.chart-item h4 {
+    color: #555;
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.chart-wrapper canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* Savings Rate Metric Circle */
+.savings-metric {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+}
+
+.metric-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.metric-label {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+/* Budget Bars */
+.budget-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 200px;
+    justify-content: center;
+}
+
+.budget-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.budget-bar-label {
+    min-width: 60px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    text-align: right;
+}
+
+.budget-bar-track {
+    flex: 1;
+    height: 20px;
+    background: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.budget-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.budget-bar-value {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Color variations for budget bars */
+.budget-bar-fill.income {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.budget-bar-fill.expenses {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.budget-bar-fill.excess {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+/* Responsive adjustments for analytics */
+@media (max-width: 1200px) {
+    .summary-analytics-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .charts-container {
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .charts-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .chart-wrapper {
+        height: 180px;
+    }
+    
+    .metric-circle {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .metric-value {
+        font-size: 20px;
+    }
+}
