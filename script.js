@@ -349,6 +349,9 @@ class BudgetTool {
         document.getElementById('monthlyAmount').value = '';
         document.getElementById('subCategory').value = '';
         document.getElementById('sharingMethod').value = this.globalSharingMethod;
+        
+        // Focus back to the expense name input for easy continuous entry
+        document.getElementById('expenseName').focus();
     }
 
     saveData() {
