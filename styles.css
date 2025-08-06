@@ -687,6 +687,152 @@ tr:hover {
     text-align: right;
 }
 
+/* Comprehensive Expense Summary Styles */
+.comprehensive-expense-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.comprehensive-expense-summary h3 {
+    color: #333;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 3px solid #667eea;
+    padding-bottom: 10px;
+}
+
+.comprehensive-expense-summary h4 {
+    color: #555;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    padding-left: 5px;
+    border-left: 4px solid #28a745;
+    padding-left: 15px;
+}
+
+/* Summary Totals Table */
+.summary-totals .expense-summary-table {
+    margin-bottom: 0;
+}
+
+.summary-totals .bi-weekly-row {
+    background: #e3f2fd;
+}
+
+.summary-totals .monthly-row {
+    background: #f3e5f5;
+}
+
+.summary-totals .yearly-row {
+    background: #e8f5e8;
+}
+
+.summary-totals .bi-weekly-row:hover,
+.summary-totals .monthly-row:hover,
+.summary-totals .yearly-row:hover {
+    opacity: 0.9;
+}
+
+/* Category Breakdown Table */
+.category-breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.category-breakdown-table th {
+    background: linear-gradient(135deg, #6f42c1 0%, #8e44ad 100%);
+    color: white;
+    font-weight: 600;
+    padding: 12px 15px;
+    text-align: left;
+    font-size: 13px;
+}
+
+.category-breakdown-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 14px;
+}
+
+.category-breakdown-table tr:last-child td {
+    border-bottom: none;
+}
+
+.category-breakdown-table tr:hover {
+    background: #f8f9fa;
+}
+
+.category-breakdown-table .amount {
+    font-weight: 600;
+    color: #28a745;
+    text-align: right;
+}
+
+.category-breakdown-table .percentage {
+    font-weight: 600;
+    color: #6f42c1;
+    text-align: center;
+}
+
+/* Subcategory rows styling */
+.subcategory-row {
+    background: #f8f9fa !important;
+}
+
+.subcategory-row:hover {
+    background: #e9ecef !important;
+}
+
+.subcategory-indent {
+    padding-left: 30px !important;
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+}
+
+/* Personal breakdown summary */
+.personal-breakdown-summary .expense-summary-table th {
+    background: linear-gradient(135deg, #fd7e14 0%, #e55a4e 100%);
+}
+
+.personal-breakdown-summary .percentage {
+    font-weight: 600;
+    color: #fd7e14;
+    text-align: center;
+}
+
+/* Responsive styles for comprehensive summary */
+@media (max-width: 768px) {
+    .comprehensive-expense-summary {
+        gap: 20px;
+    }
+    
+    .category-breakdown-table th,
+    .category-breakdown-table td {
+        padding: 8px 6px;
+        font-size: 12px;
+    }
+    
+    .subcategory-indent {
+        padding-left: 20px !important;
+        font-size: 11px;
+    }
+    
+    .comprehensive-expense-summary h3 {
+        font-size: 1.3rem;
+    }
+    
+    .comprehensive-expense-summary h4 {
+        font-size: 1.1rem;
+    }
+}
+
 /* Person Category Breakdown Table */
 .category-breakdown-table {
     margin-top: 10px;
@@ -929,9 +1075,41 @@ tr:hover {
     border-left: 4px solid #6f42c1;
 }
 
+/* New Analytics Grid Layout */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    margin-top: 0;
+}
+
+.analytics-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    text-align: center;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.analytics-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+.analytics-card h4 {
+    color: #333;
+    font-size: 16px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .charts-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 20px;
 }
 
@@ -952,10 +1130,11 @@ tr:hover {
 
 .chart-wrapper {
     position: relative;
-    height: 200px;
+    height: 280px;
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-bottom: 10px;
 }
 
 .chart-wrapper canvas {
@@ -968,12 +1147,12 @@ tr:hover {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 200px;
+    height: 280px;
 }
 
 .metric-circle {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     border-radius: 50%;
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     display: flex;
@@ -999,9 +1178,10 @@ tr:hover {
 .budget-bars {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    height: 200px;
+    gap: 15px;
+    height: 280px;
     justify-content: center;
+    padding: 0 10px;
 }
 
 .budget-bar {
@@ -1020,9 +1200,9 @@ tr:hover {
 
 .budget-bar-track {
     flex: 1;
-    height: 20px;
+    height: 24px;
     background: #e9ecef;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     position: relative;
 }
@@ -1058,8 +1238,113 @@ tr:hover {
     background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
 }
 
+/* Subcategory Bars */
+.subcategory-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 280px;
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding: 10px 15px 10px 10px;
+}
+
+.subcategory-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 22px;
+}
+
+.subcategory-bar-category {
+    min-width: 45px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    text-align: right;
+    opacity: 0.8;
+}
+
+.subcategory-bar-label {
+    min-width: 70px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #555;
+    text-align: right;
+}
+
+.subcategory-bar-track {
+    flex: 1;
+    height: 16px;
+    background: #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.subcategory-bar-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%);
+    border-radius: 8px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.subcategory-bar-amount {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.subcategory-bar-percentage {
+    min-width: 35px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #666;
+    text-align: left;
+}
+
+.subcategory-bars::-webkit-scrollbar {
+    width: 4px;
+}
+
+.subcategory-bars::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 2px;
+}
+
+.subcategory-bars::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+}
+
+.subcategory-bars::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #999;
+    font-size: 12px;
+    font-style: italic;
+}
+
 /* Responsive adjustments for analytics */
 @media (max-width: 1200px) {
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
     .summary-analytics-layout {
         grid-template-columns: 1fr;
         gap: 20px;
@@ -1072,13 +1357,34 @@ tr:hover {
 }
 
 @media (max-width: 768px) {
-    .charts-container {
+    .analytics-grid {
         grid-template-columns: 1fr;
-        gap: 15px;
+        gap: 20px;
+    }
+    
+    .analytics-card {
+        padding: 20px;
     }
     
     .chart-wrapper {
-        height: 180px;
+        height: 220px;
+    }
+    
+    .savings-metric {
+        height: 220px;
+    }
+    
+    .budget-bars {
+        height: 220px;
+    }
+    
+    .subcategory-bars {
+        height: 220px;
+    }
+    
+    .charts-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
     }
     
     .metric-circle {

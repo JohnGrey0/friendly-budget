@@ -129,47 +129,55 @@
 
         <!-- Bi-weekly Summary Section -->
         <section class="section">
-            <h2>Bi-weekly Expense Summary & Analytics</h2>
+            <h2>Bi-weekly Expense Summary</h2>
             <div class="card">
-                <div class="summary-analytics-layout">
-                    <div class="summary-section">
-                        <h3>Expense Details</h3>
-                        <div id="biWeeklySummary"></div>
+                <div id="biWeeklySummary"></div>
+            </div>
+        </section>
+
+        <!-- Budget Analytics Section -->
+        <section class="section">
+            <h2>Budget Analytics</h2>
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <h4>Expense Distribution</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="expensePieChart" width="300" height="300"></canvas>
                     </div>
-                    
-                    <div class="analytics-section">
-                        <h3>Budget Analytics</h3>
-                        <div class="charts-container">
-                            <div class="chart-item">
-                                <h4>Expense Distribution</h4>
-                                <div class="chart-wrapper">
-                                    <canvas id="expensePieChart" width="250" height="250"></canvas>
-                                </div>
-                            </div>
-                            
-                            <div class="chart-item">
-                                <h4>Income vs Expenses</h4>
-                                <div class="chart-wrapper">
-                                    <canvas id="incomeExpenseChart" width="250" height="200"></canvas>
-                                </div>
-                            </div>
-                            
-                            <div class="chart-item">
-                                <h4>Savings Rate</h4>
-                                <div class="savings-metric">
-                                    <div class="metric-circle">
-                                        <div class="metric-value" id="savingsRate">0%</div>
-                                        <div class="metric-label">Savings Rate</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="chart-item">
-                                <h4>Monthly Budget Overview</h4>
-                                <div class="budget-bars" id="budgetBars"></div>
-                            </div>
+                </div>
+                
+                <div class="analytics-card">
+                    <h4>Income vs Expenses</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="incomeExpenseChart" width="300" height="250"></canvas>
+                    </div>
+                </div>
+                
+                <div class="analytics-card">
+                    <h4>Savings Rate</h4>
+                    <div class="savings-metric">
+                        <div class="metric-circle">
+                            <div class="metric-value" id="savingsRate">0%</div>
+                            <div class="metric-label">Savings Rate</div>
                         </div>
                     </div>
+                </div>
+                
+                <div class="analytics-card">
+                    <h4>Monthly Budget Overview</h4>
+                    <div class="budget-bars" id="budgetBars"></div>
+                </div>
+                
+                <div class="analytics-card">
+                    <h4>Subcategory Breakdown</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="subcategoryChart" width="300" height="300"></canvas>
+                    </div>
+                </div>
+                
+                <div class="analytics-card">
+                    <h4>Top Subcategories</h4>
+                    <div class="subcategory-bars" id="subcategoryBars"></div>
                 </div>
             </div>
         </section>

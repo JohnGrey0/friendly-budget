@@ -628,58 +628,153 @@ class BudgetTool {
         }, {});
 
         const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
+        const totalMonthlyExpenses = totalBiWeeklyExpenses * this.payPeriods / 12;
+        const totalYearlyExpenses = totalBiWeeklyExpenses * this.payPeriods;
 
-        let html = '';
-
-        // Combined table showing total expense per person
-        const expenseBreakdown = this.getExpenseBreakdownByPerson();
-        
-        html += `
-            <div class="combined-expense-summary">
-                <h3>Bi-weekly Expense Summary</h3>
-                <table class="expense-summary-table">
-                    <thead>
-                        <tr>
-                            <th>Person</th>
-                            <th>Total Expenses</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${Object.values(expenseBreakdown).map(personData => `
+        let html = `
+            <div class="comprehensive-expense-summary">
+                <h3>Comprehensive Expense Breakdown</h3>
+                
+                <!-- Summary Totals Table -->
+                <div class="summary-totals">
+                    <table class="expense-summary-table">
+                        <thead>
                             <tr>
-                                <td>${personData.person.name}</td>
-                                <td class="amount">${this.formatCurrency(personData.totalBiWeekly)}</td>
+                                <th>Period</th>
+                                <th>Total Expenses</th>
+                                <th>Per Person Average</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            <tr class="bi-weekly-row">
+                                <td><strong>Bi-weekly</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalBiWeeklyExpenses)}</strong></td>
+                                <td class="amount">${this.formatCurrency(totalBiWeeklyExpenses / this.people.length)}</td>
+                            </tr>
+                            <tr class="monthly-row">
+                                <td><strong>Monthly</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalMonthlyExpenses)}</strong></td>
+                                <td class="amount">${this.formatCurrency(totalMonthlyExpenses / this.people.length)}</td>
+                            </tr>
+                            <tr class="yearly-row">
+                                <td><strong>Yearly</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalYearlyExpenses)}</strong></td>
+                                <td class="amount">${this.formatCurrency(totalYearlyExpenses / this.people.length)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Category Breakdown Table -->
+                <div class="category-breakdown-summary">
+                    <h4>Category Breakdown</h4>
+                    <table class="category-breakdown-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Bi-weekly</th>
+                                <th>Monthly</th>
+                                <th>Yearly</th>
+                                <th>% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
         `;
 
-        // Category breakdown
+        // Add category rows
         Object.keys(expensesByCategory).forEach(category => {
             const categoryExpenses = expensesByCategory[category];
-            const categoryTotal = categoryExpenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
+            const categoryBiWeekly = categoryExpenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
+            const categoryMonthly = categoryBiWeekly * this.payPeriods / 12;
+            const categoryYearly = categoryBiWeekly * this.payPeriods;
+            const categoryPercentage = totalBiWeeklyExpenses > 0 ? (categoryBiWeekly / totalBiWeeklyExpenses * 100) : 0;
             
             html += `
-                <div class="category-summary">
-                    <div class="category-title">${category.charAt(0).toUpperCase() + category.slice(1)} - ${this.formatCurrency(categoryTotal)}</div>
-                    ${categoryExpenses.map(expense => `
-                        <div class="summary-row">
-                            <span>${expense.name}${expense.subCategory ? ` (${expense.subCategory})` : ''}</span>
-                            <span class="amount">${this.formatCurrency(expense.biWeeklyAmount)}</span>
-                        </div>
-                    `).join('')}
+                <tr>
+                    <td><strong>${this.capitalizeCategory(category)}</strong></td>
+                    <td class="amount">${this.formatCurrency(categoryBiWeekly)}</td>
+                    <td class="amount">${this.formatCurrency(categoryMonthly)}</td>
+                    <td class="amount">${this.formatCurrency(categoryYearly)}</td>
+                    <td class="percentage">${categoryPercentage.toFixed(1)}%</td>
+                </tr>
+            `;
+
+            // Add subcategory details if they exist
+            categoryExpenses.forEach(expense => {
+                if (expense.subCategory && expense.subCategory.trim() !== '') {
+                    const expenseMonthly = expense.biWeeklyAmount * this.payPeriods / 12;
+                    const expenseYearly = expense.biWeeklyAmount * this.payPeriods;
+                    const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
+                    
+                    html += `
+                        <tr class="subcategory-row">
+                            <td class="subcategory-indent">└ ${expense.name} (${expense.subCategory})</td>
+                            <td class="amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
+                            <td class="amount">${this.formatCurrency(expenseMonthly)}</td>
+                            <td class="amount">${this.formatCurrency(expenseYearly)}</td>
+                            <td class="percentage">${expensePercentage.toFixed(1)}%</td>
+                        </tr>
+                    `;
+                } else {
+                    const expenseMonthly = expense.biWeeklyAmount * this.payPeriods / 12;
+                    const expenseYearly = expense.biWeeklyAmount * this.payPeriods;
+                    const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
+                    
+                    html += `
+                        <tr class="subcategory-row">
+                            <td class="subcategory-indent">└ ${expense.name}</td>
+                            <td class="amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
+                            <td class="amount">${this.formatCurrency(expenseMonthly)}</td>
+                            <td class="amount">${this.formatCurrency(expenseYearly)}</td>
+                            <td class="percentage">${expensePercentage.toFixed(1)}%</td>
+                        </tr>
+                    `;
+                }
+            });
+        });
+
+        html += `
+                        </tbody>
+                    </table>
                 </div>
+
+                <!-- Personal Expense Breakdown -->
+                <div class="personal-breakdown-summary">
+                    <h4>Personal Expense Allocation</h4>
+                    <table class="expense-summary-table">
+                        <thead>
+                            <tr>
+                                <th>Person</th>
+                                <th>Bi-weekly Share</th>
+                                <th>Monthly Share</th>
+                                <th>Yearly Share</th>
+                                <th>% of Household</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        // Add personal breakdown
+        const expenseBreakdown = this.getExpenseBreakdownByPerson();
+        Object.values(expenseBreakdown).forEach(personData => {
+            const monthlyShare = personData.totalBiWeekly * this.payPeriods / 12;
+            const yearlyShare = personData.totalBiWeekly * this.payPeriods;
+            const householdPercentage = totalBiWeeklyExpenses > 0 ? (personData.totalBiWeekly / totalBiWeeklyExpenses * 100) : 0;
+            
+            html += `
+                <tr>
+                    <td><strong>${personData.person.name}</strong></td>
+                    <td class="amount">${this.formatCurrency(personData.totalBiWeekly)}</td>
+                    <td class="amount">${this.formatCurrency(monthlyShare)}</td>
+                    <td class="amount">${this.formatCurrency(yearlyShare)}</td>
+                    <td class="percentage">${householdPercentage.toFixed(1)}%</td>
+                </tr>
             `;
         });
 
         html += `
-            <div class="income-summary">
-                <h3>Total Bi-weekly Expenses</h3>
-                <div class="summary-row">
-                    <span>Total:</span>
-                    <span class="amount">${this.formatCurrency(totalBiWeeklyExpenses)}</span>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         `;
@@ -1055,11 +1150,13 @@ class BudgetTool {
         this.renderIncomeExpenseChart();
         this.renderSavingsRate();
         this.renderBudgetBars();
+        this.renderSubcategoryChart();
+        this.renderSubcategoryBars();
     }
 
     clearAnalytics() {
         // Clear charts if no data
-        const charts = ['expensePieChart', 'incomeExpenseChart'];
+        const charts = ['expensePieChart', 'incomeExpenseChart', 'subcategoryChart'];
         charts.forEach(chartId => {
             const canvas = document.getElementById(chartId);
             if (canvas) {
@@ -1220,6 +1317,131 @@ class BudgetTool {
         });
         
         container.innerHTML = html;
+    }
+
+    renderSubcategoryChart() {
+        const canvas = document.getElementById('subcategoryChart');
+        const ctx = canvas.getContext('2d');
+        
+        // Group expenses by subcategory (only those with subcategories)
+        const subcategoryTotals = {};
+        this.expenses.forEach(expense => {
+            if (expense.subCategory && expense.subCategory.trim() !== '') {
+                const subcat = expense.subCategory.trim();
+                subcategoryTotals[subcat] = (subcategoryTotals[subcat] || 0) + expense.biWeeklyAmount;
+            }
+        });
+
+        // If no subcategories, show empty state
+        if (Object.keys(subcategoryTotals).length === 0) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#6c757d';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Add subcategories', canvas.width/2, canvas.height/2 - 10);
+            ctx.fillText('to see breakdown', canvas.width/2, canvas.height/2 + 10);
+            return;
+        }
+
+        const colors = [
+            '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', 
+            '#EF4444', '#EC4899', '#84CC16', '#6366F1'
+        ];
+
+        const data = {
+            labels: Object.keys(subcategoryTotals),
+            datasets: [{
+                data: Object.values(subcategoryTotals),
+                backgroundColor: colors.slice(0, Object.keys(subcategoryTotals).length),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        };
+
+        if (this.subcategoryChart) {
+            this.subcategoryChart.destroy();
+        }
+
+        this.subcategoryChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 8,
+                            font: { size: 10 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    renderSubcategoryBars() {
+        const container = document.getElementById('subcategoryBars');
+        
+        // Group expenses by subcategory with category info
+        const subcategoryData = [];
+        this.expenses.forEach(expense => {
+            if (expense.subCategory && expense.subCategory.trim() !== '') {
+                const existing = subcategoryData.find(item => 
+                    item.subcategory.toLowerCase() === expense.subCategory.toLowerCase()
+                );
+                
+                if (existing) {
+                    existing.amount += expense.biWeeklyAmount;
+                } else {
+                    subcategoryData.push({
+                        category: this.capitalizeCategory(expense.category),
+                        subcategory: expense.subCategory,
+                        amount: expense.biWeeklyAmount
+                    });
+                }
+            }
+        });
+
+        if (subcategoryData.length === 0) {
+            container.innerHTML = '<div class="empty-state">Add expenses with subcategories to see breakdown</div>';
+            return;
+        }
+
+        // Sort by amount (highest first) and take top 8
+        subcategoryData.sort((a, b) => b.amount - a.amount);
+        const topSubcategories = subcategoryData.slice(0, 8);
+        
+        const maxAmount = Math.max(...topSubcategories.map(item => item.amount));
+        const totalSubcategoryAmount = subcategoryData.reduce((sum, item) => sum + item.amount, 0);
+
+        let html = '';
+        topSubcategories.forEach(item => {
+            const percentage = maxAmount > 0 ? (item.amount / maxAmount * 100) : 0;
+            const percentOfTotal = totalSubcategoryAmount > 0 ? (item.amount / totalSubcategoryAmount * 100) : 0;
+            
+            html += `
+                <div class="subcategory-bar">
+                    <div class="subcategory-bar-category">${item.category}</div>
+                    <div class="subcategory-bar-label">${item.subcategory}</div>
+                    <div class="subcategory-bar-track">
+                        <div class="subcategory-bar-fill" style="width: ${percentage}%">
+                            <div class="subcategory-bar-amount">${this.formatCurrency(item.amount)}</div>
+                        </div>
+                    </div>
+                    <div class="subcategory-bar-percentage">${percentOfTotal.toFixed(1)}%</div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+
+    capitalizeCategory(category) {
+        return category.charAt(0).toUpperCase() + category.slice(1);
     }
 }
 
