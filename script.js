@@ -167,6 +167,9 @@ class BudgetTool {
         this.clearPersonForm();
         this.saveData();
         this.render();
+        
+        // Focus on name field for easy consecutive entry
+        document.getElementById('personName').focus();
     }
 
     addExpense() {
