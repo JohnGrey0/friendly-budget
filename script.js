@@ -4,6 +4,7 @@ class BudgetTool {
         this.expenses = JSON.parse(localStorage.getItem('budgetExpenses')) || [];
         this.payPeriods = parseInt(localStorage.getItem('budgetPayPeriods')) || 26;
         this.globalSharingMethod = localStorage.getItem('budgetGlobalSharingMethod') || 'percentage';
+        this.analyticsPeriod = localStorage.getItem('budgetAnalyticsPeriod') || 'biweekly';
         
         // Migrate existing expenses to have sharing method
         this.expenses.forEach(expense => {
@@ -43,6 +44,19 @@ class BudgetTool {
 
         document.getElementById('setEvenSharing').addEventListener('click', () => {
             this.setGlobalSharingMethod('even');
+        });
+
+        // Analytics period toggle
+        document.getElementById('setBiWeeklyPeriod').addEventListener('click', () => {
+            this.setAnalyticsPeriod('biweekly');
+        });
+
+        document.getElementById('setMonthlyPeriod').addEventListener('click', () => {
+            this.setAnalyticsPeriod('monthly');
+        });
+
+        document.getElementById('setYearlyPeriod').addEventListener('click', () => {
+            this.setAnalyticsPeriod('yearly');
         });
 
         // Enter key handling
@@ -145,6 +159,22 @@ class BudgetTool {
 
         this.saveData();
         this.render();
+    }
+
+    setAnalyticsPeriod(period) {
+        this.analyticsPeriod = period;
+        
+        // Update button states
+        const buttons = document.querySelectorAll('.period-toggle-buttons .btn-toggle');
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-period') === period) {
+                btn.classList.add('active');
+            }
+        });
+
+        localStorage.setItem('budgetAnalyticsPeriod', period);
+        this.renderAnalytics(); // Re-render analytics with new period
     }
 
     removePerson(id) {
@@ -276,6 +306,41 @@ class BudgetTool {
         }).format(amount);
     }
 
+    // Helper methods for analytics period calculations
+    getAnalyticsAmount(biWeeklyAmount) {
+        switch (this.analyticsPeriod) {
+            case 'monthly':
+                return biWeeklyAmount * this.payPeriods / 12;
+            case 'yearly':
+                return biWeeklyAmount * this.payPeriods;
+            default: // biweekly
+                return biWeeklyAmount;
+        }
+    }
+
+    getAnalyticsLabel() {
+        switch (this.analyticsPeriod) {
+            case 'monthly':
+                return 'Monthly';
+            case 'yearly':
+                return 'Yearly';
+            default: // biweekly
+                return 'Bi-weekly';
+        }
+    }
+
+    getPersonAnalyticsAmount(person) {
+        const biWeeklyPay = person.biWeeklyPay;
+        switch (this.analyticsPeriod) {
+            case 'monthly':
+                return person.monthlyPay;
+            case 'yearly':
+                return person.yearlyPay;
+            default: // biweekly
+                return biWeeklyPay;
+        }
+    }
+
     calculatePercentDifference(amount, total) {
         if (total === 0) return 0;
         return ((amount / total) * 100).toFixed(1);
@@ -284,6 +349,7 @@ class BudgetTool {
     render() {
         this.renderPayPeriods();
         this.renderSharingButtons();
+        this.renderAnalyticsPeriodButtons();
         this.renderExpenseForm();
         this.renderPeople();
         this.renderExpenses();
@@ -305,6 +371,16 @@ class BudgetTool {
         buttons.forEach(btn => {
             btn.classList.remove('active');
             if (btn.getAttribute('data-method') === this.globalSharingMethod) {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    renderAnalyticsPeriodButtons() {
+        const buttons = document.querySelectorAll('.period-toggle-buttons .btn-toggle');
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-period') === this.analyticsPeriod) {
                 btn.classList.add('active');
             }
         });
@@ -1149,7 +1225,6 @@ class BudgetTool {
         this.renderExpensePieChart();
         this.renderIncomeExpenseChart();
         this.renderSavingsRate();
-        this.renderBudgetBars();
         this.renderSubcategoryChart();
         this.renderSubcategoryBars();
     }
@@ -1179,11 +1254,11 @@ class BudgetTool {
         const canvas = document.getElementById('expensePieChart');
         const ctx = canvas.getContext('2d');
         
-        // Group expenses by category
+        // Group expenses by category using analytics period
         const categoryTotals = {};
         this.expenses.forEach(expense => {
             const category = this.capitalizeCategory(expense.category);
-            categoryTotals[category] = (categoryTotals[category] || 0) + expense.biWeeklyAmount;
+            categoryTotals[category] = (categoryTotals[category] || 0) + this.getAnalyticsAmount(expense.biWeeklyAmount);
         });
 
         const colors = [
@@ -1212,6 +1287,10 @@ class BudgetTool {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
+                    title: {
+                        display: true,
+                        text: `${this.getAnalyticsLabel()} Expense Distribution`
+                    },
                     legend: {
                         position: 'bottom',
                         labels: {
@@ -1228,14 +1307,14 @@ class BudgetTool {
         const canvas = document.getElementById('incomeExpenseChart');
         const ctx = canvas.getContext('2d');
         
-        const totalBiWeeklyIncome = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
-        const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-        const totalBiWeeklyExcess = totalBiWeeklyIncome - totalBiWeeklyExpenses;
+        const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
+        const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        const totalExcess = totalIncome - totalExpenses;
 
         const data = {
             labels: ['Income', 'Expenses', 'Excess'],
             datasets: [{
-                data: [totalBiWeeklyIncome, totalBiWeeklyExpenses, Math.max(0, totalBiWeeklyExcess)],
+                data: [totalIncome, totalExpenses, Math.max(0, totalExcess)],
                 backgroundColor: ['#28a745', '#dc3545', '#007bff'],
                 borderWidth: 2,
                 borderColor: '#fff'
@@ -1253,6 +1332,10 @@ class BudgetTool {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
+                    title: {
+                        display: true,
+                        text: `${this.getAnalyticsLabel()} Income vs Expenses`
+                    },
                     legend: { display: false }
                 },
                 scales: {
@@ -1270,9 +1353,9 @@ class BudgetTool {
     }
 
     renderSavingsRate() {
-        const totalBiWeeklyIncome = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
-        const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-        const savingsRate = totalBiWeeklyIncome > 0 ? ((totalBiWeeklyIncome - totalBiWeeklyExpenses) / totalBiWeeklyIncome * 100) : 0;
+        const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
+        const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
         
         document.getElementById('savingsRate').textContent = Math.max(0, savingsRate).toFixed(1) + '%';
         
@@ -1287,38 +1370,6 @@ class BudgetTool {
         }
     }
 
-    renderBudgetBars() {
-        const container = document.getElementById('budgetBars');
-        const totalBiWeeklyIncome = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
-        const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-        const totalBiWeeklyExcess = totalBiWeeklyIncome - totalBiWeeklyExpenses;
-        
-        const maxValue = Math.max(totalBiWeeklyIncome, totalBiWeeklyExpenses, Math.abs(totalBiWeeklyExcess));
-        
-        const bars = [
-            { label: 'Income', value: totalBiWeeklyIncome, type: 'income' },
-            { label: 'Expenses', value: totalBiWeeklyExpenses, type: 'expenses' },
-            { label: 'Excess', value: Math.abs(totalBiWeeklyExcess), type: 'excess' }
-        ];
-
-        let html = '';
-        bars.forEach(bar => {
-            const percentage = maxValue > 0 ? (bar.value / maxValue * 100) : 0;
-            html += `
-                <div class="budget-bar">
-                    <div class="budget-bar-label">${bar.label}</div>
-                    <div class="budget-bar-track">
-                        <div class="budget-bar-fill ${bar.type}" style="width: ${percentage}%">
-                            <div class="budget-bar-value">${this.formatCurrency(bar.value)}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        container.innerHTML = html;
-    }
-
     renderSubcategoryChart() {
         const canvas = document.getElementById('subcategoryChart');
         const ctx = canvas.getContext('2d');
@@ -1328,7 +1379,7 @@ class BudgetTool {
         this.expenses.forEach(expense => {
             if (expense.subCategory && expense.subCategory.trim() !== '') {
                 const subcat = expense.subCategory.trim();
-                subcategoryTotals[subcat] = (subcategoryTotals[subcat] || 0) + expense.biWeeklyAmount;
+                subcategoryTotals[subcat] = (subcategoryTotals[subcat] || 0) + this.getAnalyticsAmount(expense.biWeeklyAmount);
             }
         });
 
@@ -1395,12 +1446,12 @@ class BudgetTool {
                 );
                 
                 if (existing) {
-                    existing.amount += expense.biWeeklyAmount;
+                    existing.amount += this.getAnalyticsAmount(expense.biWeeklyAmount);
                 } else {
                     subcategoryData.push({
                         category: this.capitalizeCategory(expense.category),
                         subcategory: expense.subCategory,
-                        amount: expense.biWeeklyAmount
+                        amount: this.getAnalyticsAmount(expense.biWeeklyAmount)
                     });
                 }
             }
@@ -1436,11 +1487,9 @@ class BudgetTool {
                 </div>
             `;
         });
-        
-        container.innerHTML = html;
-    }
 
-    capitalizeCategory(category) {
+        container.innerHTML = html;
+    }    capitalizeCategory(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
     }
 }

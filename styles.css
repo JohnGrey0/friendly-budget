@@ -1107,6 +1107,30 @@ tr:hover {
     letter-spacing: 0.5px;
 }
 
+/* Analytics Period Toggle */
+.analytics-period-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    border-left: 4px solid #6f42c1;
+}
+
+.analytics-period-toggle label {
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+}
+
+.period-toggle-buttons {
+    display: flex;
+    gap: 10px;
+}
+
 .charts-container {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;

@@ -30,27 +30,31 @@
                     </div>
                     
                     <div class="right-column">
-                        <div class="form-group">
-                            <label for="payPeriods">Pay Periods per Year:</label>
-                            <select id="payPeriods">
-                                <option value="26" selected>26 (bi-weekly)</option>
-                                <option value="24">24 (semi-monthly)</option>
-                                <option value="12">12 (monthly)</option>
-                                <option value="52">52 (weekly)</option>
-                                <option value="13">13 (4-week cycles)</option>
-                                <option value="104">104 (twice weekly)</option>
-                                <option value="4">4 (quarterly)</option>
-                                <option value="6">6 (bi-monthly)</option>
-                                <option value="18">18 (every 20 days)</option>
-                                <option value="36">36 (every 10 days)</option>
-                                <option value="2">2 (semi-annually)</option>
-                                <option value="1">1 (annually)</option>
-                            </select>
+                        <div class="card">
+                            <div class="form-group">
+                                <label for="payPeriods">Pay Periods per Year:</label>
+                                <select id="payPeriods">
+                                    <option value="26" selected>26 (bi-weekly)</option>
+                                    <option value="24">24 (semi-monthly)</option>
+                                    <option value="12">12 (monthly)</option>
+                                    <option value="52">52 (weekly)</option>
+                                    <option value="13">13 (4-week cycles)</option>
+                                    <option value="104">104 (twice weekly)</option>
+                                    <option value="4">4 (quarterly)</option>
+                                    <option value="6">6 (bi-monthly)</option>
+                                    <option value="18">18 (every 20 days)</option>
+                                    <option value="36">36 (every 10 days)</option>
+                                    <option value="2">2 (semi-annually)</option>
+                                    <option value="1">1 (annually)</option>
+                                </select>
+                            </div>
                         </div>
                         
-                        <div class="household-summary">
-                            <h3>Household Totals</h3>
-                            <div id="householdTotals"></div>
+                        <div class="card">
+                            <div class="household-summary">
+                                <h3>Household Totals</h3>
+                                <div id="householdTotals"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -138,6 +142,14 @@
         <!-- Budget Analytics Section -->
         <section class="section">
             <h2>Budget Analytics</h2>
+            <div class="analytics-period-toggle">
+                <label>Analytics Period:</label>
+                <div class="period-toggle-buttons">
+                    <button id="setBiWeeklyPeriod" class="btn btn-toggle active" data-period="biweekly">Bi-weekly</button>
+                    <button id="setMonthlyPeriod" class="btn btn-toggle" data-period="monthly">Monthly</button>
+                    <button id="setYearlyPeriod" class="btn btn-toggle" data-period="yearly">Yearly</button>
+                </div>
+            </div>
             <div class="analytics-grid">
                 <div class="analytics-card">
                     <h4>Expense Distribution</h4>
@@ -161,11 +173,6 @@
                             <div class="metric-label">Savings Rate</div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="analytics-card">
-                    <h4>Monthly Budget Overview</h4>
-                    <div class="budget-bars" id="budgetBars"></div>
                 </div>
                 
                 <div class="analytics-card">
