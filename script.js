@@ -481,9 +481,14 @@ class BudgetTool {
                 <td class="editable-cell" data-field="monthlyAmount" data-type="number">${this.formatCurrency(expense.monthlyAmount)}</td>
                 <td class="calculated-cell" title="Automatically calculated from monthly amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
                 <td class="editable-cell" data-field="category" data-type="select">
-                    <span class="category-badge">${this.capitalizeCategory(expense.category)}</span>
+                    <span class="category-badge ${this.getCategoryClass(expense.category)}">${this.capitalizeCategory(expense.category)}</span>
                 </td>
-                <td class="editable-cell" data-field="subCategory" data-type="text">${expense.subCategory || '-'}</td>
+                <td class="editable-cell" data-field="subCategory" data-type="text">
+                    ${expense.subCategory ? 
+                        `<span class="subcategory-badge ${this.getSubcategoryClass(expense.subCategory)}">${expense.subCategory}</span>` : 
+                        '<span class="subcategory-default">-</span>'
+                    }
+                </td>
                 <td class="editable-cell" data-field="sharingMethod" data-type="select">
                     <span class="sharing-badge">${expense.sharingMethod === 'even' ? 'Even Split' : 'By Income %'}</span>
                 </td>
@@ -990,6 +995,53 @@ class BudgetTool {
     // Helper function to capitalize category names
     capitalizeCategory(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
+    }
+
+    // Helper function to get category CSS class
+    getCategoryClass(category) {
+        const normalizedCategory = category.toLowerCase().trim();
+        return `category-${normalizedCategory}`;
+    }
+
+    // Helper function to get subcategory CSS class
+    getSubcategoryClass(subcategory) {
+        if (!subcategory || subcategory.trim() === '') return 'subcategory-default';
+        
+        const normalized = subcategory.toLowerCase().trim()
+            .replace(/[^a-z0-9]/g, '') // Remove special characters
+            .replace(/s$/, ''); // Remove trailing 's' for plurals
+        
+        // Check for common subcategory patterns
+        const subcategoryMappings = {
+            'subscription': 'subscription',
+            'insurance': 'insurance',
+            'utilities': 'utilities',
+            'utility': 'utilities',
+            'mortgage': 'mortgage',
+            'rent': 'rent',
+            'groceries': 'groceries',
+            'grocery': 'groceries',
+            'dining': 'dining',
+            'restaurant': 'dining',
+            'gas': 'gas',
+            'fuel': 'gas',
+            'maintenance': 'maintenance',
+            'repair': 'maintenance',
+            'streaming': 'streaming',
+            'media': 'streaming',
+            'gym': 'gym',
+            'fitness': 'gym',
+            'health': 'gym'
+        };
+        
+        // Find matching pattern
+        for (const [pattern, className] of Object.entries(subcategoryMappings)) {
+            if (normalized.includes(pattern)) {
+                return `subcategory-${className}`;
+            }
+        }
+        
+        return 'subcategory-default';
     }
 
     // Analytics and Chart Rendering

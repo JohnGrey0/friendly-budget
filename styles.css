@@ -1090,3 +1090,133 @@ tr:hover {
         font-size: 20px;
     }
 }
+
+/* Category and Subcategory Color Coding */
+.category-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+/* Category Colors - Subtle backgrounds */
+.category-bills {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.category-savings {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.category-emergency {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.category-food {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.category-transport {
+    background-color: #e2e3e5;
+    color: #383d41;
+    border: 1px solid #d6d8db;
+}
+
+.category-entertainment {
+    background-color: #e7e3ff;
+    color: #4c4398;
+    border: 1px solid #d4c5ff;
+}
+
+.category-other {
+    background-color: #ffeaa7;
+    color: #6c5ce7;
+    border: 1px solid #fdcb6e;
+}
+
+/* Subcategory Colors - Even more subtle */
+.subcategory-badge {
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-left: 4px;
+    display: inline-block;
+}
+
+/* Common subcategory colors */
+.subcategory-subscription, .subcategory-subscriptions {
+    background-color: #e8f4fd;
+    color: #1e6091;
+    border: 1px solid #b8daff;
+}
+
+.subcategory-insurance {
+    background-color: #f0f9ff;
+    color: #0369a1;
+    border: 1px solid #bfdbfe;
+}
+
+.subcategory-utilities, .subcategory-utility {
+    background-color: #fffbeb;
+    color: #a16207;
+    border: 1px solid #fed7aa;
+}
+
+.subcategory-mortgage, .subcategory-rent {
+    background-color: #fef7ff;
+    color: #86198f;
+    border: 1px solid #f3e8ff;
+}
+
+.subcategory-groceries, .subcategory-grocery {
+    background-color: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.subcategory-dining, .subcategory-restaurant, .subcategory-restaurants {
+    background-color: #fefce8;
+    color: #a3a008;
+    border: 1px solid #fde047;
+}
+
+.subcategory-gas, .subcategory-fuel {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.subcategory-maintenance, .subcategory-repair, .subcategory-repairs {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.subcategory-streaming, .subcategory-media {
+    background-color: #f5f3ff;
+    color: #6b21a8;
+    border: 1px solid #c4b5fd;
+}
+
+.subcategory-gym, .subcategory-fitness, .subcategory-health {
+    background-color: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+/* Default subcategory styling for unmatched subcategories */
+.subcategory-default {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #e9ecef;
+}
