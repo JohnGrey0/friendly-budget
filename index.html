@@ -14,56 +14,72 @@
             <h1>Budget Tool</h1>
             <p>Manage your household budget with multiple people and pay periods</p>
             <div class="header-actions">
+                <button id="shareBudget" class="btn btn-secondary">🔗 Share Budget</button>
                 <button id="exportPdf" class="btn btn-secondary">📄 Export PDF</button>
             </div>
         </header>
 
-        <!-- People Management Section -->
-        <section class="section">
-            <h2>People & Income</h2>
-            <div class="card">
-                <div class="people-layout">
-                    <div class="people-input-section">
-                        <div class="people-form">
-                            <input type="text" id="personName" placeholder="Person's name">
-                            <input type="number" id="biWeeklyPay" placeholder="Bi-weekly pay" step="0.01">
-                            <button id="addPerson" class="btn btn-primary">Add Person</button>
-                        </div>
-
-                        <div id="peopleList" class="people-list"></div>
+        <!-- People & Budget Layout -->
+        <div class="people-budget-layout">
+            <!-- People Management Section -->
+            <section class="section people-section">
+                <h2>People & Income</h2>
+                <div class="card">
+                    <div class="people-form">
+                        <input type="text" id="personName" placeholder="Person's name">
+                        <input type="number" id="biWeeklyPay" placeholder="Bi-weekly pay" step="0.01">
+                        <button id="addPerson" class="btn btn-primary">Add Person</button>
                     </div>
-                    
-                    <div class="right-column">
-                        <div class="card">
-                            <div class="form-group">
-                                <label for="payPeriods">Pay Periods per Year:</label>
-                                <select id="payPeriods">
-                                    <option value="26" selected>26 (bi-weekly)</option>
-                                    <option value="24">24 (semi-monthly)</option>
-                                    <option value="12">12 (monthly)</option>
-                                    <option value="52">52 (weekly)</option>
-                                    <option value="13">13 (4-week cycles)</option>
-                                    <option value="104">104 (twice weekly)</option>
-                                    <option value="4">4 (quarterly)</option>
-                                    <option value="6">6 (bi-monthly)</option>
-                                    <option value="18">18 (every 20 days)</option>
-                                    <option value="36">36 (every 10 days)</option>
-                                    <option value="2">2 (semi-annually)</option>
-                                    <option value="1">1 (annually)</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="household-summary">
-                                <h3>Household Totals</h3>
-                                <div id="householdTotals"></div>
-                            </div>
+
+                    <div id="peopleList" class="people-list"></div>
+                </div>
+            </section>
+
+            <!-- Budget Settings Section -->
+            <section class="section budget-settings-section">
+                <h2>Budget Settings</h2>
+                
+                <!-- Pay Periods Card -->
+                <div class="card">
+                    <div class="form-group">
+                        <label for="payPeriods">Pay Periods per Year:</label>
+                        <select id="payPeriods">
+                            <option value="26" selected>26 (bi-weekly)</option>
+                            <option value="24">24 (semi-monthly)</option>
+                            <option value="12">12 (monthly)</option>
+                            <option value="52">52 (weekly)</option>
+                            <option value="13">13 (4-week cycles)</option>
+                            <option value="104">104 (twice weekly)</option>
+                            <option value="4">4 (quarterly)</option>
+                            <option value="6">6 (bi-monthly)</option>
+                            <option value="18">18 (every 20 days)</option>
+                            <option value="36">36 (every 10 days)</option>
+                            <option value="2">2 (semi-annually)</option>
+                            <option value="1">1 (annually)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Apply to Budget Card -->
+                <div class="card">
+                    <div class="global-sharing-control">
+                        <label>Apply to budget:</label>
+                        <div class="sharing-toggle-buttons">
+                            <button id="setPercentageSharing" class="btn btn-toggle active" data-method="percentage">By Income %</button>
+                            <button id="setEvenSharing" class="btn btn-toggle" data-method="even">Even Split</button>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+                
+                <!-- Household Totals Card -->
+                <div class="card">
+                    <div class="household-summary">
+                        <h3>Household Totals</h3>
+                        <div id="householdTotals"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
 
         <!-- Summary Sections -->
         <div class="summary-grid">
@@ -87,15 +103,9 @@
         <!-- Expenses Section -->
         <section class="section">
             <h2>Expenses</h2>
+
+            <!-- Add Expense Card -->
             <div class="card">
-                <div class="global-sharing-control">
-                    <label>Apply to all expenses:</label>
-                    <div class="sharing-toggle-buttons">
-                        <button id="setPercentageSharing" class="btn btn-toggle active" data-method="percentage">By Income %</button>
-                        <button id="setEvenSharing" class="btn btn-toggle" data-method="even">Even Split</button>
-                    </div>
-                </div>
-                
                 <div class="expense-form">
                     <input type="text" id="expenseName" placeholder="Expense name">
                     <input type="number" id="monthlyAmount" placeholder="Monthly amount" step="0.01">
@@ -115,7 +125,10 @@
                     </select>
                     <button id="addExpense" class="btn btn-primary">Add Expense</button>
                 </div>
+            </div>
 
+            <!-- Expenses List Card -->
+            <div class="card">
                 <div class="table-container">
                     <table id="expensesTable">
                         <thead>
