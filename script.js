@@ -50,6 +50,17 @@ class BudgetTool {
             this.addExpense();
         });
 
+        // Add Enter key support for expense form
+        const expenseFormInputs = ['expenseName', 'monthlyAmount', 'subCategory'];
+        expenseFormInputs.forEach(inputId => {
+            document.getElementById(inputId).addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.addExpense();
+                }
+            });
+        });
+
         // Clear all expenses
         document.getElementById('clearAllExpenses').addEventListener('click', () => {
             this.clearAllExpenses();
@@ -1100,45 +1111,15 @@ class BudgetTool {
 
         html += `
                         </tbody>
-                    </table>
-                </div>
-
-                <!-- Personal Expense Breakdown -->
-                <div class="personal-breakdown-summary">
-                    <h4>Personal Expense Allocation</h4>
-                    <table class="expense-summary-table">
-                        <thead>
-                            <tr>
-                                <th>Person</th>
-                                <th>Bi-weekly Share</th>
-                                <th>Monthly Share</th>
-                                <th>Yearly Share</th>
-                                <th>% of Household</th>
+                        <tfoot>
+                            <tr class="totals-row">
+                                <td><strong>Total All Categories</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalBiWeeklyExpenses)}</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalMonthlyExpenses)}</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalYearlyExpenses)}</strong></td>
+                                <td class="percentage"><strong>100.0%</strong></td>
                             </tr>
-                        </thead>
-                        <tbody>
-        `;
-
-        // Add personal breakdown
-        const expenseBreakdown = this.getExpenseBreakdownByPerson();
-        Object.values(expenseBreakdown).forEach(personData => {
-            const monthlyShare = personData.totalBiWeekly * effectivePayPeriods / 12;
-            const yearlyShare = personData.totalBiWeekly * effectivePayPeriods;
-            const householdPercentage = totalBiWeeklyExpenses > 0 ? (personData.totalBiWeekly / totalBiWeeklyExpenses * 100) : 0;
-            
-            html += `
-                <tr>
-                    <td><strong>${personData.person.name}</strong></td>
-                    <td class="amount">${this.formatCurrency(personData.totalBiWeekly)}</td>
-                    <td class="amount">${this.formatCurrency(monthlyShare)}</td>
-                    <td class="amount">${this.formatCurrency(yearlyShare)}</td>
-                    <td class="percentage">${householdPercentage.toFixed(1)}%</td>
-                </tr>
-            `;
-        });
-
-        html += `
-                        </tbody>
+                        </tfoot>
                     </table>
                 </div>
             </div>

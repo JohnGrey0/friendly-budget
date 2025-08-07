@@ -198,6 +198,51 @@ select:focus {
     border: 2px solid #e9ecef;
 }
 
+.expense-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 15px 20px;
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    margin-bottom: 0;
+}
+
+.expense-form input,
+.expense-form select {
+    padding: 14px 16px;
+    font-size: 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.expense-form input:focus,
+.expense-form select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+}
+
+.expense-form .btn {
+    padding: 12px;
+    font-size: 18px;
+    font-weight: bold;
+    white-space: nowrap;
+    align-self: center;
+    justify-self: end;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    grid-column: 3;
+    grid-row: 2;
+}
+
 .people-form input,
 .people-form select {
     padding: 14px 16px;
@@ -226,10 +271,6 @@ select:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-.expense-form {
-    margin-bottom: 25px;
 }
 
 .people-layout {
@@ -1105,7 +1146,7 @@ select.inline-edit-input {
 }
 
 .category-breakdown-table th {
-    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     font-weight: 600;
     padding: 12px 15px;
@@ -1153,17 +1194,6 @@ select.inline-edit-input {
     font-size: 13px;
     color: #666;
     font-style: italic;
-}
-
-/* Personal breakdown summary */
-.personal-breakdown-summary .expense-summary-table th {
-    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-}
-
-.personal-breakdown-summary .percentage {
-    font-weight: 600;
-    color: #495057;
-    text-align: center;
 }
 
 /* Responsive styles for comprehensive summary */
