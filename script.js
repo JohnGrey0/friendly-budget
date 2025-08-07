@@ -865,28 +865,71 @@ class BudgetTool {
             return;
         }
 
-        tbody.innerHTML = this.expenses.map(expense => `
-            <tr data-expense-id="${expense.id}">
-                <td class="editable-cell" data-field="name" data-type="text">${expense.name}</td>
-                <td class="editable-cell" data-field="monthlyAmount" data-type="number">${this.formatCurrency(expense.monthlyAmount)}</td>
-                <td class="calculated-cell" title="Automatically calculated from monthly amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
-                <td class="editable-cell" data-field="category" data-type="select">
-                    <span class="category-badge ${this.getCategoryClass(expense.category)}">${this.capitalizeCategory(expense.category)}</span>
-                </td>
-                <td class="editable-cell" data-field="subCategory" data-type="text">
-                    ${expense.subCategory ? 
-                        `<span class="subcategory-badge ${this.getSubcategoryClass(expense.subCategory)}">${expense.subCategory}</span>` : 
-                        '<span class="subcategory-default">-</span>'
-                    }
-                </td>
-                <td class="editable-cell" data-field="sharingMethod" data-type="select">
-                    <span class="sharing-badge">${expense.sharingMethod === 'even' ? '⚖️' : '📊'}</span>
-                </td>
-                <td>
-                    <button class="btn btn-danger remove-expense-btn" data-expense-id="${expense.id}">🗑️</button>
-                </td>
-            </tr>
-        `).join('');
+        // Group expenses by category
+        const expensesByCategory = {};
+        this.expenses.forEach(expense => {
+            const category = expense.category;
+            if (!expensesByCategory[category]) {
+                expensesByCategory[category] = [];
+            }
+            expensesByCategory[category].push(expense);
+        });
+
+        let html = '';
+        
+        // Render each category with its expenses
+        Object.keys(expensesByCategory).forEach(category => {
+            const categoryExpenses = expensesByCategory[category];
+            const categoryTotal = categoryExpenses.reduce((sum, expense) => sum + expense.monthlyAmount, 0);
+            const categoryCount = categoryExpenses.length;
+            
+            // Category header row
+            html += `
+                <tr class="expense-category-header collapsed" data-category="${category}">
+                    <td class="expense-category-toggle">
+                        <span class="toggle-icon">▶</span>
+                        <strong>${this.capitalizeCategory(category)}</strong>
+                    </td>
+                    <td class="category-summary">${categoryCount} expense${categoryCount !== 1 ? 's' : ''} • ${this.formatCurrency(categoryTotal)}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            `;
+            
+            // Individual expense rows (hidden by default)
+            categoryExpenses.forEach(expense => {
+                html += `
+                    <tr class="expense-item-row" data-expense-id="${expense.id}" data-parent-category="${category}" style="display: none;">
+                        <td class="editable-cell expense-indent" data-field="name" data-type="text">${expense.name}</td>
+                        <td class="editable-cell" data-field="monthlyAmount" data-type="number">${this.formatCurrency(expense.monthlyAmount)}</td>
+                        <td class="calculated-cell" title="Automatically calculated from monthly amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
+                        <td class="editable-cell" data-field="category" data-type="select">
+                            <span class="category-badge ${this.getCategoryClass(expense.category)}">${this.capitalizeCategory(expense.category)}</span>
+                        </td>
+                        <td class="editable-cell" data-field="subCategory" data-type="text">
+                            ${expense.subCategory ? 
+                                `<span class="subcategory-badge ${this.getSubcategoryClass(expense.subCategory)}">${expense.subCategory}</span>` : 
+                                '<span class="subcategory-default">-</span>'
+                            }
+                        </td>
+                        <td class="editable-cell" data-field="sharingMethod" data-type="select">
+                            <span class="sharing-badge">${expense.sharingMethod === 'even' ? '⚖️' : '📊'}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-danger remove-expense-btn" data-expense-id="${expense.id}">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+
+        tbody.innerHTML = html;
+        
+        // Setup expense category collapse/expand functionality
+        this.setupExpenseCategoryToggle();
 
         // Add click event listeners for inline editing
         this.setupInlineEditing();
@@ -1024,36 +1067,6 @@ class BudgetTool {
 
         let html = `
             <div class="comprehensive-expense-summary">
-                <!-- Summary Totals Table -->
-                <div class="summary-totals">
-                    <table class="expense-summary-table">
-                        <thead>
-                            <tr>
-                                <th>Period</th>
-                                <th>Total Expenses</th>
-                                <th>Per Person Average</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="bi-weekly-row">
-                                <td><strong>Bi-weekly</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalBiWeeklyExpenses)}</strong></td>
-                                <td class="amount">${this.formatCurrency(totalBiWeeklyExpenses / this.people.length)}</td>
-                            </tr>
-                            <tr class="monthly-row">
-                                <td><strong>Monthly</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalMonthlyExpenses)}</strong></td>
-                                <td class="amount">${this.formatCurrency(totalMonthlyExpenses / this.people.length)}</td>
-                            </tr>
-                            <tr class="yearly-row">
-                                <td><strong>Yearly</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalYearlyExpenses)}</strong></td>
-                                <td class="amount">${this.formatCurrency(totalYearlyExpenses / this.people.length)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
                 <!-- Category Breakdown Table -->
                 <div class="category-breakdown-summary">
                     <h4>Category Breakdown</h4>
@@ -1141,6 +1154,37 @@ class BudgetTool {
                         </tfoot>
                     </table>
                 </div>
+
+                <!-- Summary Totals Table -->
+                <div class="summary-totals">
+                    <h4>Summary Totals</h4>
+                    <table class="expense-summary-table">
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Total Expenses</th>
+                                <th>Per Person Average</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="bi-weekly-row">
+                                <td><strong>Bi-weekly</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalBiWeeklyExpenses)}</strong></td>
+                                <td class="amount">${this.formatCurrency(totalBiWeeklyExpenses / this.people.length)}</td>
+                            </tr>
+                            <tr class="monthly-row">
+                                <td><strong>Monthly</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalMonthlyExpenses)}</strong></td>
+                                <td class="amount">${this.formatCurrency(totalMonthlyExpenses / this.people.length)}</td>
+                            </tr>
+                            <tr class="yearly-row">
+                                <td><strong>Yearly</strong></td>
+                                <td class="amount"><strong>${this.formatCurrency(totalYearlyExpenses)}</strong></td>
+                                <td class="amount">${this.formatCurrency(totalYearlyExpenses / this.people.length)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
 
@@ -1163,6 +1207,31 @@ class BudgetTool {
                 // Toggle visibility of subcategory rows
                 const isCollapsed = toggleIcon.textContent === '▶';
                 subcategoryRows.forEach(row => {
+                    row.style.display = isCollapsed ? 'table-row' : 'none';
+                });
+                
+                // Update toggle icon
+                toggleIcon.textContent = isCollapsed ? '▼' : '▶';
+                
+                // Add visual feedback for collapsed state
+                header.classList.toggle('collapsed', !isCollapsed);
+            });
+        });
+    }
+
+    setupExpenseCategoryToggle() {
+        // Add click event listeners to expense category header rows
+        const categoryHeaders = document.querySelectorAll('.expense-category-header');
+        categoryHeaders.forEach(header => {
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', () => {
+                const category = header.dataset.category;
+                const toggleIcon = header.querySelector('.toggle-icon');
+                const expenseRows = document.querySelectorAll(`.expense-item-row[data-parent-category="${category}"]`);
+                
+                // Toggle visibility of expense rows
+                const isCollapsed = toggleIcon.textContent === '▶';
+                expenseRows.forEach(row => {
                     row.style.display = isCollapsed ? 'table-row' : 'none';
                 });
                 

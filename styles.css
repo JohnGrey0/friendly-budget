@@ -866,17 +866,90 @@ tr:hover {
     background: #f8f9fa;
 }
 
-/* Expenses table specific styling for compact layout */
+/* Expenses table specific styling - enhanced to match category breakdown table */
+#expensesTable {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 #expensesTable th,
 #expensesTable td {
-    padding: 4px 6px;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e9ecef;
     font-size: 14px;
+    text-align: left;
 }
 
 #expensesTable th {
-    font-size: 13px;
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+    color: white;
     font-weight: 600;
-    padding: 12px 6px;
+    font-size: 13px;
+    text-align: left;
+}
+
+#expensesTable tr:hover {
+    background: #f8f9fa;
+}
+
+#expensesTable tr:last-child td {
+    border-bottom: none;
+}
+
+/* Expense table category collapse/expand functionality */
+.expense-category-header {
+    background: #f1f3f4 !important;
+    transition: background-color 0.2s ease;
+    font-weight: 600;
+}
+
+.expense-category-header:hover {
+    background: #e8eaed !important;
+}
+
+.expense-category-header.collapsed {
+    background: #e3f2fd !important;
+}
+
+.expense-category-toggle {
+    position: relative;
+    user-select: none;
+    padding: 12px 15px !important;
+}
+
+.expense-category-toggle .toggle-icon {
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 12px;
+    color: #667eea;
+    font-weight: bold;
+    transition: transform 0.2s ease;
+    width: 12px;
+    text-align: center;
+}
+
+.category-summary {
+    font-weight: 400;
+    color: #666;
+    font-size: 13px;
+    text-align: center;
+    padding: 12px 15px !important;
+}
+
+.expense-item-row {
+    background: #fafafa !important;
+}
+
+.expense-item-row:hover {
+    background: #f0f0f0 !important;
+}
+
+.expense-indent {
+    padding-left: 30px !important;
 }
 
 .editable-cell {
