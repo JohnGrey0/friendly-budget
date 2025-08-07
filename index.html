@@ -50,8 +50,8 @@
                     <div class="global-sharing-control">
                         <label>Apply to budget:</label>
                         <div class="sharing-toggle-buttons">
-                            <button id="setPercentageSharing" class="btn btn-toggle active" data-method="percentage">By Income %</button>
-                            <button id="setEvenSharing" class="btn btn-toggle" data-method="even">Even Split</button>
+                            <button id="setPercentageSharing" class="btn btn-toggle active" data-method="percentage">📊 % Weighted</button>
+                            <button id="setEvenSharing" class="btn btn-toggle" data-method="even">⚖️ 50/50</button>
                         </div>
                     </div>
                 </div>
@@ -105,8 +105,8 @@
                     </select>
                     <input type="text" id="subCategory" placeholder="Sub-category (optional)">
                     <select id="sharingMethod">
-                        <option value="percentage">By Income %</option>
-                        <option value="even">Even Split</option>
+                        <option value="percentage">📊 % Weighted</option>
+                        <option value="even">⚖️ 50/50</option>
                     </select>
                     <button id="addExpense" class="btn btn-primary">Add Expense</button>
                 </div>
@@ -122,13 +122,13 @@
                     <table id="expensesTable">
                         <thead>
                             <tr>
-                                <th>Expense</th>
-                                <th>Monthly Cost</th>
-                                <th>Bi-weekly Cost</th>
+                                <th>Name</th>
+                                <th>Monthly</th>
+                                <th>Bi-weekly</th>
                                 <th>Category</th>
-                                <th>Sub-category</th>
-                                <th>Sharing</th>
-                                <th>Action</th>
+                                <th>Sub</th>
+                                <th>Split</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody></tbody>

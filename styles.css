@@ -408,6 +408,30 @@ select:focus {
     box-shadow: 0 3px 10px rgba(255, 107, 107, 0.4);
 }
 
+.remove-expense-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 16px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.remove-person-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 16px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
 .people-list {
     margin-top: 20px;
     display: flex;
@@ -789,6 +813,18 @@ th {
 
 tr:hover {
     background: #f8f9fa;
+}
+
+/* Expenses table specific styling for compact layout */
+#expensesTable th,
+#expensesTable td {
+    padding: 4px 6px;
+    font-size: 14px;
+}
+
+#expensesTable th {
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .editable-cell {
