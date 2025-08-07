@@ -74,7 +74,7 @@ header p {
 /* People & Budget side-by-side layout */
 .people-budget-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 7fr 3fr;
     gap: 30px;
     margin-bottom: 30px;
 }
@@ -184,7 +184,34 @@ select:focus {
 }
 
 .people-form {
-    grid-template-columns: 2fr 2fr auto;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 20px;
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+}
+
+.people-form input,
+.people-form select {
+    padding: 14px 16px;
+    font-size: 16px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.people-form input:focus,
+.people-form select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+}
+
+.people-form .btn {
+    padding: 14px 20px;
+    font-size: 16px;
+    white-space: nowrap;
 }
 
 .expense-form {
@@ -347,15 +374,26 @@ select:focus {
     border-color: #667eea;
 }
 
+.person-item.compact {
+    padding: 15px 20px;
+}
+
+.person-item.compact .person-header {
+    margin-bottom: 0;
+}
+
 .person-header {
     display: flex;
     align-items: center;
     gap: 15px;
     margin-bottom: 15px;
+    flex: 1;
+    min-width: 0;
 }
 
 .person-avatar {
     flex-shrink: 0;
+    width: 50px;
 }
 
 .avatar-circle {
@@ -374,6 +412,8 @@ select:focus {
 
 .person-main-info {
     flex: 1;
+    min-width: 0; /* Allows content to shrink */
+    overflow: hidden;
 }
 
 .person-name-container {
@@ -408,6 +448,7 @@ select:focus {
     padding: 4px 8px;
     border-radius: 6px;
     transition: background-color 0.2s ease;
+    white-space: nowrap;
 }
 
 .primary-income:hover {
@@ -419,11 +460,15 @@ select:focus {
     color: #6c757d;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .person-contribution {
     text-align: center;
     flex-shrink: 0;
+    width: 80px; /* Fixed width for consistent alignment */
 }
 
 .contribution-percentage {
@@ -445,6 +490,56 @@ select:focus {
     border-radius: 8px;
     padding: 15px;
     margin-bottom: 15px;
+    margin-top: 15px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+}
+
+.person-details-expanded.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    padding: 0 15px;
+}
+
+.person-toggle-btn {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    margin-left: 10px;
+    width: 70px; /* Fixed width for consistent alignment */
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.person-toggle-btn:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #5a67d8;
+}
+
+.person-toggle-btn::after {
+    content: " ▼";
+    font-size: 10px;
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+.person-toggle-btn.collapsed::after {
+    transform: rotate(-90deg);
+}
+
+.person-header-with-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .income-breakdown {
@@ -684,11 +779,21 @@ tr:hover {
     background: transparent;
     font-size: inherit;
     font-family: inherit;
+    cursor: pointer;
 }
 
 .inline-edit-input:focus {
     outline: 2px solid #667eea;
     background: white;
+}
+
+/* Specific styling for select elements in inline editing */
+.inline-edit-input select,
+select.inline-edit-input {
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 .calculated-cell {
@@ -1655,6 +1760,16 @@ tr:hover {
     
     .subcategory-bars {
         height: 220px;
+    }
+    
+    .people-form {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .people-budget-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
     }
     
     .charts-container {

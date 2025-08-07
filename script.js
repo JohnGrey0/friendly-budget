@@ -13,20 +13,22 @@ class BudgetTool {
             }
         });
         
+        // Migrate existing people to have individual pay periods
+        this.people.forEach(person => {
+            if (!person.payPeriods) {
+                person.payPeriods = this.payPeriods; // Use the global pay periods as default
+            }
+        });
+        
         this.initializeEventListeners();
         this.render();
+        
+        // Recalculate income after everything is initialized
+        this.recalculatePeopleIncome();
+        this.saveData(); // Save the migrated data
     }
 
     initializeEventListeners() {
-        // Pay periods change
-        document.getElementById('payPeriods').addEventListener('change', (e) => {
-            this.payPeriods = parseInt(e.target.value);
-            this.recalculatePeopleIncome();
-            this.recalculateExpenseBiWeekly();
-            this.saveData();
-            this.render();
-        });
-
         // Add person
         document.getElementById('addPerson').addEventListener('click', () => {
             this.addPerson();
@@ -70,6 +72,10 @@ class BudgetTool {
         });
 
         document.getElementById('biWeeklyPay').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.addPerson();
+        });
+
+        document.getElementById('personPayPeriods').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addPerson();
         });
 
@@ -149,6 +155,7 @@ class BudgetTool {
     addPerson() {
         const name = document.getElementById('personName').value.trim();
         const biWeeklyPay = parseFloat(document.getElementById('biWeeklyPay').value);
+        const payPeriods = parseInt(document.getElementById('personPayPeriods').value);
 
         if (!name || isNaN(biWeeklyPay) || biWeeklyPay <= 0) {
             this.showAlert('Please enter a valid name and bi-weekly pay amount.', 'Invalid Input', 'error');
@@ -159,8 +166,9 @@ class BudgetTool {
             id: Date.now(),
             name,
             biWeeklyPay,
-            monthlyPay: this.calculateMonthlyFromBiWeekly(biWeeklyPay),
-            yearlyPay: biWeeklyPay * this.payPeriods
+            payPeriods,
+            monthlyPay: this.calculateMonthlyFromBiWeekly(biWeeklyPay, payPeriods),
+            yearlyPay: biWeeklyPay * payPeriods
         };
 
         this.people.push(person);
@@ -316,8 +324,9 @@ class BudgetTool {
         if (person) {
             person.name = newName;
             person.biWeeklyPay = newPay;
-            person.monthlyPay = this.calculateMonthlyFromBiWeekly(newPay);
-            person.yearlyPay = newPay * this.payPeriods;
+            const payPeriods = person.payPeriods || this.payPeriods;
+            person.monthlyPay = this.calculateMonthlyFromBiWeekly(newPay, payPeriods);
+            person.yearlyPay = newPay * payPeriods;
         }
 
         this.saveData();
@@ -366,18 +375,21 @@ class BudgetTool {
         }
     }
 
-    calculateMonthlyFromBiWeekly(biWeeklyAmount) {
-        return (biWeeklyAmount * this.payPeriods) / 12;
+    calculateMonthlyFromBiWeekly(biWeeklyAmount, payPeriods) {
+        return (biWeeklyAmount * payPeriods) / 12;
     }
 
     calculateBiWeeklyFromMonthly(monthlyAmount) {
-        return (monthlyAmount * 12) / this.payPeriods;
+        // For expenses, always use 26 bi-weekly periods per year
+        return (monthlyAmount * 12) / 26;
     }
 
     recalculatePeopleIncome() {
         this.people.forEach(person => {
-            person.monthlyPay = this.calculateMonthlyFromBiWeekly(person.biWeeklyPay);
-            person.yearlyPay = person.biWeeklyPay * this.payPeriods;
+            // Use person's individual pay periods if available, fallback to global
+            const payPeriods = person.payPeriods || this.payPeriods;
+            person.monthlyPay = this.calculateMonthlyFromBiWeekly(person.biWeeklyPay, payPeriods);
+            person.yearlyPay = person.biWeeklyPay * payPeriods;
         });
     }
 
@@ -390,6 +402,7 @@ class BudgetTool {
     clearPersonForm() {
         document.getElementById('personName').value = '';
         document.getElementById('biWeeklyPay').value = '';
+        document.getElementById('personPayPeriods').value = '26'; // Default to bi-weekly
     }
 
     clearExpenseForm() {
@@ -405,6 +418,7 @@ class BudgetTool {
     saveData() {
         localStorage.setItem('budgetPeople', JSON.stringify(this.people));
         localStorage.setItem('budgetExpenses', JSON.stringify(this.expenses));
+        // Keep global payPeriods for backward compatibility, but individual person payPeriods take precedence
         localStorage.setItem('budgetPayPeriods', this.payPeriods.toString());
         localStorage.setItem('budgetGlobalSharingMethod', this.globalSharingMethod);
     }
@@ -457,7 +471,6 @@ class BudgetTool {
     }
 
     render() {
-        this.renderPayPeriods();
         this.renderSharingButtons();
         this.renderAnalyticsPeriodButtons();
         this.renderExpenseForm();
@@ -470,10 +483,6 @@ class BudgetTool {
         
         // Initialize table sorting after rendering
         setTimeout(() => this.initializeTableSorting(), 100);
-    }
-
-    renderPayPeriods() {
-        document.getElementById('payPeriods').value = this.payPeriods;
     }
 
     renderSharingButtons() {
@@ -520,31 +529,40 @@ class BudgetTool {
             const incomePercentage = totalYearly > 0 ? (person.yearlyPay / totalYearly * 100) : 0;
             
             return `
-                <div class="person-item" data-person-id="${person.id}">
-                    <div class="person-header">
-                        <div class="person-avatar">
-                            <div class="avatar-circle" style="background: ${this.getPersonColor(index)}">
-                                ${person.name.charAt(0).toUpperCase()}
+                <div class="person-item compact" data-person-id="${person.id}">
+                    <div class="person-header-with-toggle">
+                        <div class="person-header">
+                            <div class="person-avatar">
+                                <div class="avatar-circle" style="background: ${this.getPersonColor(index)}">
+                                    ${person.name.charAt(0).toUpperCase()}
+                                </div>
+                            </div>
+                            <div class="person-main-info">
+                                <div class="person-name-container">
+                                    <div class="person-name editable-person-field" data-field="name" data-type="text">${person.name}</div>
+                                </div>
+                                <div class="person-income-summary">
+                                    <span class="primary-income editable-person-field" data-field="biWeeklyPay" data-type="number">${this.formatCurrency(person.biWeeklyPay)}</span>
+                                    <span class="income-period">${person.payPeriods || 26} - ${this.getPayFrequencyLabel(person.payPeriods || 26)}</span>
+                                </div>
+                            </div>
+                            <div class="person-contribution">
+                                <div class="contribution-percentage">
+                                    ${incomePercentage.toFixed(0)}%
+                                </div>
+                                <div class="contribution-label">contribution</div>
                             </div>
                         </div>
-                        <div class="person-main-info">
-                            <div class="person-name-container">
-                                <div class="person-name editable-person-field" data-field="name" data-type="text">${person.name}</div>
-                            </div>
-                            <div class="person-income-summary">
-                                <span class="primary-income editable-person-field" data-field="biWeeklyPay" data-type="number">${this.formatCurrency(person.biWeeklyPay)}</span>
-                                <span class="income-period">bi-weekly</span>
-                            </div>
-                        </div>
-                        <div class="person-contribution">
-                            <div class="contribution-percentage">
-                                ${incomePercentage.toFixed(0)}%
-                            </div>
-                            <div class="contribution-label">contribution</div>
-                        </div>
+                        <button class="person-toggle-btn collapsed" data-person-id="${person.id}">
+                            Details
+                        </button>
                     </div>
                     
-                    <div class="person-details-expanded">
+                    <div class="income-bar" style="margin-top: 15px;">
+                        <div class="income-bar-fill" style="width: ${incomePercentage}%; background: ${this.getPersonColor(index)}"></div>
+                    </div>
+                    
+                    <div class="person-details-expanded collapsed" data-person-id="${person.id}">
                         <div class="income-breakdown">
                             <div class="income-item">
                                 <span class="income-label">Monthly</span>
@@ -554,17 +572,21 @@ class BudgetTool {
                                 <span class="income-label">Yearly</span>
                                 <span class="income-value">${this.formatCurrency(person.yearlyPay)}</span>
                             </div>
+                            <div class="income-item">
+                                <span class="income-label">Pay Periods</span>
+                                <span class="income-value editable-person-field" data-field="payPeriods" data-type="select">${person.payPeriods || 26}/year</span>
+                            </div>
+                            <div class="income-item">
+                                <span class="income-label">Pay Frequency</span>
+                                <span class="income-value">${this.getPayFrequencyLabel(person.payPeriods || 26)}</span>
+                            </div>
                         </div>
                         
-                        <div class="income-bar">
-                            <div class="income-bar-fill" style="width: ${incomePercentage}%; background: ${this.getPersonColor(index)}"></div>
+                        <div class="person-actions">
+                            <button class="btn btn-danger btn-small remove-person-btn" data-person-id="${person.id}" title="Remove ${person.name}">
+                                <span class="btn-icon">🗑️</span> Remove
+                            </button>
                         </div>
-                    </div>
-                    
-                    <div class="person-actions">
-                        <button class="btn btn-danger btn-small remove-person-btn" data-person-id="${person.id}" title="Remove ${person.name}">
-                            <span class="btn-icon">🗑️</span> Remove
-                        </button>
                     </div>
                 </div>
             `;
@@ -574,6 +596,9 @@ class BudgetTool {
         
         // Setup inline editing for people
         this.setupInlinePersonEditing();
+        
+        // Setup person detail toggles
+        this.setupPersonToggle();
         
         // Render household totals in the right column
         this.renderHouseholdTotals();
@@ -617,6 +642,7 @@ class BudgetTool {
     }
 
     startPersonFieldEdit(e) {
+        e.stopPropagation(); // Prevent event bubbling
         const field = e.target;
         if (field.classList.contains('editing')) return;
 
@@ -632,44 +658,69 @@ class BudgetTool {
         const originalContent = field.innerHTML;
         let currentValue = person[fieldName];
         
-        const inputElement = document.createElement('input');
-        inputElement.type = fieldType === 'number' ? 'number' : 'text';
-        inputElement.className = 'inline-edit-input';
+        let inputElement;
         
-        if (fieldType === 'number') {
-            inputElement.step = '0.01';
-            inputElement.value = currentValue;
+        if (fieldType === 'select' && fieldName === 'payPeriods') {
+            inputElement = document.createElement('select');
+            inputElement.className = 'inline-edit-input';
+            inputElement.innerHTML = `
+                <option value="26" ${currentValue == 26 ? 'selected' : ''}>26 (bi-weekly)</option>
+                <option value="24" ${currentValue == 24 ? 'selected' : ''}>24 (semi-monthly)</option>
+                <option value="12" ${currentValue == 12 ? 'selected' : ''}>12 (monthly)</option>
+                <option value="52" ${currentValue == 52 ? 'selected' : ''}>52 (weekly)</option>
+            `;
         } else {
-            inputElement.value = currentValue || '';
+            inputElement = document.createElement('input');
+            inputElement.type = fieldType === 'number' ? 'number' : 'text';
+            inputElement.className = 'inline-edit-input';
+            
+            if (fieldType === 'number') {
+                inputElement.step = '0.01';
+                inputElement.value = currentValue;
+            } else {
+                inputElement.value = currentValue || '';
+            }
         }
 
         field.innerHTML = '';
         field.appendChild(inputElement);
-        inputElement.focus();
+        
+        if (fieldType === 'select') {
+            // For select, just focus without trying to click
+            inputElement.focus();
+        } else {
+            inputElement.focus();
+        }
         
         const saveEdit = () => {
-            let newValue = inputElement.value.trim();
+            let newValue;
             
-            if (fieldType === 'number') {
-                newValue = parseFloat(newValue);
+            if (fieldType === 'select') {
+                newValue = parseInt(inputElement.value);
+            } else if (fieldType === 'number') {
+                newValue = parseFloat(inputElement.value.trim());
                 if (isNaN(newValue) || newValue <= 0) {
                     this.showAlert('Please enter a valid amount greater than 0.', 'Invalid Input', 'error');
                     inputElement.focus();
                     return;
                 }
-            }
-            
-            if (fieldName === 'name' && !newValue) {
-                this.showAlert('Please enter a person\'s name.', 'Invalid Input', 'error');
-                inputElement.focus();
-                return;
+            } else {
+                newValue = inputElement.value.trim();
+                if (fieldName === 'name' && !newValue) {
+                    this.showAlert('Please enter a person\'s name.', 'Invalid Input', 'error');
+                    inputElement.focus();
+                    return;
+                }
             }
 
             // Update the person
             person[fieldName] = newValue;
-            if (fieldName === 'biWeeklyPay') {
-                person.monthlyPay = this.calculateMonthlyFromBiWeekly(newValue);
-                person.yearlyPay = newValue * this.payPeriods;
+            
+            // Recalculate dependent fields
+            if (fieldName === 'biWeeklyPay' || fieldName === 'payPeriods') {
+                const payPeriods = person.payPeriods || 26;
+                person.monthlyPay = this.calculateMonthlyFromBiWeekly(person.biWeeklyPay, payPeriods);
+                person.yearlyPay = person.biWeeklyPay * payPeriods;
             }
 
             this.saveData();
@@ -680,17 +731,59 @@ class BudgetTool {
             field.classList.remove('editing');
             field.innerHTML = originalContent;
             this.setupInlinePersonEditing();
+            this.setupPersonToggle();
         };
 
-        inputElement.addEventListener('blur', saveEdit);
-        inputElement.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+        if (fieldType === 'select') {
+            // For select elements, save immediately on change
+            inputElement.addEventListener('change', saveEdit);
+            // Add click event to prevent propagation
+            inputElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        } else {
+            inputElement.addEventListener('blur', saveEdit);
+            inputElement.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit();
+                }
+            });
+        }
+    }
+
+    setupPersonToggle() {
+        const toggleBtns = document.querySelectorAll('.person-toggle-btn');
+        toggleBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                saveEdit();
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                cancelEdit();
-            }
+                e.stopPropagation();
+                
+                const personId = btn.dataset.personId;
+                const detailsDiv = document.querySelector(`.person-details-expanded[data-person-id="${personId}"]`);
+                const personItem = btn.closest('.person-item');
+                
+                if (detailsDiv && personItem) {
+                    const isCollapsed = detailsDiv.classList.contains('collapsed');
+                    
+                    if (isCollapsed) {
+                        // Expand
+                        detailsDiv.classList.remove('collapsed');
+                        btn.classList.remove('collapsed');
+                        personItem.classList.remove('compact');
+                        btn.textContent = 'Details';
+                    } else {
+                        // Collapse
+                        detailsDiv.classList.add('collapsed');
+                        btn.classList.add('collapsed');
+                        personItem.classList.add('compact');
+                        btn.textContent = 'Details';
+                    }
+                }
+            });
         });
     }
 
@@ -1310,6 +1403,24 @@ class BudgetTool {
     parseCurrencyValue(currencyString) {
         // Remove currency symbols and commas, then parse as float
         return parseFloat(currencyString.replace(/[$,]/g, '')) || 0;
+    }
+
+    getPayFrequencyLabel(payPeriods) {
+        const frequencies = {
+            52: 'Weekly',
+            26: 'Bi-weekly',
+            24: 'Semi-monthly',
+            12: 'Monthly',
+            13: '4-week cycles',
+            104: 'Twice weekly',
+            4: 'Quarterly',
+            6: 'Bi-monthly',
+            18: 'Every 20 days',
+            36: 'Every 10 days',
+            2: 'Semi-annually',
+            1: 'Annually'
+        };
+        return frequencies[payPeriods] || `${payPeriods}/year`;
     }
 
     // Helper function to capitalize category names

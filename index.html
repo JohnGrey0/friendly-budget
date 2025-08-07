@@ -26,9 +26,15 @@
                 <h2>People & Income</h2>
                 <div class="card">
                     <div class="people-form">
-                        <input type="text" id="personName" placeholder="Person's name">
-                        <input type="number" id="biWeeklyPay" placeholder="Bi-weekly pay" step="0.01">
-                        <button id="addPerson" class="btn btn-primary">Add Person</button>
+                        <input type="text" id="personName" placeholder="Full name (e.g., John Smith)">
+                        <input type="number" id="biWeeklyPay" placeholder="Bi-weekly pay ($)" step="0.01">
+                        <select id="personPayPeriods">
+                            <option value="26" selected>26 (bi-weekly)</option>
+                            <option value="24">24 (semi-monthly)</option>
+                            <option value="12">12 (monthly)</option>
+                            <option value="52">52 (weekly)</option>
+                        </select>
+                        <button id="addPerson" class="btn btn-primary">+ Add Person</button>
                     </div>
 
                     <div id="peopleList" class="people-list"></div>
@@ -38,27 +44,6 @@
             <!-- Budget Settings Section -->
             <section class="section budget-settings-section">
                 <h2>Budget Settings</h2>
-                
-                <!-- Pay Periods Card -->
-                <div class="card">
-                    <div class="form-group">
-                        <label for="payPeriods">Pay Periods per Year:</label>
-                        <select id="payPeriods">
-                            <option value="26" selected>26 (bi-weekly)</option>
-                            <option value="24">24 (semi-monthly)</option>
-                            <option value="12">12 (monthly)</option>
-                            <option value="52">52 (weekly)</option>
-                            <option value="13">13 (4-week cycles)</option>
-                            <option value="104">104 (twice weekly)</option>
-                            <option value="4">4 (quarterly)</option>
-                            <option value="6">6 (bi-monthly)</option>
-                            <option value="18">18 (every 20 days)</option>
-                            <option value="36">36 (every 10 days)</option>
-                            <option value="2">2 (semi-annually)</option>
-                            <option value="1">1 (annually)</option>
-                        </select>
-                    </div>
-                </div>
                 
                 <!-- Apply to Budget Card -->
                 <div class="card">
