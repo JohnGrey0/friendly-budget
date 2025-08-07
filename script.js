@@ -885,9 +885,9 @@ class BudgetTool {
             
             // Category header row
             html += `
-                <tr class="expense-category-header collapsed" data-category="${category}">
+                <tr class="expense-category-header" data-category="${category}">
                     <td class="expense-category-toggle">
-                        <span class="toggle-icon">▶</span>
+                        <span class="toggle-icon">▼</span>
                         <strong>${this.capitalizeCategory(category)}</strong>
                     </td>
                     <td class="category-summary">${categoryCount} expense${categoryCount !== 1 ? 's' : ''} • ${this.formatCurrency(categoryTotal)}</td>
@@ -899,10 +899,10 @@ class BudgetTool {
                 </tr>
             `;
             
-            // Individual expense rows (hidden by default)
+            // Individual expense rows (visible by default)
             categoryExpenses.forEach(expense => {
                 html += `
-                    <tr class="expense-item-row" data-expense-id="${expense.id}" data-parent-category="${category}" style="display: none;">
+                    <tr class="expense-item-row" data-expense-id="${expense.id}" data-parent-category="${category}">
                         <td class="editable-cell expense-indent" data-field="name" data-type="text">${expense.name}</td>
                         <td class="editable-cell" data-field="monthlyAmount" data-type="number">${this.formatCurrency(expense.monthlyAmount)}</td>
                         <td class="calculated-cell" title="Automatically calculated from monthly amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
