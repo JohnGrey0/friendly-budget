@@ -2503,22 +2503,42 @@ class BudgetTool {
                 return;
             }
 
-            // Create shareable data with only essential user input fields
+            // Category mapping for shorter encoding
+            const categoryMap = {
+                'bills': '1', 'savings': '2', 'emergency': '3', 'food': '4',
+                'transport': '5', 'entertainment': '6', 'other': '7'
+            };
+            
+            // Sharing method mapping
+            const sharingMap = { 'percentage': 'p', 'even': 'e' };
+
+            // Create ultra-compressed shareable data
             const shareData = {
-                p: this.people.map(person => ({
-                    n: person.name,
-                    bp: person.biWeeklyPay,
-                    pp: person.payPeriods || 26
-                })),
-                e: this.expenses.map(expense => ({
-                    n: expense.name,
-                    ma: expense.monthlyAmount,
-                    c: expense.category,
-                    sc: expense.subCategory || '',
-                    sm: expense.sharingMethod
-                })),
-                gsm: this.globalSharingMethod,
-                ap: this.analyticsPeriod
+                p: this.people.map(person => {
+                    const data = [person.name, person.biWeeklyPay];
+                    // Only include payPeriods if it's not the default (26)
+                    if (person.payPeriods && person.payPeriods !== 26) {
+                        data.push(person.payPeriods);
+                    }
+                    return data;
+                }),
+                e: this.expenses.map(expense => {
+                    const data = [
+                        expense.name,
+                        expense.monthlyAmount,
+                        categoryMap[expense.category] || '7', // Default to 'other'
+                        sharingMap[expense.sharingMethod] || 'p'
+                    ];
+                    // Only include subCategory if it exists and isn't empty
+                    if (expense.subCategory && expense.subCategory.trim() !== '') {
+                        data.push(expense.subCategory);
+                    }
+                    return data;
+                }),
+                // Only include global sharing method if it's not default
+                ...(this.globalSharingMethod !== 'percentage' && { g: sharingMap[this.globalSharingMethod] }),
+                // Only include analytics period if it's not default
+                ...(this.analyticsPeriod !== 'biweekly' && { a: this.analyticsPeriod[0] }) // 'b', 'm', 'y'
             };
 
             // Compress and encode the data
@@ -2532,7 +2552,16 @@ class BudgetTool {
             } else {
                 baseUrl = window.location.origin + window.location.pathname;
             }
-            const shareUrl = `${baseUrl}?budget=${encodedData}`;
+            const shareUrl = `${baseUrl}?b=${encodedData}`;
+
+            // Log compression stats for debugging
+            const originalSize = JSON.stringify({
+                people: this.people,
+                expenses: this.expenses,
+                globalSharingMethod: this.globalSharingMethod,
+                analyticsPeriod: this.analyticsPeriod
+            }).length;
+            console.log(`Compression: ${originalSize} → ${jsonString.length} chars (${Math.round((1 - jsonString.length/originalSize) * 100)}% reduction)`);
 
             // Check if Web Share API is supported
             if (navigator.share) {
@@ -2569,7 +2598,8 @@ class BudgetTool {
     // Load budget data from URL parameters
     loadSharedBudget() {
         const urlParams = new URLSearchParams(window.location.search);
-        const budgetParam = urlParams.get('budget');
+        // Support both old and new parameter names for backward compatibility
+        const budgetParam = urlParams.get('b') || urlParams.get('budget');
         
         if (budgetParam) {
             try {
@@ -2579,30 +2609,67 @@ class BudgetTool {
                 
                 console.log('Loading shared budget data:', shareData);
                 
-                // Restore people data with proper ID generation
-                this.people = shareData.p.map((p, index) => ({
-                    id: Date.now() + index + 1000, // More reliable ID generation
-                    name: p.n,
-                    biWeeklyPay: p.bp,
-                    payPeriods: p.pp,
-                    monthlyPay: this.calculateMonthlyFromBiWeekly(p.bp, p.pp),
-                    yearlyPay: p.bp * p.pp
-                }));
+                // Category mapping for decoding
+                const categoryMap = {
+                    '1': 'bills', '2': 'savings', '3': 'emergency', '4': 'food',
+                    '5': 'transport', '6': 'entertainment', '7': 'other'
+                };
                 
-                // Restore expenses data with proper ID generation
-                this.expenses = shareData.e.map((e, index) => ({
-                    id: Date.now() + index + 2000, // More reliable ID generation
-                    name: e.n,
-                    monthlyAmount: e.ma,
-                    biWeeklyAmount: this.calculateBiWeeklyFromMonthly(e.ma),
-                    category: e.c,
-                    subCategory: e.sc,
-                    sharingMethod: e.sm
-                }));
+                // Sharing method mapping for decoding
+                const sharingMap = { 'p': 'percentage', 'e': 'even' };
+                const periodMap = { 'b': 'biweekly', 'm': 'monthly', 'y': 'yearly' };
                 
-                // Restore settings
-                this.globalSharingMethod = shareData.gsm || 'percentage';
-                this.analyticsPeriod = shareData.ap || 'biweekly';
+                // Check if this is the new compressed format (arrays) or old format (objects)
+                const isNewFormat = Array.isArray(shareData.p?.[0]);
+                
+                if (isNewFormat) {
+                    // New compressed format
+                    this.people = shareData.p.map((p, index) => ({
+                        id: Date.now() + index + 1000,
+                        name: p[0],
+                        biWeeklyPay: p[1],
+                        payPeriods: p[2] || 26, // Default to 26 if not specified
+                        monthlyPay: this.calculateMonthlyFromBiWeekly(p[1], p[2] || 26),
+                        yearlyPay: p[1] * (p[2] || 26)
+                    }));
+                    
+                    this.expenses = shareData.e.map((e, index) => ({
+                        id: Date.now() + index + 2000,
+                        name: e[0],
+                        monthlyAmount: e[1],
+                        biWeeklyAmount: this.calculateBiWeeklyFromMonthly(e[1]),
+                        category: categoryMap[e[2]] || 'other',
+                        subCategory: e[4] || '', // Optional 5th element
+                        sharingMethod: sharingMap[e[3]] || 'percentage'
+                    }));
+                    
+                    // Restore settings with defaults
+                    this.globalSharingMethod = sharingMap[shareData.g] || 'percentage';
+                    this.analyticsPeriod = periodMap[shareData.a] || 'biweekly';
+                } else {
+                    // Old format compatibility
+                    this.people = shareData.p.map((p, index) => ({
+                        id: Date.now() + index + 1000,
+                        name: p.n,
+                        biWeeklyPay: p.bp,
+                        payPeriods: p.pp,
+                        monthlyPay: this.calculateMonthlyFromBiWeekly(p.bp, p.pp),
+                        yearlyPay: p.bp * p.pp
+                    }));
+                    
+                    this.expenses = shareData.e.map((e, index) => ({
+                        id: Date.now() + index + 2000,
+                        name: e.n,
+                        monthlyAmount: e.ma,
+                        biWeeklyAmount: this.calculateBiWeeklyFromMonthly(e.ma),
+                        category: e.c,
+                        subCategory: e.sc,
+                        sharingMethod: e.sm
+                    }));
+                    
+                    this.globalSharingMethod = shareData.gsm || 'percentage';
+                    this.analyticsPeriod = shareData.ap || 'biweekly';
+                }
                 
                 // Save to localStorage
                 localStorage.setItem('budgetGlobalSharingMethod', this.globalSharingMethod);
