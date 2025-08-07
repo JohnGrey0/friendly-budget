@@ -24,6 +24,8 @@
             <!-- People Management Section -->
             <section class="section people-section">
                 <h2>People & Income</h2>
+                
+                <!-- Add Person Card -->
                 <div class="card">
                     <div class="people-form">
                         <input type="text" id="personName" placeholder="John">
@@ -34,9 +36,15 @@
                             <option value="12">12 (monthly)</option>
                             <option value="52">52 (weekly)</option>
                         </select>
-                        <button id="addPerson" class="btn btn-primary">+</button>
+                        <button id="addPerson" class="btn btn-primary">Add</button>
                     </div>
+                </div>
 
+                <!-- People List Card -->
+                <div class="card">
+                    <div class="people-header">
+                        <h3>Household Members</h3>
+                    </div>
                     <div id="peopleList" class="people-list"></div>
                 </div>
             </section>

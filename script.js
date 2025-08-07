@@ -598,7 +598,7 @@ class BudgetTool {
             
             return `
                 <div class="person-item compact" data-person-id="${person.id}">
-                    <div class="person-header-with-toggle">
+                        <div class="person-header-with-toggle">
                         <div class="person-header">
                             <div class="person-avatar">
                                 <div class="avatar-circle" style="background: ${this.getPersonColor(index)}">
@@ -620,13 +620,16 @@ class BudgetTool {
                                 </div>
                                 <div class="contribution-label">contribution</div>
                             </div>
+                            <div class="person-header-actions">
+                                <button class="btn btn-danger btn-small remove-person-btn" data-person-id="${person.id}" title="Remove ${person.name}">
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
                         <button class="person-toggle-btn collapsed" data-person-id="${person.id}">
                             Details
                         </button>
-                    </div>
-                    
-                    <div class="income-bar" style="margin-top: 15px;">
+                    </div>                    <div class="income-bar" style="margin-top: 15px;">
                         <div class="income-bar-fill" style="width: ${incomePercentage}%; background: ${this.getPersonColor(index)}"></div>
                     </div>
                     
@@ -648,12 +651,6 @@ class BudgetTool {
                                 <span class="income-label">Pay Frequency</span>
                                 <span class="income-value">${this.getPayFrequencyLabel(person.payPeriods || 26)}</span>
                             </div>
-                        </div>
-                        
-                        <div class="person-actions">
-                            <button class="btn btn-danger btn-small remove-person-btn" data-person-id="${person.id}" title="Remove ${person.name}">
-                                🗑️
-                            </button>
                         </div>
                     </div>
                 </div>
