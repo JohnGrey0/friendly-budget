@@ -1579,7 +1579,7 @@ class BudgetTool {
 
     clearAnalytics() {
         // Clear charts if no data
-        const charts = ['expensePieChart', 'incomeExpenseChart', 'subcategoryChart'];
+        const charts = ['expenseBarChart', 'incomeExpenseChart', 'subcategoryBarChart'];
         charts.forEach(chartId => {
             const canvas = document.getElementById(chartId);
             if (canvas) {
@@ -1599,7 +1599,7 @@ class BudgetTool {
     }
 
     renderExpensePieChart() {
-        const canvas = document.getElementById('expensePieChart');
+        const canvas = document.getElementById('expenseBarChart');
         const ctx = canvas.getContext('2d');
         
         // Group expenses by category using analytics period
@@ -1624,13 +1624,22 @@ class BudgetTool {
             }]
         };
 
-        if (this.expensePieChart) {
-            this.expensePieChart.destroy();
+        if (this.expenseBarChart) {
+            this.expenseBarChart.destroy();
         }
 
-        this.expensePieChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: data,
+        this.expenseBarChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(categoryTotals),
+                datasets: [{
+                    label: `${this.getAnalyticsLabel()} Amount`,
+                    data: Object.values(categoryTotals),
+                    backgroundColor: colors.slice(0, Object.keys(categoryTotals).length).map(color => color + '80'), // Add transparency
+                    borderColor: colors.slice(0, Object.keys(categoryTotals).length),
+                    borderWidth: 2
+                }]
+            },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -1640,10 +1649,22 @@ class BudgetTool {
                         text: `${this.getAnalyticsLabel()} Expense Distribution`
                     },
                     legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 10,
-                            font: { size: 11 }
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0
                         }
                     }
                 }
@@ -1658,14 +1679,29 @@ class BudgetTool {
         const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
         const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
         const totalExcess = totalIncome - totalExpenses;
+        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+
+        // Create more detailed labels with amounts and percentages
+        const labels = [
+            `Income\n$${totalIncome.toLocaleString()}`,
+            `Expenses\n$${totalExpenses.toLocaleString()}`,
+            totalExcess > 0 ? `Surplus\n$${totalExcess.toLocaleString()}` : `Deficit\n$${Math.abs(totalExcess).toLocaleString()}`
+        ];
+
+        // Use vibrant colors that match other charts
+        const colors = [
+            '#10B981', // Green for income
+            '#EF4444', // Red for expenses  
+            totalExcess > 0 ? '#06B6D4' : '#F59E0B' // Blue for surplus, Orange for deficit
+        ];
 
         const data = {
-            labels: ['Income', 'Expenses', 'Excess'],
+            labels: labels,
             datasets: [{
-                data: [totalIncome, totalExpenses, Math.max(0, totalExcess)],
-                backgroundColor: ['#28a745', '#dc3545', '#007bff'],
-                borderWidth: 2,
-                borderColor: '#fff'
+                data: [totalIncome, totalExpenses, Math.abs(totalExcess)],
+                backgroundColor: colors.map(color => color + '80'), // Add transparency
+                borderColor: colors,
+                borderWidth: 2
             }]
         };
 
@@ -1682,9 +1718,36 @@ class BudgetTool {
                 plugins: {
                     title: {
                         display: true,
-                        text: `${this.getAnalyticsLabel()} Income vs Expenses`
+                        text: `${this.getAnalyticsLabel()} Financial Overview`,
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
                     },
-                    legend: { display: false }
+                    legend: { 
+                        display: false 
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return [
+                                    `Amount: $${value.toLocaleString()}`,
+                                    `Percentage: ${percentage}%`
+                                ];
+                            },
+                            afterLabel: function(context) {
+                                if (context.dataIndex === 2) {
+                                    return totalExcess > 0 ? 
+                                        `Savings Rate: ${savingsRate.toFixed(1)}%` : 
+                                        `Over Budget: ${Math.abs(savingsRate).toFixed(1)}%`;
+                                }
+                                return '';
+                            }
+                        }
+                    }
                 },
                 scales: {
                     y: {
@@ -1693,7 +1756,39 @@ class BudgetTool {
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
+                        },
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
                         }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 0,
+                            font: {
+                                size: 11
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                animation: {
+                    onComplete: function() {
+                        const ctx = this.chart.ctx;
+                        ctx.font = '12px Arial';
+                        ctx.fillStyle = '#333';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        
+                        this.data.datasets.forEach((dataset, i) => {
+                            const meta = this.chart.getDatasetMeta(i);
+                            meta.data.forEach((bar, index) => {
+                                const data = dataset.data[index];
+                                const formattedValue = '$' + data.toLocaleString();
+                                ctx.fillText(formattedValue, bar.x, bar.y - 5);
+                            });
+                        });
                     }
                 }
             }
@@ -1719,7 +1814,7 @@ class BudgetTool {
     }
 
     renderSubcategoryChart() {
-        const canvas = document.getElementById('subcategoryChart');
+        const canvas = document.getElementById('subcategoryBarChart');
         const ctx = canvas.getContext('2d');
         
         // Group expenses by subcategory (only those with subcategories)
@@ -1759,22 +1854,43 @@ class BudgetTool {
             }]
         };
 
-        if (this.subcategoryChart) {
-            this.subcategoryChart.destroy();
+        if (this.subcategoryBarChart) {
+            this.subcategoryBarChart.destroy();
         }
 
-        this.subcategoryChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: data,
+        this.subcategoryBarChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(subcategoryTotals),
+                datasets: [{
+                    label: `${this.getAnalyticsLabel()} Amount`,
+                    data: Object.values(subcategoryTotals),
+                    backgroundColor: colors.slice(0, Object.keys(subcategoryTotals).length).map(color => color + '80'), // Add transparency
+                    borderColor: colors.slice(0, Object.keys(subcategoryTotals).length),
+                    borderWidth: 2
+                }]
+            },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 8,
-                            font: { size: 10 }
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0
                         }
                     }
                 }
@@ -1810,36 +1926,33 @@ class BudgetTool {
             return;
         }
 
-        // Sort by amount (highest first) and take top 8
+        // Sort by amount (highest first) - show all subcategories
         subcategoryData.sort((a, b) => b.amount - a.amount);
-        const topSubcategories = subcategoryData.slice(0, 8);
+        const allSubcategories = subcategoryData; // Show all instead of limiting to top 6
         
-        const maxAmount = Math.max(...topSubcategories.map(item => item.amount));
         const totalSubcategoryAmount = subcategoryData.reduce((sum, item) => sum + item.amount, 0);
 
-        let html = '';
-        topSubcategories.forEach(item => {
-            const percentage = maxAmount > 0 ? (item.amount / maxAmount * 100) : 0;
+        let html = '<div class="top-subcategories-list">';
+        allSubcategories.forEach((item, index) => {
             const percentOfTotal = totalSubcategoryAmount > 0 ? (item.amount / totalSubcategoryAmount * 100) : 0;
             
-            // Determine if the bar is too small for text inside (less than 25% width)
-            const isSmallBar = percentage < 25;
-            const amountClass = isSmallBar ? 'subcategory-bar-amount-outside' : 'subcategory-bar-amount';
+            // Color coding - cycle through colors for all items
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#A29BFE', '#6C5CE7', '#FD79A8', '#E17055', '#00B894'];
+            const color = colors[index % colors.length];
             
             html += `
-                <div class="subcategory-bar">
-                    <div class="subcategory-bar-category">${item.category}</div>
-                    <div class="subcategory-bar-label">${item.subcategory}</div>
-                    <div class="subcategory-bar-track">
-                        <div class="subcategory-bar-fill" style="width: ${percentage}%">
-                            ${!isSmallBar ? `<div class="subcategory-bar-amount">${this.formatCurrency(item.amount)}</div>` : ''}
-                        </div>
-                        ${isSmallBar ? `<div class="subcategory-bar-amount-outside">${this.formatCurrency(item.amount)}</div>` : ''}
+                <div class="top-subcategory-item">
+                    <div class="subcategory-rank" style="background-color: ${color};">${index + 1}</div>
+                    <div class="subcategory-info">
+                        <div class="subcategory-name">${item.subcategory}</div>
+                        <div class="subcategory-category">${item.category}</div>
                     </div>
-                    <div class="subcategory-bar-percentage">${percentOfTotal.toFixed(1)}%</div>
+                    <div class="subcategory-amount">${this.formatCurrency(item.amount)}</div>
+                    <div class="subcategory-percent">${percentOfTotal.toFixed(1)}%</div>
                 </div>
             `;
         });
+        html += '</div>';
 
         container.innerHTML = html;
     }    capitalizeCategory(category) {
