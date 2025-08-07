@@ -391,8 +391,34 @@ class BudgetTool {
     }
 
     calculateBiWeeklyFromMonthly(monthlyAmount) {
-        // For expenses, always use 26 bi-weekly periods per year
-        return (monthlyAmount * 12) / 26;
+        // Use household's weighted average pay periods
+        const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
+        return (monthlyAmount * 12) / effectivePayPeriods;
+    }
+
+    // Calculate the household's effective pay periods based on income weighting
+    getHouseholdEffectivePayPeriods() {
+        if (this.people.length === 0) {
+            return 26; // Default to bi-weekly if no people
+        }
+
+        // Weight pay periods by each person's income contribution
+        const totalYearlyIncome = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
+        
+        if (totalYearlyIncome === 0) {
+            // If no income, use simple average
+            const avgPayPeriods = this.people.reduce((sum, person) => sum + (person.payPeriods || 26), 0) / this.people.length;
+            return avgPayPeriods;
+        }
+
+        // Weighted average based on income
+        const weightedSum = this.people.reduce((sum, person) => {
+            const payPeriods = person.payPeriods || 26;
+            const weight = person.yearlyPay / totalYearlyIncome;
+            return sum + (payPeriods * weight);
+        }, 0);
+
+        return weightedSum;
     }
 
     recalculatePeopleIncome() {
@@ -443,11 +469,12 @@ class BudgetTool {
 
     // Helper methods for analytics period calculations
     getAnalyticsAmount(biWeeklyAmount) {
+        const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
         switch (this.analyticsPeriod) {
             case 'monthly':
-                return biWeeklyAmount * this.payPeriods / 12;
+                return biWeeklyAmount * effectivePayPeriods / 12;
             case 'yearly':
-                return biWeeklyAmount * this.payPeriods;
+                return biWeeklyAmount * effectivePayPeriods;
             default: // biweekly
                 return biWeeklyAmount;
         }
@@ -732,6 +759,11 @@ class BudgetTool {
                 const payPeriods = person.payPeriods || 26;
                 person.monthlyPay = this.calculateMonthlyFromBiWeekly(person.biWeeklyPay, payPeriods);
                 person.yearlyPay = person.biWeeklyPay * payPeriods;
+                
+                // If pay periods changed, recalculate expense bi-weekly amounts since they depend on household effective pay periods
+                if (fieldName === 'payPeriods') {
+                    this.recalculateExpenseBiWeekly();
+                }
             }
 
             this.saveData();
@@ -959,8 +991,9 @@ class BudgetTool {
         }, {});
 
         const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-        const totalMonthlyExpenses = totalBiWeeklyExpenses * this.payPeriods / 12;
-        const totalYearlyExpenses = totalBiWeeklyExpenses * this.payPeriods;
+        const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
+        const totalMonthlyExpenses = totalBiWeeklyExpenses * effectivePayPeriods / 12;
+        const totalYearlyExpenses = totalBiWeeklyExpenses * effectivePayPeriods;
 
         let html = `
             <div class="comprehensive-expense-summary">
@@ -1014,8 +1047,9 @@ class BudgetTool {
         Object.keys(expensesByCategory).forEach(category => {
             const categoryExpenses = expensesByCategory[category];
             const categoryBiWeekly = categoryExpenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-            const categoryMonthly = categoryBiWeekly * this.payPeriods / 12;
-            const categoryYearly = categoryBiWeekly * this.payPeriods;
+            const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
+            const categoryMonthly = categoryBiWeekly * effectivePayPeriods / 12;
+            const categoryYearly = categoryBiWeekly * effectivePayPeriods;
             const categoryPercentage = totalBiWeeklyExpenses > 0 ? (categoryBiWeekly / totalBiWeeklyExpenses * 100) : 0;
             
             html += `
@@ -1031,8 +1065,9 @@ class BudgetTool {
             // Add subcategory details if they exist
             categoryExpenses.forEach(expense => {
                 if (expense.subCategory && expense.subCategory.trim() !== '') {
-                    const expenseMonthly = expense.biWeeklyAmount * this.payPeriods / 12;
-                    const expenseYearly = expense.biWeeklyAmount * this.payPeriods;
+                    const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
+                    const expenseMonthly = expense.biWeeklyAmount * effectivePayPeriods / 12;
+                    const expenseYearly = expense.biWeeklyAmount * effectivePayPeriods;
                     const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
                     
                     html += `
@@ -1045,8 +1080,9 @@ class BudgetTool {
                         </tr>
                     `;
                 } else {
-                    const expenseMonthly = expense.biWeeklyAmount * this.payPeriods / 12;
-                    const expenseYearly = expense.biWeeklyAmount * this.payPeriods;
+                    const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
+                    const expenseMonthly = expense.biWeeklyAmount * effectivePayPeriods / 12;
+                    const expenseYearly = expense.biWeeklyAmount * effectivePayPeriods;
                     const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
                     
                     html += `
@@ -1086,8 +1122,8 @@ class BudgetTool {
         // Add personal breakdown
         const expenseBreakdown = this.getExpenseBreakdownByPerson();
         Object.values(expenseBreakdown).forEach(personData => {
-            const monthlyShare = personData.totalBiWeekly * this.payPeriods / 12;
-            const yearlyShare = personData.totalBiWeekly * this.payPeriods;
+            const monthlyShare = personData.totalBiWeekly * effectivePayPeriods / 12;
+            const yearlyShare = personData.totalBiWeekly * effectivePayPeriods;
             const householdPercentage = totalBiWeeklyExpenses > 0 ? (personData.totalBiWeekly / totalBiWeeklyExpenses * 100) : 0;
             
             html += `
@@ -1127,9 +1163,9 @@ class BudgetTool {
                     <thead>
                         <tr>
                             <th>Person</th>
-                            <th>Bi-weekly Pay</th>
-                            <th>Bi-weekly Expenses</th>
-                            <th>Bi-weekly Excess</th>
+                            <th>Pay Period Income</th>
+                            <th>Pay Period Expenses</th>
+                            <th>Pay Period Excess</th>
                             <th>Monthly Excess</th>
                         </tr>
                     </thead>
@@ -1138,16 +1174,18 @@ class BudgetTool {
 
         this.people.forEach(person => {
             const personExpenseShare = this.calculatePersonTotalExpenses(person);
-            const biWeeklyExcess = person.biWeeklyPay - personExpenseShare;
-            const monthlyExcess = person.monthlyPay - (personExpenseShare * this.payPeriods / 12);
+            const personPayPeriods = person.payPeriods || 26;
+            const personPayPeriodIncome = person.yearlyPay / personPayPeriods;
+            const payPeriodExcess = personPayPeriodIncome - personExpenseShare;
+            const monthlyExcess = person.monthlyPay - (personExpenseShare * personPayPeriods / 12);
             
             html += `
                 <tr>
                     <td class="person-name">${person.name}</td>
-                    <td class="amount">${this.formatCurrency(person.biWeeklyPay)}</td>
+                    <td class="amount">${this.formatCurrency(personPayPeriodIncome)}</td>
                     <td class="amount">${this.formatCurrency(personExpenseShare)}</td>
-                    <td class="amount ${biWeeklyExcess >= 0 ? 'positive' : 'negative'}">
-                        ${this.formatCurrency(biWeeklyExcess)}
+                    <td class="amount ${payPeriodExcess >= 0 ? 'positive' : 'negative'}">
+                        ${this.formatCurrency(payPeriodExcess)}
                     </td>
                     <td class="amount ${monthlyExcess >= 0 ? 'positive' : 'negative'}">
                         ${this.formatCurrency(monthlyExcess)}
@@ -1156,20 +1194,33 @@ class BudgetTool {
             `;
         });
 
-        const totalBiWeeklyIncome = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
+        // Calculate totals - both pay period and monthly
+        const totalPayPeriodIncome = this.people.reduce((sum, person) => {
+            const personPayPeriods = person.payPeriods || 26;
+            return sum + (person.yearlyPay / personPayPeriods);
+        }, 0);
+        const totalPayPeriodExpenses = this.people.reduce((sum, person) => {
+            return sum + this.calculatePersonTotalExpenses(person);
+        }, 0);
+        const totalPayPeriodExcess = totalPayPeriodIncome - totalPayPeriodExpenses;
+        
         const totalMonthlyIncome = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
-        const totalBiWeeklyExcess = totalBiWeeklyIncome - totalBiWeeklyExpenses;
-        const totalMonthlyExcess = totalMonthlyIncome - (totalBiWeeklyExpenses * this.payPeriods / 12);
+        const totalMonthlyExpenses = this.people.reduce((sum, person) => {
+            const personExpenseShare = this.calculatePersonTotalExpenses(person);
+            const personPayPeriods = person.payPeriods || 26;
+            return sum + (personExpenseShare * personPayPeriods / 12);
+        }, 0);
+        const totalMonthlyExcess = totalMonthlyIncome - totalMonthlyExpenses;
 
         html += `
                     </tbody>
                     <tfoot>
                         <tr class="totals-row">
                             <td><strong>Household Total</strong></td>
-                            <td class="amount"><strong>${this.formatCurrency(totalBiWeeklyIncome)}</strong></td>
-                            <td class="amount"><strong>${this.formatCurrency(totalBiWeeklyExpenses)}</strong></td>
-                            <td class="amount ${totalBiWeeklyExcess >= 0 ? 'positive' : 'negative'}">
-                                <strong>${this.formatCurrency(totalBiWeeklyExcess)}</strong>
+                            <td class="amount"><strong>${this.formatCurrency(totalPayPeriodIncome)}</strong></td>
+                            <td class="amount"><strong>${this.formatCurrency(totalPayPeriodExpenses)}</strong></td>
+                            <td class="amount ${totalPayPeriodExcess >= 0 ? 'positive' : 'negative'}">
+                                <strong>${this.formatCurrency(totalPayPeriodExcess)}</strong>
                             </td>
                             <td class="amount ${totalMonthlyExcess >= 0 ? 'positive' : 'negative'}">
                                 <strong>${this.formatCurrency(totalMonthlyExcess)}</strong>
@@ -1213,6 +1264,17 @@ class BudgetTool {
             });
         });
 
+        // Calculate column totals for each category
+        const categoryColumnTotals = {};
+        categories.forEach(category => {
+            categoryColumnTotals[category] = Object.values(personCategoryTotals).reduce((sum, personData) => {
+                return sum + personData.categories[category];
+            }, 0);
+        });
+        
+        // Calculate grand total (sum of all expenses)
+        const grandTotal = Object.values(categoryColumnTotals).reduce((sum, total) => sum + total, 0);
+
         let html = `
             <div class="category-breakdown-table">
                 <table class="person-category-table">
@@ -1237,6 +1299,13 @@ class BudgetTool {
                             `;
                         }).join('')}
                     </tbody>
+                    <tfoot>
+                        <tr class="totals-row">
+                            <td><strong>Category Totals</strong></td>
+                            ${categories.map(category => `<td class="amount"><strong>${this.formatCurrency(categoryColumnTotals[category])}</strong></td>`).join('')}
+                            <td class="amount total-cell"><strong>${this.formatCurrency(grandTotal)}</strong></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         `;
@@ -1247,18 +1316,30 @@ class BudgetTool {
     // Calculate how much each person should pay for a specific expense
     calculatePersonExpenseShare(expense, person) {
         if (this.people.length <= 1) {
-            return expense.biWeeklyAmount;
+            // Convert expense to person's pay period frequency
+            return this.convertExpenseToPersonPayPeriod(expense.biWeeklyAmount, person);
         }
 
         if (expense.sharingMethod === 'even') {
-            return expense.biWeeklyAmount / this.people.length;
+            const sharePerPerson = expense.biWeeklyAmount / this.people.length;
+            return this.convertExpenseToPersonPayPeriod(sharePerPerson, person);
         } else if (expense.sharingMethod === 'percentage') {
-            const totalIncome = this.people.reduce((sum, p) => sum + p.biWeeklyPay, 0);
-            const personPercentage = person.biWeeklyPay / totalIncome;
-            return expense.biWeeklyAmount * personPercentage;
+            const totalYearlyIncome = this.people.reduce((sum, p) => sum + p.yearlyPay, 0);
+            const personPercentage = person.yearlyPay / totalYearlyIncome;
+            const personBiWeeklyShare = expense.biWeeklyAmount * personPercentage;
+            return this.convertExpenseToPersonPayPeriod(personBiWeeklyShare, person);
         }
         
         return 0;
+    }
+
+    // Convert a bi-weekly expense amount to a person's pay period frequency
+    convertExpenseToPersonPayPeriod(biWeeklyAmount, person) {
+        const personPayPeriods = person.payPeriods || 26;
+        const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
+        // Convert bi-weekly amount to yearly using household effective pay periods, then to person's pay frequency
+        const yearlyAmount = biWeeklyAmount * effectivePayPeriods;
+        return yearlyAmount / personPayPeriods; // Convert to person's pay frequency
     }
 
     // Calculate total expenses for a person across all expenses
@@ -2005,8 +2086,8 @@ class BudgetTool {
                 
                 // Total expenses
                 const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-                const totalMonthlyExpenses = totalBiWeeklyExpenses * this.payPeriods / 12;
-                const totalYearlyExpenses = totalBiWeeklyExpenses * this.payPeriods;
+                const totalMonthlyExpenses = totalBiWeeklyExpenses * 26 / 12; // Use standard 26 bi-weekly periods
+                const totalYearlyExpenses = totalBiWeeklyExpenses * 26;
                 
                 yPosition += 10;
                 doc.line(20, yPosition, 190, yPosition);

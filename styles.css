@@ -87,6 +87,10 @@ header p {
     margin-bottom: 0;
 }
 
+.budget-settings-section .card + .card {
+    margin-top: 15px;
+}
+
 .form-group {
     margin-bottom: 20px;
 }
@@ -122,56 +126,58 @@ select:focus {
 .global-sharing-control {
     display: flex;
     align-items: center;
-    gap: 15px;
-    padding: 15px;
+    gap: 8px;
+    padding: 8px 12px;
     background: #f8f9fa;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    border-left: 4px solid #28a745;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    border-left: 2px solid #28a745;
 }
 
 .global-sharing-control label {
     font-weight: 600;
     color: #555;
     white-space: nowrap;
+    font-size: 12px;
 }
 
 .sharing-toggle-buttons {
     display: flex;
-    gap: 10px;
+    gap: 4px;
 }
 
 .btn-toggle {
-    padding: 8px 16px;
-    border: 2px solid #e1e5e9;
-    border-radius: 6px;
+    padding: 4px 8px;
+    border: 1px solid #e1e5e9;
+    border-radius: 3px;
     background: white;
     color: #6c757d;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-transform: none;
     letter-spacing: normal;
+    min-width: 70px;
 }
 
 .btn-toggle:hover {
     border-color: #667eea;
     color: #667eea;
     transform: none;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 1px 4px rgba(102, 126, 234, 0.15);
 }
 
 .btn-toggle.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     border-color: #667eea;
     color: white;
-    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 1px 4px rgba(102, 126, 234, 0.2);
 }
 
 .btn-toggle.active:hover {
     color: white;
-    transform: translateY(-1px);
+    transform: none;
 }
 
 .people-form,
@@ -270,37 +276,38 @@ select:focus {
 
 .household-summary {
     background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    border-left: 4px solid #667eea;
+    border-radius: 6px;
+    padding: 15px;
+    border-left: 3px solid #667eea;
     margin-top: 0; /* Reset the alignment since it's now in right column */
 }
 
 .household-summary h3 {
-    margin: 0 0 15px 0;
+    margin: 0 0 12px 0;
     color: #333;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
 }
 
 .household-totals-content {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .total-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
+    padding: 6px 0;
     border-bottom: 1px solid #e9ecef;
+    font-size: 14px;
 }
 
 .total-row:last-child {
     border-bottom: none;
     font-weight: 600;
-    font-size: 16px;
+    font-size: 15px;
     color: #667eea;
 }
 
