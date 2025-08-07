@@ -629,9 +629,11 @@ td {
 }
 
 th {
-    background: #f8f9fa;
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+    color: white;
     font-weight: 600;
-    color: #555;
+    padding: 12px;
+    text-align: left;
 }
 
 tr:hover {
@@ -920,7 +922,7 @@ tr:hover {
 
 .expense-summary-table .amount {
     font-weight: 600;
-    color: #28a745;
+    color: #495057;
     text-align: right;
 }
 
@@ -983,7 +985,7 @@ tr:hover {
 }
 
 .category-breakdown-table th {
-    background: linear-gradient(135deg, #6f42c1 0%, #8e44ad 100%);
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
     color: white;
     font-weight: 600;
     padding: 12px 15px;
@@ -1007,13 +1009,13 @@ tr:hover {
 
 .category-breakdown-table .amount {
     font-weight: 600;
-    color: #28a745;
+    color: #495057;
     text-align: right;
 }
 
 .category-breakdown-table .percentage {
     font-weight: 600;
-    color: #6f42c1;
+    color: #495057;
     text-align: center;
 }
 
@@ -1035,12 +1037,12 @@ tr:hover {
 
 /* Personal breakdown summary */
 .personal-breakdown-summary .expense-summary-table th {
-    background: linear-gradient(135deg, #fd7e14 0%, #e55a4e 100%);
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
 }
 
 .personal-breakdown-summary .percentage {
     font-weight: 600;
-    color: #fd7e14;
+    color: #495057;
     text-align: center;
 }
 
@@ -1085,7 +1087,7 @@ tr:hover {
 }
 
 .person-category-table th {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
     color: white;
     font-weight: 600;
     padding: 12px 8px;
@@ -1122,14 +1124,14 @@ tr:hover {
 
 .person-category-table .amount {
     font-weight: 500;
-    color: #666;
+    color: #495057;
 }
 
 .person-category-table .total-cell {
     font-weight: 700;
-    color: #28a745;
-    background: #f8fff9;
-    border-left: 2px solid #28a745;
+    color: #495057;
+    background: #f8f9fa;
+    border-left: 2px solid #495057;
 }
 
 /* Responsive adjustments for category table */
@@ -1211,7 +1213,7 @@ tr:hover {
 }
 
 .excess-funds-table th {
-    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
     color: white;
     font-weight: 600;
     padding: 15px 12px;
@@ -1251,7 +1253,7 @@ tr:hover {
 }
 
 .excess-funds-table tfoot .totals-row {
-    border-top: 2px solid #17a2b8;
+    border-top: 2px solid #4a90e2;
     background: #f8f9fa;
 }
 
