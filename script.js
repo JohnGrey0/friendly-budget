@@ -132,6 +132,11 @@ class BudgetTool {
             this.shareBudget();
         });
 
+        // Clear All Data
+        document.getElementById('clearAllData').addEventListener('click', () => {
+            this.clearAllData();
+        });
+
         // Analytics period toggle
         document.getElementById('setBiWeeklyPeriod').addEventListener('click', () => {
             this.setAnalyticsPeriod('biweekly');
@@ -403,6 +408,70 @@ class BudgetTool {
             this.saveData();
             this.render();
             await this.showAlert('All expenses have been cleared.', 'Expenses Cleared', 'success');
+        }
+    }
+
+    async clearAllData() {
+        if (this.people.length === 0 && this.expenses.length === 0) {
+            await this.showAlert('There is no data to clear.', 'No Data', 'info');
+            return;
+        }
+
+        const dataCount = this.people.length + this.expenses.length;
+        
+        // Build a better formatted warning message with HTML
+        let warningMessage = `⚠️ Are you sure you want to clear ALL budget data?\n\n`;
+        warningMessage += `📊 <strong>WHAT WILL BE DELETED:</strong>\n`;
+        warningMessage += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        warningMessage += `👥 <strong>People:</strong> ${this.people.length}\n`;
+        warningMessage += `💰 <strong>Expenses:</strong> ${this.expenses.length}\n`;
+        warningMessage += `⚙️ <strong>Settings:</strong> All preferences\n`;
+        warningMessage += `💾 <strong>Storage:</strong> All saved data\n\n`;
+        warningMessage += `🚨 <strong>This action CANNOT be undone!</strong>\n`;
+        warningMessage += `You will get a completely fresh start.`;
+        
+        const confirmed = await this.showConfirm(
+            warningMessage, 
+            'Clear All Data'
+        );
+        
+        if (confirmed) {
+            // Clear all data arrays
+            this.people = [];
+            this.expenses = [];
+            
+            // Reset settings to defaults
+            this.globalSharingMethod = 'percentage';
+            this.analyticsPeriod = 'biweekly';
+            
+            // Clear localStorage
+            localStorage.removeItem('budgetPeople');
+            localStorage.removeItem('budgetExpenses');
+            localStorage.removeItem('budgetGlobalSharingMethod');
+            localStorage.removeItem('budgetAnalyticsPeriod');
+            
+            // Clear all form inputs
+            document.getElementById('personName').value = '';
+            document.getElementById('biWeeklyPay').value = '';
+            document.getElementById('personPayPeriods').value = '26';
+            document.getElementById('expenseName').value = '';
+            document.getElementById('monthlyAmount').value = '';
+            document.getElementById('category').value = 'bills';
+            document.getElementById('subCategory').value = '';
+            document.getElementById('sharingMethod').value = 'percentage';
+            
+            // Force complete re-render
+            this.render();
+            
+            // Additional forced refresh of key components
+            setTimeout(() => {
+                this.renderAnalytics();
+                this.renderBiWeeklySummary();
+                this.renderPersonCategoryBreakdown();
+                this.renderExcessFunds();
+            }, 100);
+            
+            await this.showAlert('All data has been cleared. You now have a fresh start!', 'Data Cleared', 'success');
         }
     }
 
@@ -2268,7 +2337,7 @@ class BudgetTool {
 
             // Set content
             alertTitle.textContent = title;
-            alertMessage.textContent = message;
+            alertMessage.innerHTML = message.replace(/\n/g, '<br>');
             alertIcon.textContent = '❓';
             alertHeader.className = 'alert-header warning';
 
