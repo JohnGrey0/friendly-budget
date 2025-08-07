@@ -184,7 +184,7 @@ select:focus {
 }
 
 .people-form {
-    grid-template-columns: 1fr 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr 1fr 60px;
     gap: 20px;
     background: #f8f9fa;
     padding: 20px;
@@ -209,9 +209,17 @@ select:focus {
 }
 
 .people-form .btn {
-    padding: 14px 20px;
-    font-size: 16px;
+    padding: 12px;
+    font-size: 18px;
+    font-weight: bold;
     white-space: nowrap;
+    align-self: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .expense-form {

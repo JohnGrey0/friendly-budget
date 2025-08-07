@@ -34,6 +34,17 @@ class BudgetTool {
             this.addPerson();
         });
 
+        // Add Enter key support for people form
+        const peopleFormInputs = ['personName', 'biWeeklyPay', 'personPayPeriods'];
+        peopleFormInputs.forEach(inputId => {
+            document.getElementById(inputId).addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.addPerson();
+                }
+            });
+        });
+
         // Add expense
         document.getElementById('addExpense').addEventListener('click', () => {
             this.addExpense();
