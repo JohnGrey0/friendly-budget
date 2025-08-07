@@ -47,8 +47,8 @@
                 
                 <!-- Apply to Budget Card -->
                 <div class="card">
+                    <p class="sharing-explanation">Choose how expenses are split between household members:</p>
                     <div class="global-sharing-control">
-                        <label>Apply to budget:</label>
                         <div class="sharing-toggle-buttons">
                             <button id="setPercentageSharing" class="btn btn-toggle active" data-method="percentage">📊 % Weighted</button>
                             <button id="setEvenSharing" class="btn btn-toggle" data-method="even">⚖️ 50/50</button>
@@ -168,13 +168,6 @@
                 </div>
                 
                 <div class="analytics-card">
-                    <h4>Income vs Expenses</h4>
-                    <div class="chart-wrapper">
-                        <canvas id="incomeExpenseChart" width="300" height="250"></canvas>
-                    </div>
-                </div>
-                
-                <div class="analytics-card">
                     <h4>Savings Rate</h4>
                     <div class="savings-metric">
                         <div class="metric-circle">
@@ -184,16 +177,68 @@
                     </div>
                 </div>
                 
+                <div class="analytics-card">
+                    <h4>All Subcategories</h4>
+                    <div class="subcategory-bars" id="subcategoryBars"></div>
+                </div>
+                
                 <div class="analytics-card col-span-2">
                     <h4>Subcategory Breakdown</h4>
                     <div class="chart-wrapper">
-                        <canvas id="subcategoryBarChart" width="300" height="300"></canvas>
+                        <canvas id="subcategoryBarChart" width="400" height="160"></canvas>
                     </div>
                 </div>
                 
                 <div class="analytics-card">
-                    <h4>All Subcategories</h4>
-                    <div class="subcategory-bars" id="subcategoryBars"></div>
+                    <h4>Budget Health Score</h4>
+                    <div class="health-score-wrapper">
+                        <div class="health-score-circle">
+                            <div class="health-score-value" id="healthScore">85</div>
+                            <div class="health-score-label">Health Score</div>
+                        </div>
+                        <div class="health-indicators" id="healthIndicators"></div>
+                    </div>
+                </div>
+                
+                <div class="analytics-card">
+                    <h4>Financial Milestones</h4>
+                    <div class="milestones-controls">
+                        <div class="milestone-input-group">
+                            <label for="emergencyFundMonths">Emergency Fund Target: <span id="emergencyMonthsDisplay">6 months</span></label>
+                            <input type="range" id="emergencyFundMonths" min="1" max="12" value="6" step="1">
+                        </div>
+                        <div class="milestone-input-group">
+                            <label for="currentEmergencyFund">Current Emergency Fund:</label>
+                            <input type="number" id="currentEmergencyFund" placeholder="0" min="0" step="100">
+                        </div>
+                    </div>
+                    <div class="milestones-list" id="milestonesList">
+                        <!-- Dynamic content will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="analytics-card col-span-2">
+                    <h4>Budget Scenario Modeling</h4>
+                    <div class="scenario-controls">
+                        <div class="scenario-slider">
+                            <label for="incomeAdjustment">Income Change: <span id="incomeChangeDisplay">0%</span></label>
+                            <input type="range" id="incomeAdjustment" min="-50" max="50" value="0" step="5">
+                        </div>
+                        <div class="scenario-slider">
+                            <label for="expenseAdjustment">Expense Change: <span id="expenseChangeDisplay">0%</span></label>
+                            <input type="range" id="expenseAdjustment" min="-50" max="50" value="0" step="5">
+                        </div>
+                        <div class="scenario-results" id="scenarioResults">
+                            <div class="scenario-metric">
+                                <span class="scenario-label">New Savings Rate:</span>
+                                <span class="scenario-value" id="newSavingsRate">20.5%</span>
+                            </div>
+                            <div class="scenario-metric">
+                                <span class="scenario-label">Monthly Surplus:</span>
+                                <span class="scenario-value" id="monthlySurplus">$850</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

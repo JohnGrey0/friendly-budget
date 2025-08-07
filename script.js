@@ -1571,15 +1571,17 @@ class BudgetTool {
         }
 
         this.renderExpensePieChart();
-        this.renderIncomeExpenseChart();
         this.renderSavingsRate();
         this.renderSubcategoryChart();
         this.renderSubcategoryBars();
+        this.renderBudgetHealthScore();
+        this.renderScenarioModeling();
+        this.renderFinancialMilestones();
     }
 
     clearAnalytics() {
         // Clear charts if no data
-        const charts = ['expenseBarChart', 'incomeExpenseChart', 'subcategoryBarChart'];
+        const charts = ['expenseBarChart', 'subcategoryBarChart'];
         charts.forEach(chartId => {
             const canvas = document.getElementById(chartId);
             if (canvas) {
@@ -1609,6 +1611,10 @@ class BudgetTool {
             categoryTotals[category] = (categoryTotals[category] || 0) + this.getAnalyticsAmount(expense.biWeeklyAmount);
         });
 
+        // Sort categories alphabetically to ensure consistent color assignment
+        const sortedCategories = Object.keys(categoryTotals).sort();
+        const sortedCategoryValues = sortedCategories.map(cat => categoryTotals[cat]);
+
         const colors = [
             '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
             '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
@@ -1631,12 +1637,12 @@ class BudgetTool {
         this.expenseBarChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: Object.keys(categoryTotals),
+                labels: sortedCategories,
                 datasets: [{
                     label: `${this.getAnalyticsLabel()} Amount`,
-                    data: Object.values(categoryTotals),
-                    backgroundColor: colors.slice(0, Object.keys(categoryTotals).length).map(color => color + '80'), // Add transparency
-                    borderColor: colors.slice(0, Object.keys(categoryTotals).length),
+                    data: sortedCategoryValues,
+                    backgroundColor: colors.slice(0, sortedCategories.length).map(color => color + '80'), // Add transparency
+                    borderColor: colors.slice(0, sortedCategories.length),
                     borderWidth: 2
                 }]
             },
@@ -1650,6 +1656,13 @@ class BudgetTool {
                     },
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '$' + context.parsed.y.toLocaleString();
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -1666,129 +1679,6 @@ class BudgetTool {
                             maxRotation: 45,
                             minRotation: 0
                         }
-                    }
-                }
-            }
-        });
-    }
-
-    renderIncomeExpenseChart() {
-        const canvas = document.getElementById('incomeExpenseChart');
-        const ctx = canvas.getContext('2d');
-        
-        const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
-        const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        const totalExcess = totalIncome - totalExpenses;
-        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
-
-        // Create more detailed labels with amounts and percentages
-        const labels = [
-            `Income\n$${totalIncome.toLocaleString()}`,
-            `Expenses\n$${totalExpenses.toLocaleString()}`,
-            totalExcess > 0 ? `Surplus\n$${totalExcess.toLocaleString()}` : `Deficit\n$${Math.abs(totalExcess).toLocaleString()}`
-        ];
-
-        // Use vibrant colors that match other charts
-        const colors = [
-            '#10B981', // Green for income
-            '#EF4444', // Red for expenses  
-            totalExcess > 0 ? '#06B6D4' : '#F59E0B' // Blue for surplus, Orange for deficit
-        ];
-
-        const data = {
-            labels: labels,
-            datasets: [{
-                data: [totalIncome, totalExpenses, Math.abs(totalExcess)],
-                backgroundColor: colors.map(color => color + '80'), // Add transparency
-                borderColor: colors,
-                borderWidth: 2
-            }]
-        };
-
-        if (this.incomeExpenseChart) {
-            this.incomeExpenseChart.destroy();
-        }
-
-        this.incomeExpenseChart = new Chart(ctx, {
-            type: 'bar',
-            data: data,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `${this.getAnalyticsLabel()} Financial Overview`,
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        }
-                    },
-                    legend: { 
-                        display: false 
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.parsed.y;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return [
-                                    `Amount: $${value.toLocaleString()}`,
-                                    `Percentage: ${percentage}%`
-                                ];
-                            },
-                            afterLabel: function(context) {
-                                if (context.dataIndex === 2) {
-                                    return totalExcess > 0 ? 
-                                        `Savings Rate: ${savingsRate.toFixed(1)}%` : 
-                                        `Over Budget: ${Math.abs(savingsRate).toFixed(1)}%`;
-                                }
-                                return '';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '$' + value.toLocaleString();
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            maxRotation: 0,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            display: false
-                        }
-                    }
-                },
-                animation: {
-                    onComplete: function() {
-                        const ctx = this.chart.ctx;
-                        ctx.font = '12px Arial';
-                        ctx.fillStyle = '#333';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'bottom';
-                        
-                        this.data.datasets.forEach((dataset, i) => {
-                            const meta = this.chart.getDatasetMeta(i);
-                            meta.data.forEach((bar, index) => {
-                                const data = dataset.data[index];
-                                const formattedValue = '$' + data.toLocaleString();
-                                ctx.fillText(formattedValue, bar.x, bar.y - 5);
-                            });
-                        });
                     }
                 }
             }
@@ -1876,6 +1766,13 @@ class BudgetTool {
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '$' + context.parsed.y.toLocaleString();
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -1955,7 +1852,239 @@ class BudgetTool {
         html += '</div>';
 
         container.innerHTML = html;
-    }    capitalizeCategory(category) {
+    }
+
+
+
+    renderBudgetHealthScore() {
+        const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
+        const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+        
+        // Calculate health score (0-100)
+        let score = 0;
+        const indicators = [];
+        
+        // Savings rate contributes 40% of score
+        if (savingsRate >= 20) {
+            score += 40;
+            indicators.push({ text: 'Excellent savings rate (≥20%)', type: 'good' });
+        } else if (savingsRate >= 10) {
+            score += 25;
+            indicators.push({ text: 'Good savings rate (≥10%)', type: 'warning' });
+        } else if (savingsRate >= 0) {
+            score += 10;
+            indicators.push({ text: 'Low savings rate (<10%)', type: 'danger' });
+        } else {
+            indicators.push({ text: 'Negative savings rate', type: 'danger' });
+        }
+        
+        // Income stability (people count) contributes 20% of score
+        if (this.people.length >= 2) {
+            score += 20;
+            indicators.push({ text: 'Multiple income sources', type: 'good' });
+        } else {
+            score += 10;
+            indicators.push({ text: 'Single income source', type: 'warning' });
+        }
+        
+        // Expense categorization contributes 20% of score
+        const categorizedExpenses = this.expenses.filter(exp => exp.category && exp.category !== '').length;
+        const categorizationRate = this.expenses.length > 0 ? (categorizedExpenses / this.expenses.length) : 0;
+        if (categorizationRate >= 0.8) {
+            score += 20;
+            indicators.push({ text: 'Well categorized expenses', type: 'good' });
+        } else if (categorizationRate >= 0.5) {
+            score += 15;
+            indicators.push({ text: 'Partially categorized expenses', type: 'warning' });
+        } else {
+            score += 5;
+            indicators.push({ text: 'Poor expense categorization', type: 'danger' });
+        }
+        
+        // Budget balance contributes 20% of score
+        if (totalIncome > totalExpenses) {
+            score += 20;
+            indicators.push({ text: 'Income exceeds expenses', type: 'good' });
+        } else {
+            indicators.push({ text: 'Expenses exceed income', type: 'danger' });
+        }
+
+        // Update UI
+        const scoreElement = document.getElementById('healthScore');
+        const indicatorsElement = document.getElementById('healthIndicators');
+        const circleElement = document.querySelector('.health-score-circle');
+        
+        scoreElement.textContent = Math.round(score);
+        
+        // Update circle color based on score
+        if (score >= 75) {
+            circleElement.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+        } else if (score >= 50) {
+            circleElement.style.background = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
+        } else {
+            circleElement.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+        }
+        
+        // Update indicators
+        let indicatorsHTML = '';
+        indicators.forEach(indicator => {
+            indicatorsHTML += `
+                <div class="health-indicator">
+                    <div class="indicator-icon indicator-${indicator.type}"></div>
+                    <span>${indicator.text}</span>
+                </div>
+            `;
+        });
+        indicatorsElement.innerHTML = indicatorsHTML;
+    }
+
+    renderScenarioModeling() {
+        const incomeSlider = document.getElementById('incomeAdjustment');
+        const expenseSlider = document.getElementById('expenseAdjustment');
+        const incomeDisplay = document.getElementById('incomeChangeDisplay');
+        const expenseDisplay = document.getElementById('expenseChangeDisplay');
+        
+        // Update scenario when sliders change
+        const updateScenario = () => {
+            const incomeChange = parseInt(incomeSlider.value);
+            const expenseChange = parseInt(expenseSlider.value);
+            
+            incomeDisplay.textContent = `${incomeChange >= 0 ? '+' : ''}${incomeChange}%`;
+            expenseDisplay.textContent = `${expenseChange >= 0 ? '+' : ''}${expenseChange}%`;
+            
+            // Calculate new values
+            const baseIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
+            const baseExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+            
+            const newIncome = baseIncome * (1 + incomeChange / 100);
+            const newExpenses = baseExpenses * (1 + expenseChange / 100);
+            const newSavingsRate = newIncome > 0 ? ((newIncome - newExpenses) / newIncome * 100) : 0;
+            const monthlySurplus = this.analyticsPeriod === 'monthly' ? (newIncome - newExpenses) : 
+                                 this.analyticsPeriod === 'yearly' ? (newIncome - newExpenses) / 12 :
+                                 (newIncome - newExpenses) * this.getHouseholdEffectivePayPeriods() / 12;
+            
+            document.getElementById('newSavingsRate').textContent = `${Math.max(0, newSavingsRate).toFixed(1)}%`;
+            document.getElementById('monthlySurplus').textContent = this.formatCurrency(monthlySurplus);
+            
+            // Update color based on new savings rate
+            const savingsElement = document.getElementById('newSavingsRate');
+            if (newSavingsRate >= 20) {
+                savingsElement.style.color = '#28a745';
+            } else if (newSavingsRate >= 10) {
+                savingsElement.style.color = '#ffc107';
+            } else {
+                savingsElement.style.color = '#dc3545';
+            }
+        };
+        
+        // Remove existing listeners to avoid duplicates
+        incomeSlider.removeEventListener('input', updateScenario);
+        expenseSlider.removeEventListener('input', updateScenario);
+        
+        // Add event listeners
+        incomeSlider.addEventListener('input', updateScenario);
+        expenseSlider.addEventListener('input', updateScenario);
+        
+        // Initial calculation
+        updateScenario();
+    }
+
+    renderFinancialMilestones() {
+        const container = document.getElementById('milestonesList');
+        const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
+        const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        const monthlySurplus = this.analyticsPeriod === 'monthly' ? (totalIncome - totalExpenses) : 
+                              this.analyticsPeriod === 'yearly' ? (totalIncome - totalExpenses) / 12 :
+                              (totalIncome - totalExpenses) * this.getHouseholdEffectivePayPeriods() / 12;
+        
+        // Get emergency fund target months from slider
+        const emergencyFundMonthsSlider = document.getElementById('emergencyFundMonths');
+        const emergencyFundMonths = parseInt(emergencyFundMonthsSlider.value) || 6;
+        
+        // Calculate emergency fund goal based on selected months
+        const monthlyExpenses = this.analyticsPeriod === 'monthly' ? totalExpenses : 
+                               this.analyticsPeriod === 'yearly' ? totalExpenses / 12 :
+                               totalExpenses * this.getHouseholdEffectivePayPeriods() / 12;
+        const emergencyFundGoal = monthlyExpenses * emergencyFundMonths;
+        
+        // Calculate monthly emergency savings from expenses with "Emergency" category
+        const emergencyExpenses = this.expenses.filter(expense => 
+            expense.category && expense.category.toLowerCase().includes('emergency')
+        );
+        const monthlyEmergencySavings = emergencyExpenses.reduce((sum, expense) => {
+            const monthlyAmount = this.analyticsPeriod === 'monthly' ? this.getAnalyticsAmount(expense.biWeeklyAmount) : 
+                                 this.analyticsPeriod === 'yearly' ? this.getAnalyticsAmount(expense.biWeeklyAmount) / 12 :
+                                 this.getAnalyticsAmount(expense.biWeeklyAmount) * this.getHouseholdEffectivePayPeriods() / 12;
+            return sum + monthlyAmount;
+        }, 0);
+
+        // Get current emergency fund from input field
+        const currentEmergencyFundInput = document.getElementById('currentEmergencyFund');
+        const currentEmergencyFund = parseFloat(currentEmergencyFundInput.value) || 0;
+        const emergencyFundProgress = emergencyFundGoal > 0 ? (currentEmergencyFund / emergencyFundGoal) * 100 : 0;
+        const remainingNeeded = Math.max(0, emergencyFundGoal - currentEmergencyFund);
+        
+        let monthsToEmergencyFund;
+        if (remainingNeeded === 0) {
+            monthsToEmergencyFund = 'Complete!';
+        } else if (monthlyEmergencySavings <= 0) {
+            monthsToEmergencyFund = 'Add "Emergency" category expense';
+        } else {
+            monthsToEmergencyFund = Math.ceil(remainingNeeded / monthlyEmergencySavings);
+        }
+        
+        let html = `
+            <div class="milestone-item">
+                <div class="milestone-label">Emergency Fund (${emergencyFundMonths} months: ${this.formatCurrency(emergencyFundGoal)} target)</div>
+                <div class="milestone-details">Monthly savings: ${this.formatCurrency(monthlyEmergencySavings)} from Emergency expenses</div>
+                <div class="milestone-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min(100, emergencyFundProgress)}%"></div>
+                    </div>
+                    <span class="milestone-time">${typeof monthsToEmergencyFund === 'number' ? monthsToEmergencyFund + ' months to go' : monthsToEmergencyFund}</span>
+                </div>
+            </div>
+        `;
+        
+        // Add a debt payoff milestone if they're spending more than earning
+        if (monthlySurplus < 0) {
+            html += `
+                <div class="milestone-item">
+                    <div class="milestone-label">Break Even Budget</div>
+                    <div class="milestone-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%; background: #dc3545;"></div>
+                        </div>
+                        <span class="milestone-time">Reduce expenses by ${this.formatCurrency(Math.abs(monthlySurplus))} monthly</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        
+        // Update the months display
+        const emergencyMonthsDisplay = document.getElementById('emergencyMonthsDisplay');
+        emergencyMonthsDisplay.textContent = `${emergencyFundMonths} month${emergencyFundMonths === 1 ? '' : 's'}`;
+        
+        // Add event listeners to update when inputs change
+        if (!currentEmergencyFundInput.hasAttribute('data-listener-added')) {
+            currentEmergencyFundInput.addEventListener('input', () => {
+                this.renderFinancialMilestones();
+            });
+            currentEmergencyFundInput.setAttribute('data-listener-added', 'true');
+        }
+        
+        if (!emergencyFundMonthsSlider.hasAttribute('data-listener-added')) {
+            emergencyFundMonthsSlider.addEventListener('input', () => {
+                this.renderFinancialMilestones();
+            });
+            emergencyFundMonthsSlider.setAttribute('data-listener-added', 'true');
+        }
+    }
+
+    capitalizeCategory(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
     }
 
