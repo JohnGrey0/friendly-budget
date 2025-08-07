@@ -1284,6 +1284,36 @@ select.inline-edit-input {
     font-style: italic;
 }
 
+/* Category collapse/expand functionality */
+.category-header-row {
+    background: #f1f3f4 !important;
+    transition: background-color 0.2s ease;
+}
+
+.category-header-row:hover {
+    background: #e8eaed !important;
+}
+
+.category-header-row.collapsed {
+    background: #e3f2fd !important;
+}
+
+.category-toggle {
+    position: relative;
+    user-select: none;
+}
+
+.toggle-icon {
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 12px;
+    color: #667eea;
+    font-weight: bold;
+    transition: transform 0.2s ease;
+    width: 12px;
+    text-align: center;
+}
+
 /* Responsive styles for comprehensive summary */
 @media (max-width: 768px) {
     .comprehensive-expense-summary {

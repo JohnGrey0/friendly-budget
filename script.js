@@ -1080,8 +1080,11 @@ class BudgetTool {
             const categoryPercentage = totalBiWeeklyExpenses > 0 ? (categoryBiWeekly / totalBiWeeklyExpenses * 100) : 0;
             
             html += `
-                <tr>
-                    <td><strong>${this.capitalizeCategory(category)}</strong></td>
+                <tr class="category-header-row collapsed" data-category="${category}">
+                    <td class="category-toggle">
+                        <span class="toggle-icon">▶</span>
+                        <strong>${this.capitalizeCategory(category)}</strong>
+                    </td>
                     <td class="amount">${this.formatCurrency(categoryBiWeekly)}</td>
                     <td class="amount">${this.formatCurrency(categoryMonthly)}</td>
                     <td class="amount">${this.formatCurrency(categoryYearly)}</td>
@@ -1098,7 +1101,7 @@ class BudgetTool {
                     const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
                     
                     html += `
-                        <tr class="subcategory-row">
+                        <tr class="subcategory-row" data-parent-category="${category}" style="display: none;">
                             <td class="subcategory-indent">${expense.name} (${expense.subCategory})</td>
                             <td class="amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
                             <td class="amount">${this.formatCurrency(expenseMonthly)}</td>
@@ -1113,7 +1116,7 @@ class BudgetTool {
                     const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
                     
                     html += `
-                        <tr class="subcategory-row">
+                        <tr class="subcategory-row" data-parent-category="${category}" style="display: none;">
                             <td class="subcategory-indent">└ ${expense.name}</td>
                             <td class="amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
                             <td class="amount">${this.formatCurrency(expenseMonthly)}</td>
@@ -1142,6 +1145,34 @@ class BudgetTool {
         `;
 
         container.innerHTML = html;
+        
+        // Setup category collapse/expand functionality
+        this.setupCategoryToggle();
+    }
+
+    setupCategoryToggle() {
+        // Add click event listeners to category header rows
+        const categoryHeaders = document.querySelectorAll('.category-header-row');
+        categoryHeaders.forEach(header => {
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', () => {
+                const category = header.dataset.category;
+                const toggleIcon = header.querySelector('.toggle-icon');
+                const subcategoryRows = document.querySelectorAll(`.subcategory-row[data-parent-category="${category}"]`);
+                
+                // Toggle visibility of subcategory rows
+                const isCollapsed = toggleIcon.textContent === '▶';
+                subcategoryRows.forEach(row => {
+                    row.style.display = isCollapsed ? 'table-row' : 'none';
+                });
+                
+                // Update toggle icon
+                toggleIcon.textContent = isCollapsed ? '▼' : '▶';
+                
+                // Add visual feedback for collapsed state
+                header.classList.toggle('collapsed', !isCollapsed);
+            });
+        });
     }
 
     renderExcessFunds() {
