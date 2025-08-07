@@ -116,7 +116,10 @@
             <div class="card">
                 <div class="expenses-header">
                     <h3>Current Expenses</h3>
-                    <button id="clearAllExpenses" class="btn btn-danger btn-small">Clear All Expenses</button>
+                    <div class="expenses-actions">
+                        <button id="refreshExpenseTable" class="btn btn-secondary btn-small">🔄 Refresh</button>
+                        <button id="clearAllExpenses" class="btn btn-danger btn-small">Clear All Expenses</button>
+                    </div>
                 </div>
                 <div class="table-container">
                     <table id="expensesTable">
@@ -128,7 +131,7 @@
                                 <th>Category</th>
                                 <th>Sub</th>
                                 <th>Split</th>
-                                <th></th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody></tbody>

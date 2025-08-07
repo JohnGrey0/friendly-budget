@@ -66,6 +66,11 @@ class BudgetTool {
             this.clearAllExpenses();
         });
 
+        // Refresh expense table
+        document.getElementById('refreshExpenseTable').addEventListener('click', () => {
+            this.refreshExpenseTable();
+        });
+
         // Apply global sharing method
         document.getElementById('setPercentageSharing').addEventListener('click', () => {
             this.setGlobalSharingMethod('percentage');
@@ -395,6 +400,16 @@ class BudgetTool {
             this.render();
             await this.showAlert('All expenses have been cleared.', 'Expenses Cleared', 'success');
         }
+    }
+
+    refreshExpenseTable() {
+        // Force a complete refresh of expense calculations and rendering
+        this.recalculateExpenseBiWeekly();
+        this.saveData();
+        this.render();
+        
+        // Show a brief confirmation
+        this.showAlert('Expense table refreshed successfully.', 'Table Refreshed', 'success');
     }
 
     calculateMonthlyFromBiWeekly(biWeeklyAmount, payPeriods) {
