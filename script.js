@@ -26,6 +26,9 @@ class BudgetTool {
             }
         });
         
+        // Initialize custom split percentages for existing people
+        this.initializeCustomSplits();
+        
         this.initializeEventListeners();
         
         // Check for shared budget in URL after initialization
@@ -88,6 +91,10 @@ class BudgetTool {
 
         document.getElementById('setEvenSharing').addEventListener('click', () => {
             this.setGlobalSharingMethod('even');
+        });
+
+        document.getElementById('setCustomSharing').addEventListener('click', () => {
+            this.setGlobalSharingMethod('custom');
         });
 
         // Analytics period toggle
@@ -202,6 +209,37 @@ class BudgetTool {
         });
     }
 
+    initializeCustomSplits() {
+        // Initialize custom split percentages for all people
+        if (this.people.length > 0) {
+            const totalIncome = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
+            
+            this.people.forEach(person => {
+                if (!person.customSplitPercentage) {
+                    // Set initial custom split based on income percentage
+                    person.customSplitPercentage = totalIncome > 0 ? 
+                        Math.round((person.yearlyPay / totalIncome) * 100) : 
+                        Math.round(100 / this.people.length);
+                }
+            });
+            
+            // Normalize to ensure total equals 100%
+            this.normalizeCustomSplits();
+        }
+    }
+
+    normalizeCustomSplits() {
+        if (this.people.length === 0) return;
+        
+        const totalSplit = this.people.reduce((sum, person) => sum + (person.customSplitPercentage || 0), 0);
+        
+        if (totalSplit !== 100) {
+            // Adjust the first person's percentage to make total 100%
+            const adjustment = 100 - totalSplit;
+            this.people[0].customSplitPercentage = (this.people[0].customSplitPercentage || 0) + adjustment;
+        }
+    }
+
     addPerson() {
         const name = document.getElementById('personName').value.trim();
         const biWeeklyPay = parseFloat(document.getElementById('biWeeklyPay').value);
@@ -218,10 +256,15 @@ class BudgetTool {
             biWeeklyPay,
             payPeriods,
             monthlyPay: this.calculateMonthlyFromBiWeekly(biWeeklyPay, payPeriods),
-            yearlyPay: biWeeklyPay * payPeriods
+            yearlyPay: biWeeklyPay * payPeriods,
+            customSplitPercentage: 0 // Will be calculated below
         };
 
         this.people.push(person);
+        
+        // Recalculate custom splits for all people
+        this.initializeCustomSplits();
+        
         this.clearPersonForm();
         this.saveData();
         this.render();
@@ -275,6 +318,7 @@ class BudgetTool {
 
         if (this.expenses.length === 0) {
             this.saveData(); // Save the global setting even if no expenses
+            this.render(); // Re-render to show/hide custom split controls
             return;
         }
 
@@ -314,6 +358,12 @@ class BudgetTool {
         
         if (confirmed) {
             this.people = this.people.filter(person => person.id !== id);
+            
+            // Recalculate custom splits if needed
+            if (this.people.length > 0) {
+                this.initializeCustomSplits();
+            }
+            
             this.saveData();
             this.render();
         }
@@ -702,10 +752,27 @@ class BudgetTool {
                                 </div>
                             </div>
                             <div class="person-contribution">
-                                <div class="contribution-percentage">
-                                    ${incomePercentage.toFixed(0)}%
-                                </div>
-                                <div class="contribution-label">contribution</div>
+                                ${this.globalSharingMethod === 'custom' ? `
+                                    <div class="custom-split-control">
+                                        <input type="range" 
+                                               min="0" 
+                                               max="100" 
+                                               step="1"
+                                               value="${person.customSplitPercentage || 0}" 
+                                               class="custom-split-slider" 
+                                               data-person-id="${person.id}"
+                                               style="--progress: ${person.customSplitPercentage || 0}%">
+                                        <div class="custom-split-percentage">
+                                            ${person.customSplitPercentage || 0}%
+                                        </div>
+                                    </div>
+                                    <div class="contribution-label">expense split</div>
+                                ` : `
+                                    <div class="contribution-percentage">
+                                        ${incomePercentage.toFixed(0)}%
+                                    </div>
+                                    <div class="contribution-label">${this.globalSharingMethod === 'percentage' ? 'contribution' : 'of income'}</div>
+                                `}
                             </div>
                             <div class="person-header-actions">
                                 <button class="btn btn-danger btn-small remove-person-btn" data-person-id="${person.id}" title="Remove ${person.name}">
@@ -749,6 +816,9 @@ class BudgetTool {
         // Setup inline editing for people
         this.setupInlinePersonEditing();
         
+        // Setup custom split sliders
+        this.setupCustomSplitSliders();
+        
         // Setup person detail toggles
         this.setupPersonToggle();
         
@@ -784,6 +854,113 @@ class BudgetTool {
                 </div>
             </div>
         `;
+    }
+
+    setupCustomSplitSliders() {
+        const sliders = document.querySelectorAll('.custom-split-slider');
+        sliders.forEach(slider => {
+            // Input event for real-time updates while dragging
+            slider.addEventListener('input', (e) => {
+                const personId = parseInt(e.target.getAttribute('data-person-id'));
+                const percentage = parseInt(e.target.value);
+                
+                // Update the display immediately for smooth feedback
+                const percentageDisplay = e.target.parentNode.querySelector('.custom-split-percentage');
+                percentageDisplay.textContent = `${percentage}%`;
+                
+                // Update slider progress visualization
+                e.target.style.setProperty('--progress', `${percentage}%`);
+                
+                // Add visual feedback
+                percentageDisplay.style.background = 'rgba(102, 126, 234, 0.2)';
+                percentageDisplay.style.transform = 'scale(1.05)';
+            });
+            
+            // Change event for final calculation and data saving
+            slider.addEventListener('change', (e) => {
+                const personId = parseInt(e.target.getAttribute('data-person-id'));
+                const percentage = parseInt(e.target.value);
+                
+                // Update the person's custom split percentage
+                const person = this.people.find(p => p.id === personId);
+                if (person) {
+                    person.customSplitPercentage = percentage;
+                    
+                    // Auto-adjust other sliders to keep total at 100%
+                    this.autoAdjustCustomSplits(personId);
+                    
+                    this.saveData();
+                    
+                    // Re-render to update all sliders and calculations
+                    this.render();
+                }
+            });
+            
+            // Mouse events for better visual feedback
+            slider.addEventListener('mousedown', (e) => {
+                e.target.style.transform = 'scaleY(1.2)';
+            });
+            
+            slider.addEventListener('mouseup', (e) => {
+                e.target.style.transform = 'scaleY(1)';
+                
+                // Reset percentage display styling
+                const percentageDisplay = e.target.parentNode.querySelector('.custom-split-percentage');
+                percentageDisplay.style.background = 'rgba(102, 126, 234, 0.1)';
+                percentageDisplay.style.transform = 'scale(1)';
+            });
+            
+            slider.addEventListener('mouseleave', (e) => {
+                e.target.style.transform = 'scaleY(1)';
+                
+                // Reset percentage display styling
+                const percentageDisplay = e.target.parentNode.querySelector('.custom-split-percentage');
+                percentageDisplay.style.background = 'rgba(102, 126, 234, 0.1)';
+                percentageDisplay.style.transform = 'scale(1)';
+            });
+        });
+    }
+
+    autoAdjustCustomSplits(excludePersonId) {
+        const excludedPerson = this.people.find(p => p.id === excludePersonId);
+        const otherPeople = this.people.filter(p => p.id !== excludePersonId);
+        
+        if (otherPeople.length === 0) return;
+        
+        const excludedPercentage = excludedPerson.customSplitPercentage || 0;
+        const remainingPercentage = 100 - excludedPercentage;
+        
+        // Distribute remaining percentage proportionally among other people
+        const currentOtherTotal = otherPeople.reduce((sum, p) => sum + (p.customSplitPercentage || 0), 0);
+        
+        if (currentOtherTotal > 0) {
+            // Calculate new percentages with better rounding to avoid drift
+            let distributed = 0;
+            otherPeople.forEach((person, index) => {
+                const currentPercentage = person.customSplitPercentage || 0;
+                const proportion = currentPercentage / currentOtherTotal;
+                
+                if (index === otherPeople.length - 1) {
+                    // Last person gets whatever is left to ensure total = 100%
+                    person.customSplitPercentage = remainingPercentage - distributed;
+                } else {
+                    const newPercentage = Math.round(remainingPercentage * proportion);
+                    person.customSplitPercentage = newPercentage;
+                    distributed += newPercentage;
+                }
+            });
+        } else {
+            // Equal distribution if no previous percentages
+            const equalShare = Math.floor(remainingPercentage / otherPeople.length);
+            const remainder = remainingPercentage - (equalShare * otherPeople.length);
+            
+            otherPeople.forEach((person, index) => {
+                person.customSplitPercentage = equalShare + (index < remainder ? 1 : 0);
+            });
+        }
+        
+        // Don't call normalizeCustomSplits here as it might adjust the excluded person
+        // The excluded person's percentage should stay exactly as the user set it
     }
 
     setupInlinePersonEditing() {
@@ -1014,7 +1191,10 @@ class BudgetTool {
                             }
                         </td>
                         <td class="editable-cell" data-field="sharingMethod" data-type="select">
-                            <span class="sharing-badge">${expense.sharingMethod === 'even' ? '⚖️' : '📊'}</span>
+                            <span class="sharing-badge">${
+                                expense.sharingMethod === 'even' ? '⚖️' : 
+                                expense.sharingMethod === 'custom' ? '🎛️' : '📊'
+                            }</span>
                         </td>
                         <td>
                             <button class="btn btn-danger remove-expense-btn" data-expense-id="${expense.id}">🗑️</button>
@@ -1076,6 +1256,7 @@ class BudgetTool {
                 inputElement.innerHTML = `
                     <option value="even" ${expense.sharingMethod === 'even' ? 'selected' : ''}>⚖️ 50/50</option>
                     <option value="percentage" ${expense.sharingMethod === 'percentage' ? 'selected' : ''}>📊 % Weighted</option>
+                    <option value="custom" ${expense.sharingMethod === 'custom' ? 'selected' : ''}>🎛️ Custom</option>
                 `;
             }
         } else {
@@ -1533,6 +1714,10 @@ class BudgetTool {
         } else if (expense.sharingMethod === 'percentage') {
             const totalYearlyIncome = this.people.reduce((sum, p) => sum + p.yearlyPay, 0);
             const personPercentage = person.yearlyPay / totalYearlyIncome;
+            const personBiWeeklyShare = expense.biWeeklyAmount * personPercentage;
+            return this.convertExpenseToPersonPayPeriod(personBiWeeklyShare, person);
+        } else if (expense.sharingMethod === 'custom') {
+            const personPercentage = (person.customSplitPercentage || 0) / 100;
             const personBiWeeklyShare = expense.biWeeklyAmount * personPercentage;
             return this.convertExpenseToPersonPayPeriod(personBiWeeklyShare, person);
         }

@@ -144,7 +144,7 @@ select:focus {
 
 .sharing-toggle-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 8px;
     background: #f8f9fa;
     padding: 4px;
@@ -401,15 +401,18 @@ select:focus {
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-    color: white;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    color: #495057;
     padding: 8px 16px;
     font-size: 14px;
+    border: 1px solid #ced4da;
 }
 
 .btn-danger:hover {
     transform: translateY(-1px);
-    box-shadow: 0 3px 10px rgba(255, 107, 107, 0.4);
+    box-shadow: 0 3px 10px rgba(108, 117, 125, 0.3);
+    background: linear-gradient(135deg, #dee2e6 0%, #ced4da 100%);
+    color: #343a40;
 }
 
 .remove-expense-btn {
@@ -422,8 +425,13 @@ select:focus {
     align-items: center;
     justify-content: center;
     line-height: 1;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
+    opacity: 0.8;
+    transition: all 0.2s ease;
+}
+
+.remove-expense-btn:hover {
+    opacity: 1;
+    transform: scale(1.05);
 }
 
 /* Show expense remove button on row hover */
@@ -490,9 +498,13 @@ select:focus {
 }
 
 .person-header-actions .remove-person-btn {
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
+    opacity: 0.8;
+    transition: all 0.2s ease;
     margin-left: 8px;
+}
+
+.person-header-actions .remove-person-btn:hover {
+    transform: scale(1.05);
 }
 
 .person-item:hover .person-header-actions .remove-person-btn {
@@ -576,7 +588,7 @@ select:focus {
 .person-contribution {
     text-align: center;
     flex-shrink: 0;
-    width: 80px; /* Fixed width for consistent alignment */
+    width: 90px; /* Increased width for custom controls */
 }
 
 .contribution-percentage {
@@ -591,6 +603,106 @@ select:focus {
     color: #6c757d;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+.custom-split-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 4px;
+}
+
+.custom-split-slider {
+    width: 70px;
+    height: 6px;
+    background: linear-gradient(to right, #667eea 0%, #667eea var(--progress), #e9ecef var(--progress), #e9ecef 100%);
+    border-radius: 3px;
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.custom-split-slider:hover {
+    background: #dee2e6;
+}
+
+.custom-split-slider:focus {
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.custom-split-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #667eea;
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    transition: all 0.2s ease;
+}
+
+.custom-split-slider::-webkit-slider-thumb:hover {
+    background: #5a6fd8;
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+}
+
+.custom-split-slider::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.2);
+    background: #4c63d2;
+}
+
+.custom-split-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #667eea;
+    border-radius: 50%;
+    border: none;
+    cursor: grab;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    transition: all 0.2s ease;
+}
+
+.custom-split-slider::-moz-range-thumb:hover {
+    background: #5a6fd8;
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+}
+
+.custom-split-slider::-moz-range-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.2);
+    background: #4c63d2;
+}
+
+.custom-split-slider::-moz-range-track {
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    border: none;
+}
+
+.custom-split-percentage {
+    font-size: 16px;
+    font-weight: 700;
+    color: #667eea;
+    min-width: 40px;
+    text-align: center;
+    background: rgba(102, 126, 234, 0.1);
+    padding: 4px 8px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+@keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.05); }
 }
 
 .person-details-expanded {
