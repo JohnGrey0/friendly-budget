@@ -8,6 +8,10 @@ class BudgetTool {
         this.currentEmergencyFund = parseFloat(localStorage.getItem('budgetCurrentEmergencyFund')) || 0;
         this.emergencyFundTargetMonths = parseInt(localStorage.getItem('budgetEmergencyFundTargetMonths')) || 6;
         
+        // Category toggle states
+        this.categoryToggleStates = JSON.parse(localStorage.getItem('budgetCategoryToggleStates')) || {};
+        this.expenseCategoryToggleStates = JSON.parse(localStorage.getItem('budgetExpenseCategoryToggleStates')) || {};
+        
         // Migrate existing expenses to have sharing method
         this.expenses.forEach(expense => {
             if (!expense.sharingMethod) {
@@ -569,6 +573,8 @@ class BudgetTool {
         localStorage.setItem('budgetGlobalSharingMethod', this.globalSharingMethod);
         localStorage.setItem('budgetCurrentEmergencyFund', this.currentEmergencyFund.toString());
         localStorage.setItem('budgetEmergencyFundTargetMonths', this.emergencyFundTargetMonths.toString());
+        localStorage.setItem('budgetCategoryToggleStates', JSON.stringify(this.categoryToggleStates));
+        localStorage.setItem('budgetExpenseCategoryToggleStates', JSON.stringify(this.expenseCategoryToggleStates));
     }
 
     formatCurrency(amount) {
@@ -965,10 +971,16 @@ class BudgetTool {
             const categoryCount = categoryExpenses.length;
             
             // Category header row
+            // Check saved state for this expense category
+            const isCollapsed = this.expenseCategoryToggleStates[category] !== undefined ? 
+                this.expenseCategoryToggleStates[category] : false; // default expanded
+            const toggleIcon = isCollapsed ? '▶' : '▼';
+            const collapsedClass = isCollapsed ? 'collapsed' : '';
+            
             html += `
-                <tr class="expense-category-header" data-category="${category}">
+                <tr class="expense-category-header ${collapsedClass}" data-category="${category}">
                     <td class="expense-category-toggle">
-                        <span class="toggle-icon">▼</span>
+                        <span class="toggle-icon">${toggleIcon}</span>
                         <strong>${this.capitalizeCategory(category)}</strong>
                     </td>
                     <td class="category-summary">${categoryCount} expense${categoryCount !== 1 ? 's' : ''} • ${this.formatCurrency(categoryTotal)}</td>
@@ -980,10 +992,15 @@ class BudgetTool {
                 </tr>
             `;
             
-            // Individual expense rows (visible by default)
+            // Individual expense rows (respect saved state)
             categoryExpenses.forEach(expense => {
+                // Check saved state for display
+                const showExpense = this.expenseCategoryToggleStates[category] !== undefined ? 
+                    !this.expenseCategoryToggleStates[category] : true; // show if not collapsed (default expanded)
+                const displayStyle = showExpense ? '' : ' style="display: none;"';
+                
                 html += `
-                    <tr class="expense-item-row" data-expense-id="${expense.id}" data-parent-category="${category}">
+                    <tr class="expense-item-row" data-expense-id="${expense.id}" data-parent-category="${category}"${displayStyle}>
                         <td class="editable-cell expense-indent" data-field="name" data-type="text">${expense.name}</td>
                         <td class="editable-cell" data-field="monthlyAmount" data-type="number">${this.formatCurrency(expense.monthlyAmount)}</td>
                         <td class="calculated-cell" title="Automatically calculated from monthly amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
@@ -1173,10 +1190,16 @@ class BudgetTool {
             const categoryYearly = categoryBiWeekly * effectivePayPeriods;
             const categoryPercentage = totalBiWeeklyExpenses > 0 ? (categoryBiWeekly / totalBiWeeklyExpenses * 100) : 0;
             
+            // Check saved state for this category
+            const isCollapsed = this.categoryToggleStates[category] !== undefined ? 
+                this.categoryToggleStates[category] : true; // default collapsed
+            const toggleIcon = isCollapsed ? '▶' : '▼';
+            const collapsedClass = isCollapsed ? 'collapsed' : '';
+            
             html += `
-                <tr class="category-header-row collapsed" data-category="${category}">
+                <tr class="category-header-row ${collapsedClass}" data-category="${category}">
                     <td class="category-toggle">
-                        <span class="toggle-icon">▶</span>
+                        <span class="toggle-icon">${toggleIcon}</span>
                         <strong>${this.capitalizeCategory(category)}</strong>
                     </td>
                     <td class="amount">${this.formatCurrency(categoryBiWeekly)}</td>
@@ -1194,8 +1217,13 @@ class BudgetTool {
                     const expenseYearly = expense.biWeeklyAmount * effectivePayPeriods;
                     const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
                     
+                    // Check saved state for display
+                    const showSubcategory = this.categoryToggleStates[category] !== undefined ? 
+                        !this.categoryToggleStates[category] : false; // show if not collapsed
+                    const displayStyle = showSubcategory ? 'table-row' : 'none';
+                    
                     html += `
-                        <tr class="subcategory-row" data-parent-category="${category}" style="display: none;">
+                        <tr class="subcategory-row" data-parent-category="${category}" style="display: ${displayStyle};">
                             <td class="subcategory-indent">${expense.name} (${expense.subCategory})</td>
                             <td class="amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
                             <td class="amount">${this.formatCurrency(expenseMonthly)}</td>
@@ -1249,22 +1277,38 @@ class BudgetTool {
         const categoryHeaders = document.querySelectorAll('.category-header-row');
         categoryHeaders.forEach(header => {
             header.style.cursor = 'pointer';
+            const category = header.dataset.category;
+            
+            // Restore saved state
+            const isCollapsed = this.categoryToggleStates[category] !== undefined ? 
+                this.categoryToggleStates[category] : true; // default collapsed
+            
+            const toggleIcon = header.querySelector('.toggle-icon');
+            const subcategoryRows = document.querySelectorAll(`.subcategory-row[data-parent-category="${category}"]`);
+            
+            // Apply saved state
+            subcategoryRows.forEach(row => {
+                row.style.display = isCollapsed ? 'none' : 'table-row';
+            });
+            toggleIcon.textContent = isCollapsed ? '▶' : '▼';
+            header.classList.toggle('collapsed', isCollapsed);
+            
             header.addEventListener('click', () => {
-                const category = header.dataset.category;
-                const toggleIcon = header.querySelector('.toggle-icon');
-                const subcategoryRows = document.querySelectorAll(`.subcategory-row[data-parent-category="${category}"]`);
-                
                 // Toggle visibility of subcategory rows
-                const isCollapsed = toggleIcon.textContent === '▶';
+                const newIsCollapsed = toggleIcon.textContent === '▶';
                 subcategoryRows.forEach(row => {
-                    row.style.display = isCollapsed ? 'table-row' : 'none';
+                    row.style.display = newIsCollapsed ? 'table-row' : 'none';
                 });
                 
                 // Update toggle icon
-                toggleIcon.textContent = isCollapsed ? '▼' : '▶';
+                toggleIcon.textContent = newIsCollapsed ? '▼' : '▶';
                 
                 // Add visual feedback for collapsed state
-                header.classList.toggle('collapsed', !isCollapsed);
+                header.classList.toggle('collapsed', !newIsCollapsed);
+                
+                // Save state
+                this.categoryToggleStates[category] = !newIsCollapsed;
+                this.saveData();
             });
         });
     }
@@ -1274,22 +1318,38 @@ class BudgetTool {
         const categoryHeaders = document.querySelectorAll('.expense-category-header');
         categoryHeaders.forEach(header => {
             header.style.cursor = 'pointer';
+            const category = header.dataset.category;
+            
+            // Restore saved state
+            const isCollapsed = this.expenseCategoryToggleStates[category] !== undefined ? 
+                this.expenseCategoryToggleStates[category] : false; // default expanded
+            
+            const toggleIcon = header.querySelector('.toggle-icon');
+            const expenseRows = document.querySelectorAll(`.expense-item-row[data-parent-category="${category}"]`);
+            
+            // Apply saved state
+            expenseRows.forEach(row => {
+                row.style.display = isCollapsed ? 'none' : 'table-row';
+            });
+            toggleIcon.textContent = isCollapsed ? '▶' : '▼';
+            header.classList.toggle('collapsed', isCollapsed);
+            
             header.addEventListener('click', () => {
-                const category = header.dataset.category;
-                const toggleIcon = header.querySelector('.toggle-icon');
-                const expenseRows = document.querySelectorAll(`.expense-item-row[data-parent-category="${category}"]`);
-                
                 // Toggle visibility of expense rows
-                const isCollapsed = toggleIcon.textContent === '▶';
+                const newIsCollapsed = toggleIcon.textContent === '▶';
                 expenseRows.forEach(row => {
-                    row.style.display = isCollapsed ? 'table-row' : 'none';
+                    row.style.display = newIsCollapsed ? 'table-row' : 'none';
                 });
                 
                 // Update toggle icon
-                toggleIcon.textContent = isCollapsed ? '▼' : '▶';
+                toggleIcon.textContent = newIsCollapsed ? '▼' : '▶';
                 
                 // Add visual feedback for collapsed state
-                header.classList.toggle('collapsed', !isCollapsed);
+                header.classList.toggle('collapsed', !newIsCollapsed);
+                
+                // Save state
+                this.expenseCategoryToggleStates[category] = !newIsCollapsed;
+                this.saveData();
             });
         });
     }
@@ -1310,10 +1370,10 @@ class BudgetTool {
                     <thead>
                         <tr>
                             <th>Person</th>
-                            <th>Pay Period Income</th>
-                            <th>Pay Period Expenses</th>
-                            <th>Pay Period Excess</th>
-                            <th>Monthly Excess</th>
+                            <th title="Yearly Pay ÷ Pay Periods">Pay Period Income</th>
+                            <th title="Person's allocated share of total household expenses">Pay Period Expenses</th>
+                            <th title="Pay Period Income - Pay Period Expenses">Pay Period Excess</th>
+                            <th title="Monthly Pay - (Pay Period Expenses × Pay Periods ÷ 12)">Monthly Excess</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1329,12 +1389,12 @@ class BudgetTool {
             html += `
                 <tr>
                     <td class="person-name">${person.name}</td>
-                    <td class="amount">${this.formatCurrency(personPayPeriodIncome)}</td>
-                    <td class="amount">${this.formatCurrency(personExpenseShare)}</td>
-                    <td class="amount ${payPeriodExcess >= 0 ? 'positive' : 'negative'}">
+                    <td class="amount" title="${this.formatCurrency(person.yearlyPay)} ÷ ${personPayPeriods} = ${this.formatCurrency(personPayPeriodIncome)}">${this.formatCurrency(personPayPeriodIncome)}</td>
+                    <td class="amount" title="Person's share of total expenses: ${this.formatCurrency(personExpenseShare)}">${this.formatCurrency(personExpenseShare)}</td>
+                    <td class="amount ${payPeriodExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(personPayPeriodIncome)} - ${this.formatCurrency(personExpenseShare)} = ${this.formatCurrency(payPeriodExcess)}">
                         ${this.formatCurrency(payPeriodExcess)}
                     </td>
-                    <td class="amount ${monthlyExcess >= 0 ? 'positive' : 'negative'}">
+                    <td class="amount ${monthlyExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(person.monthlyPay)} - ${this.formatCurrency(personExpenseShare * personPayPeriods / 12)} = ${this.formatCurrency(monthlyExcess)}">
                         ${this.formatCurrency(monthlyExcess)}
                     </td>
                 </tr>
@@ -1364,12 +1424,12 @@ class BudgetTool {
                     <tfoot>
                         <tr class="totals-row">
                             <td><strong>Household Total</strong></td>
-                            <td class="amount"><strong>${this.formatCurrency(totalPayPeriodIncome)}</strong></td>
-                            <td class="amount"><strong>${this.formatCurrency(totalPayPeriodExpenses)}</strong></td>
-                            <td class="amount ${totalPayPeriodExcess >= 0 ? 'positive' : 'negative'}">
+                            <td class="amount" title="Sum of all pay period incomes: ${this.formatCurrency(totalPayPeriodIncome)}"><strong>${this.formatCurrency(totalPayPeriodIncome)}</strong></td>
+                            <td class="amount" title="Sum of all pay period expenses: ${this.formatCurrency(totalPayPeriodExpenses)}"><strong>${this.formatCurrency(totalPayPeriodExpenses)}</strong></td>
+                            <td class="amount ${totalPayPeriodExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(totalPayPeriodIncome)} - ${this.formatCurrency(totalPayPeriodExpenses)} = ${this.formatCurrency(totalPayPeriodExcess)}">
                                 <strong>${this.formatCurrency(totalPayPeriodExcess)}</strong>
                             </td>
-                            <td class="amount ${totalMonthlyExcess >= 0 ? 'positive' : 'negative'}">
+                            <td class="amount ${totalMonthlyExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(totalMonthlyIncome)} - ${this.formatCurrency(totalMonthlyExpenses)} = ${this.formatCurrency(totalMonthlyExcess)}">
                                 <strong>${this.formatCurrency(totalMonthlyExcess)}</strong>
                             </td>
                         </tr>
@@ -1682,6 +1742,79 @@ class BudgetTool {
         slider.style.background = `linear-gradient(90deg, #4a90e2 0%, #4a90e2 ${percentage}%, #e9ecef ${percentage}%, #e9ecef 100%)`;
     }
 
+    updateScenarioSliderColors(slider, value) {
+        // Determine color based on value (positive/negative/neutral)
+        let progressColor, thumbColor;
+        
+        if (value > 0) {
+            // Positive values - green for income increase, red for expense increase
+            if (slider.id === 'incomeAdjustment') {
+                progressColor = '#28a745'; // Green for income increase (good)
+                thumbColor = '#28a745';
+            } else {
+                progressColor = '#dc3545'; // Red for expense increase (bad)
+                thumbColor = '#dc3545';
+            }
+        } else if (value < 0) {
+            // Negative values - red for income decrease, green for expense decrease
+            if (slider.id === 'incomeAdjustment') {
+                progressColor = '#dc3545'; // Red for income decrease (bad)
+                thumbColor = '#dc3545';
+            } else {
+                progressColor = '#28a745'; // Green for expense decrease (good)
+                thumbColor = '#28a745';
+            }
+        } else {
+            // Neutral (zero) - default blue
+            progressColor = '#4a90e2';
+            thumbColor = '#4a90e2';
+        }
+        
+        // Calculate percentage for background gradient
+        const min = parseFloat(slider.min) || 0;
+        const max = parseFloat(slider.max) || 100;
+        const percentage = ((value - min) / (max - min)) * 100;
+        
+        // Update background with color
+        slider.style.background = `linear-gradient(90deg, ${progressColor} 0%, ${progressColor} ${percentage}%, #e9ecef ${percentage}%, #e9ecef 100%)`;
+        
+        // Update thumb color
+        slider.style.setProperty('--thumb-color', thumbColor);
+    }
+
+    updateScenarioDisplayColors(displayElement, value, type) {
+        // Determine color and background based on value and type
+        let color, backgroundColor;
+        
+        if (value > 0) {
+            // Positive values
+            if (type === 'income') {
+                color = '#28a745'; // Green for income increase (good)
+                backgroundColor = 'rgba(40, 167, 69, 0.1)';
+            } else {
+                color = '#dc3545'; // Red for expense increase (bad)
+                backgroundColor = 'rgba(220, 53, 69, 0.1)';
+            }
+        } else if (value < 0) {
+            // Negative values
+            if (type === 'income') {
+                color = '#dc3545'; // Red for income decrease (bad)
+                backgroundColor = 'rgba(220, 53, 69, 0.1)';
+            } else {
+                color = '#28a745'; // Green for expense decrease (good)
+                backgroundColor = 'rgba(40, 167, 69, 0.1)';
+            }
+        } else {
+            // Neutral (zero) - default blue
+            color = '#4a90e2';
+            backgroundColor = 'rgba(74, 144, 226, 0.1)';
+        }
+        
+        // Apply colors
+        displayElement.style.color = color;
+        displayElement.style.backgroundColor = backgroundColor;
+    }
+
     // Helper function to capitalize category names
     capitalizeCategory(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
@@ -1721,7 +1854,147 @@ class BudgetTool {
             'media': 'streaming',
             'gym': 'gym',
             'fitness': 'gym',
-            'health': 'gym'
+            'health': 'gym',
+            // New fun subcategories
+            'coffee': 'coffee',
+            'tea': 'coffee',
+            'shopping': 'shopping',
+            'clothes': 'shopping',
+            'clothing': 'shopping',
+            'book': 'books',
+            'books': 'books',
+            'education': 'education',
+            'course': 'education',
+            'learning': 'education',
+            'travel': 'travel',
+            'vacation': 'travel',
+            'trip': 'travel',
+            'phone': 'phone',
+            'mobile': 'phone',
+            'cellular': 'phone',
+            'internet': 'internet',
+            'wifi': 'internet',
+            'web': 'internet',
+            'pet': 'pet',
+            'dog': 'pet',
+            'cat': 'pet',
+            'vet': 'pet',
+            'game': 'gaming',
+            'gaming': 'gaming',
+            'xbox': 'gaming',
+            'playstation': 'gaming',
+            'music': 'music',
+            'spotify': 'music',
+            'apple': 'music',
+            'beauty': 'beauty',
+            'skincare': 'beauty',
+            'makeup': 'beauty',
+            'hair': 'beauty',
+            'taxi': 'transport',
+            'uber': 'transport',
+            'bus': 'transport',
+            'train': 'transport',
+            'parking': 'transport',
+            'medical': 'medical',
+            'doctor': 'medical',
+            'dentist': 'medical',
+            'pharmacy': 'medical',
+            'hobby': 'hobby',
+            'craft': 'hobby',
+            'art': 'hobby',
+            'sport': 'sports',
+            'sports': 'sports',
+            'ticket': 'entertainment',
+            'movie': 'entertainment',
+            'concert': 'entertainment',
+            'show': 'entertainment',
+            // Additional comprehensive subcategories
+            'hoa': 'hoa',
+            'homeowner': 'hoa',
+            'association': 'hoa',
+            'condo': 'hoa',
+            'saving': 'savings',
+            'savings': 'savings',
+            'investment': 'savings',
+            'retirement': 'savings',
+            '401k': 'savings',
+            'ira': 'savings',
+            'upkeep': 'upkeep',
+            'cleaning': 'upkeep',
+            'landscaping': 'upkeep',
+            'lawn': 'upkeep',
+            'misc': 'misc',
+            'miscellaneous': 'misc',
+            'other': 'misc',
+            'random': 'misc',
+            'electric': 'electric',
+            'electricity': 'electric',
+            'power': 'electric',
+            'water': 'water',
+            'sewer': 'water',
+            'trash': 'trash',
+            'garbage': 'trash',
+            'waste': 'trash',
+            'recycling': 'trash',
+            'loan': 'loan',
+            'debt': 'loan',
+            'credit': 'loan',
+            'car': 'automotive',
+            'auto': 'automotive',
+            'vehicle': 'automotive',
+            'registration': 'automotive',
+            'license': 'license',
+            'permit': 'license',
+            'tax': 'tax',
+            'taxes': 'tax',
+            'income': 'tax',
+            'property': 'tax',
+            'tool': 'tools',
+            'tools': 'tools',
+            'equipment': 'tools',
+            'hardware': 'tools',
+            'software': 'software',
+            'app': 'software',
+            'program': 'software',
+            'license': 'software',
+            'gift': 'gifts',
+            'gifts': 'gifts',
+            'present': 'gifts',
+            'birthday': 'gifts',
+            'holiday': 'gifts',
+            'christmas': 'gifts',
+            'donation': 'charity',
+            'charity': 'charity',
+            'tithe': 'charity',
+            'church': 'charity',
+            'volunteer': 'charity',
+            'childcare': 'childcare',
+            'daycare': 'childcare',
+            'babysitter': 'childcare',
+            'nanny': 'childcare',
+            'school': 'school',
+            'tuition': 'school',
+            'supplies': 'school',
+            'uniform': 'school',
+            'lunch': 'lunch',
+            'breakfast': 'lunch',
+            'snack': 'lunch',
+            'alcohol': 'alcohol',
+            'beer': 'alcohol',
+            'wine': 'alcohol',
+            'bar': 'alcohol',
+            'tobacco': 'tobacco',
+            'cigarette': 'tobacco',
+            'smoking': 'tobacco',
+            'fabric': 'fabric',
+            'sewing': 'fabric',
+            'yarn': 'fabric',
+            'material': 'fabric',
+            'garden': 'garden',
+            'plant': 'garden',
+            'seed': 'garden',
+            'flower': 'garden',
+            'landscaping': 'garden'
         };
         
         // Find matching pattern
@@ -2390,6 +2663,18 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
             incomeDisplay.textContent = `${incomeChange >= 0 ? '+' : ''}${incomeChange}%`;
             expenseDisplay.textContent = `${expenseChange >= 0 ? '+' : ''}${expenseChange}%`;
             
+            // Update display label colors
+            this.updateScenarioDisplayColors(incomeDisplay, incomeChange, 'income');
+            this.updateScenarioDisplayColors(expenseDisplay, expenseChange, 'expense');
+            
+            // Update slider backgrounds with progress
+            this.updateSliderBackground(incomeSlider);
+            this.updateSliderBackground(expenseSlider);
+            
+            // Update slider colors based on values
+            this.updateScenarioSliderColors(incomeSlider, incomeChange);
+            this.updateScenarioSliderColors(expenseSlider, expenseChange);
+            
             // Calculate new values
             const baseIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
             const baseExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
@@ -2459,10 +2744,18 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         const emergencyFundMonths = parseInt(emergencyFundMonthsSlider.value) || this.emergencyFundTargetMonths || 6;
         
         // Calculate emergency fund goal based on selected months
-        const monthlyExpenses = this.analyticsPeriod === 'monthly' ? totalExpenses : 
-                               this.analyticsPeriod === 'yearly' ? totalExpenses / 12 :
-                               totalExpenses * this.getHouseholdEffectivePayPeriods() / 12;
-        const emergencyFundGoal = monthlyExpenses * emergencyFundMonths;
+        // Only include essential expenses (exclude savings and emergency categories)
+        const essentialExpenses = this.expenses.filter(expense => 
+            expense.category && 
+            !expense.category.toLowerCase().includes('savings') && 
+            !expense.category.toLowerCase().includes('emergency')
+        );
+        const totalEssentialExpenses = essentialExpenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        
+        const monthlyEssentialExpenses = this.analyticsPeriod === 'monthly' ? totalEssentialExpenses : 
+                                        this.analyticsPeriod === 'yearly' ? totalEssentialExpenses / 12 :
+                                        totalEssentialExpenses * this.getHouseholdEffectivePayPeriods() / 12;
+        const emergencyFundGoal = monthlyEssentialExpenses * emergencyFundMonths;
         
         // Calculate monthly emergency savings from expenses with "Emergency" category
         const emergencyExpenses = this.expenses.filter(expense => 
@@ -2502,13 +2795,13 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                     <div class="milestone-icon">🛡️</div>
                     <div class="milestone-title">
                         <h5>Emergency Fund</h5>
-                        <p class="milestone-subtitle">${emergencyFundMonths} months of expenses</p>
+                        <p class="milestone-subtitle">${emergencyFundMonths} months of essential expenses</p>
                     </div>
                 </div>
                 
                 <div class="milestone-stats">
                     <div class="stat-item">
-                        <span class="stat-label">Target</span>
+                        <span class="stat-label" title="Based on essential expenses only (excludes savings and emergency fund contributions)">Target</span>
                         <span class="stat-value">${this.formatCurrency(emergencyFundGoal)}</span>
                     </div>
                     <div class="stat-item">
@@ -2524,11 +2817,11 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                 <div class="milestone-progress-section">
                     <div class="progress-header">
                         <span class="progress-label">Progress</span>
-                        <span class="progress-percentage">${Math.min(100, emergencyFundProgress).toFixed(1)}%</span>
+                        <span class="progress-percentage ${emergencyFundProgress > 100 ? 'over-target' : ''}">${emergencyFundProgress.toFixed(1)}%</span>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar-track">
-                            <div class="progress-bar-fill" style="width: ${Math.min(100, emergencyFundProgress)}%"></div>
+                            <div class="progress-bar-fill ${emergencyFundProgress > 100 ? 'over-target' : ''}" style="width: ${Math.min(100, emergencyFundProgress)}%"></div>
                         </div>
                     </div>
                     <div class="progress-footer">

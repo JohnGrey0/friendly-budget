@@ -1993,8 +1993,8 @@ select.inline-edit-input {
 }
 
 .metric-circle {
-    width: 150px;
-    height: 150px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     display: flex;
@@ -2013,14 +2013,16 @@ select.inline-edit-input {
 }
 
 .metric-value {
-    font-size: 24px;
+    font-size: 2rem;
     font-weight: bold;
     margin-bottom: 5px;
 }
 
 .metric-label {
-    font-size: 12px;
+    font-size: 0.8rem;
     opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 /* Budget Bars */
@@ -2303,6 +2305,7 @@ select.inline-edit-input {
     outline: none;
     -webkit-appearance: none;
     appearance: none;
+    --thumb-color: #4a90e2; /* Default thumb color */
 }
 
 .scenario-slider input[type="range"]::-webkit-slider-thumb {
@@ -2310,19 +2313,72 @@ select.inline-edit-input {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #4a90e2;
+    background: var(--thumb-color, #4a90e2);
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(74, 144, 226, 0.3);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.scenario-slider input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
 }
 
 .scenario-slider input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #4a90e2;
+    background: var(--thumb-color, #4a90e2);
     cursor: pointer;
     border: none;
-    box-shadow: 0 2px 6px rgba(74, 144, 226, 0.3);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.scenario-slider input[type="range"]::-moz-range-thumb:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+/* Active/Focus states for better feedback */
+.scenario-slider input[type="range"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+}
+
+.scenario-slider input[type="range"]:active::-webkit-slider-thumb {
+    transform: scale(0.95);
+}
+
+.scenario-slider input[type="range"]:active::-moz-range-thumb {
+    transform: scale(0.95);
+}
+
+/* Add smooth transitions to the track background */
+.scenario-slider input[type="range"] {
+    transition: background 0.3s ease;
+}
+
+/* Enhanced label styling for better visual hierarchy */
+.scenario-slider label {
+    font-weight: 600;
+    color: #555;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scenario-slider label span {
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(74, 144, 226, 0.1);
+    color: #4a90e2;
+    font-size: 0.85rem;
+    min-width: 40px;
+    text-align: center;
+    transition: all 0.3s ease;
 }
 
 .scenario-results {
@@ -2436,6 +2492,38 @@ select.inline-edit-input {
     border-color: #4a90e2;
     box-shadow: 0 0 12px rgba(74, 144, 226, 0.3);
     transform: translateY(-1px);
+}
+
+/* Emergency Fund Input Specific Styling */
+.milestone-input-group.emergency-fund-input {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.milestone-input-group.emergency-fund-input label {
+    flex: 1;
+    margin: 0;
+    font-weight: 600;
+}
+
+.milestone-input-group.emergency-fund-input input[type="number"] {
+    flex: 0 0 120px;
+    max-width: 120px;
+    min-width: 100px;
+    text-align: right;
+    font-weight: 600;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 0;
+}
+
+.milestone-input-group.emergency-fund-input input[type="number"]:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
 }
 
 .milestones-list {
@@ -2575,6 +2663,23 @@ select.inline-edit-input {
     color: #28a745;
 }
 
+.progress-percentage.over-target {
+    color: #ffc107;
+    text-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+    animation: pulse-text 2s infinite ease-in-out;
+}
+
+@keyframes pulse-text {
+    0%, 100% { 
+        color: #ffc107;
+        text-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+    }
+    50% { 
+        color: #fd7e14;
+        text-shadow: 0 0 12px rgba(253, 126, 20, 0.7);
+    }
+}
+
 .progress-bar-container {
     margin-bottom: 12px;
 }
@@ -2598,6 +2703,23 @@ select.inline-edit-input {
 
 .progress-bar-fill.deficit-bar {
     background: linear-gradient(90deg, #dc3545 0%, #fd7e14 100%);
+}
+
+.progress-bar-fill.over-target {
+    background: linear-gradient(90deg, #ffc107 0%, #fd7e14 50%, #e83e8c 100%);
+    box-shadow: 0 0 12px rgba(255, 193, 7, 0.6);
+    animation: pulse-glow 2s infinite ease-in-out;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { 
+        box-shadow: 0 0 12px rgba(255, 193, 7, 0.6); 
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.8); 
+        transform: scale(1.02);
+    }
 }
 
 .progress-bar-fill::after {
@@ -2826,6 +2948,236 @@ select.inline-edit-input {
     background-color: #ecfdf5;
     color: #047857;
     border: 1px solid #a7f3d0;
+}
+
+/* New fun subcategory colors */
+.subcategory-coffee {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.subcategory-shopping {
+    background-color: #fdf2f8;
+    color: #be185d;
+    border: 1px solid #f9a8d4;
+}
+
+.subcategory-books {
+    background-color: #ede9fe;
+    color: #7c3aed;
+    border: 1px solid #c4b5fd;
+}
+
+.subcategory-education {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #93c5fd;
+}
+
+.subcategory-travel {
+    background-color: #ecfccb;
+    color: #365314;
+    border: 1px solid #bef264;
+}
+
+.subcategory-phone {
+    background-color: #e0f2fe;
+    color: #0891b2;
+    border: 1px solid #67e8f9;
+}
+
+.subcategory-internet {
+    background-color: #f0f9ff;
+    color: #0284c7;
+    border: 1px solid #7dd3fc;
+}
+
+.subcategory-pet {
+    background-color: #fef7cd;
+    color: #a16207;
+    border: 1px solid #fcd34d;
+}
+
+.subcategory-gaming {
+    background-color: #f3e8ff;
+    color: #7c2d12;
+    border: 1px solid #d8b4fe;
+}
+
+.subcategory-music {
+    background-color: #fce7f3;
+    color: #be185d;
+    border: 1px solid #f9a8d4;
+}
+
+.subcategory-beauty {
+    background-color: #fdf4ff;
+    color: #a21caf;
+    border: 1px solid #f0abfc;
+}
+
+.subcategory-transport {
+    background-color: #f1f5f9;
+    color: #334155;
+    border: 1px solid #94a3b8;
+}
+
+.subcategory-medical {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+}
+
+.subcategory-hobby {
+    background-color: #fff7ed;
+    color: #ea580c;
+    border: 1px solid #fdba74;
+}
+
+.subcategory-sports {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.subcategory-entertainment {
+    background-color: #fefce8;
+    color: #ca8a04;
+    border: 1px solid #fde047;
+}
+
+/* Additional comprehensive subcategory colors */
+.subcategory-hoa {
+    background-color: #f8fafc;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+}
+
+.subcategory-savings {
+    background-color: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.subcategory-upkeep {
+    background-color: #fefbeb;
+    color: #b45309;
+    border: 1px solid #fbbf24;
+}
+
+.subcategory-misc {
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #94a3b8;
+}
+
+.subcategory-electric {
+    background-color: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fed7aa;
+}
+
+.subcategory-water {
+    background-color: #ecfeff;
+    color: #0891b2;
+    border: 1px solid #67e8f9;
+}
+
+.subcategory-trash {
+    background-color: #f7f7f7;
+    color: #525252;
+    border: 1px solid #a3a3a3;
+}
+
+.subcategory-loan {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+}
+
+.subcategory-automotive {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #94a3b8;
+}
+
+.subcategory-license {
+    background-color: #f0f9ff;
+    color: #0369a1;
+    border: 1px solid #bfdbfe;
+}
+
+.subcategory-tax {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.subcategory-tools {
+    background-color: #fff7ed;
+    color: #ea580c;
+    border: 1px solid #fdba74;
+}
+
+.subcategory-software {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #9ca3af;
+}
+
+.subcategory-gifts {
+    background-color: #fdf2f8;
+    color: #be185d;
+    border: 1px solid #f9a8d4;
+}
+
+.subcategory-charity {
+    background-color: #fefce8;
+    color: #a3a008;
+    border: 1px solid #fde047;
+}
+
+.subcategory-childcare {
+    background-color: #fef7cd;
+    color: #a16207;
+    border: 1px solid #fcd34d;
+}
+
+.subcategory-school {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #93c5fd;
+}
+
+.subcategory-lunch {
+    background-color: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.subcategory-alcohol {
+    background-color: #fef7ff;
+    color: #86198f;
+    border: 1px solid #f3e8ff;
+}
+
+.subcategory-tobacco {
+    background-color: #f5f5f4;
+    color: #57534e;
+    border: 1px solid #a8a29e;
+}
+
+.subcategory-fabric {
+    background-color: #fce7f3;
+    color: #be185d;
+    border: 1px solid #f9a8d4;
+}
+
+.subcategory-garden {
+    background-color: #ecfccb;
+    color: #365314;
+    border: 1px solid #bef264;
 }
 
 /* Default subcategory styling for unmatched subcategories */
