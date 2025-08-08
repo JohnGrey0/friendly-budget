@@ -1803,6 +1803,13 @@ select.inline-edit-input {
     align-items: center;
     color: white;
     box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    cursor: help;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-circle:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
 }
 
 .metric-value {
@@ -2010,6 +2017,13 @@ select.inline-edit-input {
     justify-content: center;
     color: white;
     box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    cursor: help;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.health-score-circle:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
 }
 
 .health-score-value {

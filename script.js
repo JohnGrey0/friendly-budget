@@ -1744,6 +1744,7 @@ class BudgetTool {
         this.renderSavingsRate();
         this.renderSubcategoryChart();
         this.renderSubcategoryBars();
+        this.renderSavingsProjectionChart();
         this.renderBudgetHealthScore();
         this.renderScenarioModeling();
         this.renderFinancialMilestones();
@@ -1751,7 +1752,7 @@ class BudgetTool {
 
     clearAnalytics() {
         // Clear charts if no data
-        const charts = ['expenseBarChart', 'subcategoryBarChart'];
+        const charts = ['expenseBarChart', 'subcategoryBarChart', 'savingsProjectionChart'];
         charts.forEach(chartId => {
             const canvas = document.getElementById(chartId);
             if (canvas) {
@@ -1873,8 +1874,27 @@ class BudgetTool {
         
         document.getElementById('savingsRate').textContent = Math.max(0, savingsRate).toFixed(1) + '%';
         
-        // Update circle color based on savings rate
+        // Update tooltip with actual values
         const circle = document.querySelector('.metric-circle');
+        const savingsExpenses = this.expenses.filter(expense => expense.category === 'savings').reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        const emergencyExpenses = this.expenses.filter(expense => expense.category === 'emergency').reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        
+        const tooltipText = `Savings Rate Calculation:
+        
+Formula: (Savings + Emergency + Excess) ÷ Income × 100%
+
+Breakdown:
+• Savings expenses: ${this.formatCurrency(savingsExpenses)}
+• Emergency expenses: ${this.formatCurrency(emergencyExpenses)}
+• Excess funds: ${this.formatCurrency(excessFunds)}
+• Total savings: ${this.formatCurrency(totalSavings)}
+• Total income: ${this.formatCurrency(totalIncome)}
+
+Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncome)} = ${savingsRate.toFixed(1)}%`;
+        
+        circle.setAttribute('title', tooltipText);
+        
+        // Update circle color based on savings rate
         if (savingsRate >= 20) {
             circle.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
         } else if (savingsRate >= 10) {
@@ -1970,6 +1990,168 @@ class BudgetTool {
                             maxRotation: 45,
                             minRotation: 0
                         }
+                    }
+                }
+            }
+        });
+    }
+
+    renderSavingsProjectionChart() {
+        const canvas = document.getElementById('savingsProjectionChart');
+        const ctx = canvas.getContext('2d');
+        
+        // Destroy existing chart if it exists
+        if (this.savingsProjectionChart) {
+            this.savingsProjectionChart.destroy();
+        }
+
+        // Get current analytics period
+        const isYearly = this.analyticsPeriod === 'yearly';
+        
+        // Calculate savings amounts based on current period
+        const savingsExpenses = this.expenses.filter(expense => expense.category === 'savings');
+        const emergencyExpenses = this.expenses.filter(expense => expense.category === 'emergency');
+        
+        const periodSavings = savingsExpenses.reduce((sum, expense) => {
+            return sum + this.getAnalyticsAmount(expense.biWeeklyAmount);
+        }, 0);
+        
+        const periodEmergency = emergencyExpenses.reduce((sum, expense) => {
+            return sum + this.getAnalyticsAmount(expense.biWeeklyAmount);
+        }, 0);
+
+        // Determine projection parameters based on period
+        let projectionPeriods, periodLabel, timeUnit;
+        
+        if (isYearly) {
+            // Yearly view: 5-year projection
+            projectionPeriods = 5;
+            periodLabel = 'year';
+            timeUnit = 'Year';
+        } else {
+            // Monthly/Bi-weekly view: 1-year projection (12 months)
+            projectionPeriods = 12;
+            periodLabel = this.analyticsPeriod === 'monthly' ? 'month' : 'bi-weekly period';
+            timeUnit = 'Month';
+        }
+        
+        // Generate projection data
+        const labels = [];
+        const savingsData = [];
+        const emergencyData = [];
+        const totalSavingsData = [];
+        
+        let savingsAccumulated = 0;
+        let emergencyAccumulated = 0;
+        
+        for (let i = 0; i <= projectionPeriods; i++) {
+            const date = new Date();
+            
+            if (isYearly) {
+                // 5-year projection with year labels
+                date.setFullYear(date.getFullYear() + i);
+                labels.push(i === 0 ? 'Now' : date.getFullYear().toString());
+            } else {
+                // 1-year projection with month labels (regardless of bi-weekly/monthly period)
+                date.setMonth(date.getMonth() + i);
+                labels.push(i === 0 ? 'Now' : date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+            }
+            
+            // Calculate accumulated savings for this time period
+            if (isYearly) {
+                // For yearly: multiply by number of years
+                savingsAccumulated = periodSavings * i;
+                emergencyAccumulated = periodEmergency * i;
+            } else {
+                // For monthly/bi-weekly: convert to monthly accumulation for 1-year view
+                const monthlyEquivalent = this.analyticsPeriod === 'monthly' ? 
+                    periodSavings : 
+                    (periodSavings * this.getHouseholdEffectivePayPeriods()) / 12;
+                const monthlyEmergencyEquivalent = this.analyticsPeriod === 'monthly' ? 
+                    periodEmergency : 
+                    (periodEmergency * this.getHouseholdEffectivePayPeriods()) / 12;
+                
+                savingsAccumulated = monthlyEquivalent * i;
+                emergencyAccumulated = monthlyEmergencyEquivalent * i;
+            }
+            
+            savingsData.push(savingsAccumulated);
+            emergencyData.push(emergencyAccumulated);
+            totalSavingsData.push(savingsAccumulated + emergencyAccumulated);
+        }
+
+        this.savingsProjectionChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: `Savings Growth (per ${periodLabel})`,
+                        data: savingsData,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: `Emergency Fund Growth (per ${periodLabel})`,
+                        data: emergencyData,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: `Total Savings Growth (per ${periodLabel})`,
+                        data: totalSavingsData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: `${projectionPeriods}-${timeUnit} Savings Projection (${this.formatCurrency(periodSavings + periodEmergency)}/${periodLabel})`
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        hoverBackgroundColor: 'white',
+                        hoverBorderWidth: 2
                     }
                 }
             }
@@ -2108,6 +2290,52 @@ class BudgetTool {
         const circleElement = document.querySelector('.health-score-circle');
         
         scoreElement.textContent = Math.round(score);
+        
+        // Create detailed tooltip with actual values
+        let savingsPoints = 0;
+        let savingsText = '';
+        if (savingsRate >= 20) {
+            savingsPoints = 40;
+            savingsText = `Excellent (≥20%): ${savingsRate.toFixed(1)}%`;
+        } else if (savingsRate >= 10) {
+            savingsPoints = 25;
+            savingsText = `Good (≥10%): ${savingsRate.toFixed(1)}%`;
+        } else if (savingsRate >= 0) {
+            savingsPoints = 10;
+            savingsText = `Low (<10%): ${savingsRate.toFixed(1)}%`;
+        } else {
+            savingsPoints = 0;
+            savingsText = `Negative: ${savingsRate.toFixed(1)}%`;
+        }
+        
+        const incomePoints = this.people.length >= 2 ? 20 : 10;
+        const incomeText = this.people.length >= 2 ? `Multiple sources (${this.people.length})` : `Single source (${this.people.length})`;
+        
+        const categorizationPoints = categorizationRate >= 0.8 ? 20 : (categorizationRate >= 0.5 ? 15 : 5);
+        const categorizationText = `${(categorizationRate * 100).toFixed(1)}% categorized (${categorizedExpenses}/${this.expenses.length})`;
+        
+        const balancePoints = totalIncome > totalExpenses ? 20 : 0;
+        const balanceText = totalIncome > totalExpenses ? `Surplus: ${this.formatCurrency(totalIncome - totalExpenses)}` : `Deficit: ${this.formatCurrency(totalExpenses - totalIncome)}`;
+        
+        const tooltipText = `Budget Health Score Breakdown:
+
+SCORING COMPONENTS (Total: ${Math.round(score)}/100)
+
+1. Savings Rate (40 pts max): ${savingsPoints} pts
+   ${savingsText}
+
+2. Income Stability (20 pts max): ${incomePoints} pts
+   ${incomeText}
+
+3. Expense Organization (20 pts max): ${categorizationPoints} pts
+   ${categorizationText}
+
+4. Budget Balance (20 pts max): ${balancePoints} pts
+   ${balanceText}
+
+Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Improvement'}`;
+        
+        circleElement.setAttribute('title', tooltipText);
         
         // Update circle color based on score
         if (score >= 75) {
