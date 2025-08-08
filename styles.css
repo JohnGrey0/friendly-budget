@@ -1549,7 +1549,7 @@ textarea {
     }
     
     .custom-split-slider {
-        display: none; /* Hide slider in compact view */
+        display: none !important; /* Hide slider in compact view */
     }
     
     .custom-split-percentage {
@@ -1657,6 +1657,52 @@ textarea {
         white-space: nowrap;
         font-size: var(--font-size-xs);
     }
+    
+    /* Restore full-size custom split control on desktop */
+    .custom-split-control {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        padding: 8px 4px !important;
+        margin: 0 !important;
+        height: auto !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+    }
+    
+    .custom-split-slider {
+        display: block !important; /* Show slider on desktop */
+        width: 120px !important;
+        height: 8px !important;
+        background: linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) var(--progress), var(--border-primary) var(--progress), var(--border-primary) 100%) !important;
+        border-radius: var(--border-radius-sm) !important;
+        outline: none !important;
+        appearance: none !important;
+        cursor: pointer !important;
+        transition: var(--transition-base) !important;
+        position: relative !important;
+    }
+    
+    /* Hide default slider tracks on desktop */
+    .custom-split-slider::-webkit-slider-track {
+        background: transparent !important;
+        border: none !important;
+        height: 8px !important;
+    }
+    
+    .custom-split-slider::-moz-range-track {
+        background: transparent !important;
+        border: none !important;
+        height: 8px !important;
+    }
+    
+    .custom-split-percentage {
+        font-size: var(--font-size-base) !important;
+        font-weight: var(--font-weight-semibold) !important;
+        color: var(--text-primary) !important;
+    }
 }
 
 .contribution-percentage {
@@ -1682,16 +1728,9 @@ textarea {
     padding: 8px 4px;
 }
 
+/* Base custom split slider - hidden by default, shown only on desktop */
 .custom-split-slider {
-    width: 70px;
-    height: 6px;
-    background: linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) var(--progress), var(--border-primary) var(--progress), var(--border-primary) 100%);
-    border-radius: var(--border-radius-sm);
-    outline: none;
-    appearance: none;
-    cursor: pointer;
-    transition: var(--transition-base);
-    position: relative;
+    display: none;
 }
 
 .custom-split-slider:hover {
@@ -2189,6 +2228,7 @@ tr:hover {
     position: relative;
     user-select: none;
     padding: 12px 15px !important;
+    text-align: left !important; /* Override center alignment for category headers */
 }
 
 .expense-category-toggle .toggle-icon {
@@ -2220,6 +2260,7 @@ tr:hover {
 
 .expense-indent {
     padding-left: 30px !important;
+    text-align: center;
 }
 
 .editable-cell {

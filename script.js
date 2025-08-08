@@ -1022,7 +1022,7 @@ class BudgetTool {
             
             html += `
                 <div class="household-totals-summary">
-                    <h4 class="totals-title">Household Totals</h4>
+                    <h4 class="totals-title">Household Income</h4>
                     <div class="header-household-totals">
                         <div class="header-total-item">
                             <span class="header-total-label">Bi-weekly</span>
@@ -1391,7 +1391,7 @@ class BudgetTool {
         const tbody = document.querySelector('#expensesTable tbody');
         
         if (this.expenses.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No expenses added yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No expenses added yet.</td></tr>';
             return;
         }
 
@@ -1431,7 +1431,6 @@ class BudgetTool {
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td></td>
                 </tr>
             `;
             
@@ -1446,7 +1445,6 @@ class BudgetTool {
                     <tr class="expense-item-row" data-expense-id="${expense.id}" data-parent-category="${category}"${displayStyle}>
                         <td class="editable-cell expense-indent" data-field="name" data-type="text">${expense.name}</td>
                         <td class="editable-cell" data-field="monthlyAmount" data-type="number">${this.formatCurrency(expense.monthlyAmount)}</td>
-                        <td class="calculated-cell" title="Automatically calculated from monthly amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
                         <td class="editable-cell" data-field="category" data-type="select">
                             <span class="category-badge ${this.getCategoryClass(expense.category)}">${this.capitalizeCategory(expense.category)}</span>
                         </td>
@@ -2123,19 +2121,15 @@ class BudgetTool {
                     aValue = a.monthlyAmount;
                     bValue = b.monthlyAmount;
                     break;
-                case 2: // Bi-weekly amount
-                    aValue = a.biWeeklyAmount;
-                    bValue = b.biWeeklyAmount;
-                    break;
-                case 3: // Category
+                case 2: // Category
                     aValue = a.category.toLowerCase();
                     bValue = b.category.toLowerCase();
                     break;
-                case 4: // Sub-category
+                case 3: // Sub-category
                     aValue = (a.subCategory || '').toLowerCase();
                     bValue = (b.subCategory || '').toLowerCase();
                     break;
-                case 5: // Sharing method
+                case 4: // Sharing method
                     aValue = a.sharingMethod.toLowerCase();
                     bValue = b.sharingMethod.toLowerCase();
                     break;
