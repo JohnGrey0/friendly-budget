@@ -3327,16 +3327,20 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                 
                 <div class="milestone-stats">
                     <div class="stat-item">
-                        <span class="stat-label" title="Based on essential expenses only (excludes savings and emergency fund contributions)">Target</span>
-                        <span class="stat-value">${this.formatCurrency(emergencyFundGoal)}</span>
-                    </div>
-                    <div class="stat-item">
                         <span class="stat-label">Current</span>
                         <span class="stat-value editable-emergency-amount" data-current-amount="${currentEmergencyFund}">${this.formatCurrency(currentEmergencyFund)}</span>
                     </div>
                     <div class="stat-item">
+                        <span class="stat-label" title="Based on essential expenses only (excludes savings and emergency fund contributions)">Target</span>
+                        <span class="stat-value">${this.formatCurrency(emergencyFundGoal)}</span>
+                    </div>
+                    <div class="stat-item">
                         <span class="stat-label">Monthly Savings</span>
                         <span class="stat-value">${this.formatCurrency(monthlyEmergencySavings)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Yearly Savings</span>
+                        <span class="stat-value">${this.formatCurrency(monthlyEmergencySavings * 12)}</span>
                     </div>
                 </div>
                 
