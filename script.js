@@ -2473,12 +2473,17 @@ Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncom
 
         if (subcategoryData.length === 0) {
             container.innerHTML = '<div class="empty-state">Add expenses with subcategories to see breakdown</div>';
+            // Apply smallest size for empty state
+            this.applySubcategorySizing(0);
             return;
         }
 
         // Sort by amount (highest first) - show all subcategories
         subcategoryData.sort((a, b) => b.amount - a.amount);
         const allSubcategories = subcategoryData; // Show all instead of limiting to top 6
+        
+        // Apply dynamic sizing based on number of subcategories
+        this.applySubcategorySizing(allSubcategories.length);
         
         const totalSubcategoryAmount = subcategoryData.reduce((sum, item) => sum + item.amount, 0);
 
@@ -2505,6 +2510,37 @@ Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncom
         html += '</div>';
 
         container.innerHTML = html;
+    }
+
+    applySubcategorySizing(subcategoryCount) {
+        const subcategoryBars = document.getElementById('subcategoryBars');
+        
+        // Remove all existing height classes
+        const barSizeClasses = [
+            'small-list',
+            'medium-list',
+            'large-list', 
+            'extra-large-list'
+        ];
+        
+        barSizeClasses.forEach(cls => subcategoryBars.classList.remove(cls));
+        
+        // Apply appropriate height based on subcategory count
+        // Card width stays standard, only height adjusts
+        if (subcategoryCount <= 3) {
+            subcategoryBars.classList.add('small-list');
+        } else if (subcategoryCount <= 6) {
+            subcategoryBars.classList.add('medium-list');
+        } else if (subcategoryCount <= 12) {
+            subcategoryBars.classList.add('large-list');
+        } else {
+            subcategoryBars.classList.add('extra-large-list');
+        }
+        
+        // Refresh Muuri layout to accommodate size changes
+        if (window.grid) {
+            window.grid.refreshItems().layout();
+        }
     }
 
 
