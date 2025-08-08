@@ -1014,6 +1014,33 @@ class BudgetTool {
             `;
         }).join('');
 
+        // Add household totals section at the end if we have people
+        if (this.people.length > 0) {
+            const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
+            const totalMonthly = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
+            const totalBiWeekly = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
+            
+            html += `
+                <div class="household-totals-summary">
+                    <h4 class="totals-title">Household Totals</h4>
+                    <div class="header-household-totals">
+                        <div class="header-total-item">
+                            <span class="header-total-label">Bi-weekly</span>
+                            <span class="header-total-amount">${this.formatCurrency(totalBiWeekly)}</span>
+                        </div>
+                        <div class="header-total-item">
+                            <span class="header-total-label">Monthly</span>
+                            <span class="header-total-amount">${this.formatCurrency(totalMonthly)}</span>
+                        </div>
+                        <div class="header-total-item">
+                            <span class="header-total-label">Yearly</span>
+                            <span class="header-total-amount">${this.formatCurrency(totalYearly)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         peopleList.innerHTML = html;
         
         // Setup inline editing for people
@@ -1024,13 +1051,18 @@ class BudgetTool {
         
         // Setup person detail toggles
         this.setupPersonToggle();
-        
-        // Render household totals in the right column
-        this.renderHouseholdTotals();
     }
 
     renderHouseholdTotals() {
+        // This function is now primarily for backward compatibility
+        // The main household totals are now displayed within the people card
+        
+        // Update header totals if that element exists
+        this.renderHeaderHouseholdTotals();
+        
+        // Legacy support for separate household totals card if it still exists
         const householdTotals = document.getElementById('householdTotals');
+        if (!householdTotals) return;
         
         if (this.people.length === 0) {
             householdTotals.innerHTML = '<div class="empty-state">Add people to see totals</div>';
@@ -1054,6 +1086,37 @@ class BudgetTool {
                 <div class="total-row">
                     <span class="total-label">Yearly:</span>
                     <span class="total-amount">${this.formatCurrency(totalYearly)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    renderHeaderHouseholdTotals() {
+        const headerTotals = document.getElementById('headerHouseholdTotals');
+        if (!headerTotals) return;
+        
+        if (this.people.length === 0) {
+            headerTotals.innerHTML = '<div class="empty-state">No household data</div>';
+            return;
+        }
+
+        const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
+        const totalMonthly = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
+        const totalBiWeekly = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
+
+        headerTotals.innerHTML = `
+            <div class="header-household-totals">
+                <div class="header-total-item">
+                    <span class="header-total-label">Bi-weekly</span>
+                    <span class="header-total-amount">${this.formatCurrency(totalBiWeekly)}</span>
+                </div>
+                <div class="header-total-item">
+                    <span class="header-total-label">Monthly</span>
+                    <span class="header-total-amount">${this.formatCurrency(totalMonthly)}</span>
+                </div>
+                <div class="header-total-item">
+                    <span class="header-total-label">Yearly</span>
+                    <span class="header-total-amount">${this.formatCurrency(totalYearly)}</span>
                 </div>
             </div>
         `;

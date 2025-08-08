@@ -759,6 +759,79 @@ select:focus {
     font-weight: var(--font-weight-semibold);
 }
 
+/* Header Household Totals - Compact version for header area */
+.header-household-totals {
+    display: flex;
+    gap: var(--spacing-6);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.header-total-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    min-width: 80px;
+}
+
+.header-total-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.header-total-amount {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+
+/* Household Totals Summary within People Card */
+.household-totals-summary {
+    margin-top: var(--spacing-6);
+    padding: var(--spacing-5);
+    border-top: 2px solid var(--color-primary);
+    background: var(--background-secondary);
+    border-radius: var(--border-radius-sm);
+    text-align: center;
+}
+
+.totals-title {
+    margin: 0 0 var(--spacing-4) 0;
+    color: var(--color-primary);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    text-align: center;
+}
+
+.household-totals-summary .header-household-totals {
+    justify-content: center;
+    gap: var(--spacing-8);
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.household-totals-summary .header-total-item {
+    min-width: 100px;
+    padding: var(--spacing-2);
+}
+
+.household-totals-summary .header-total-label {
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-1);
+}
+
+.household-totals-summary .header-total-amount {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Card-based Household Totals */
+
 .household-totals-content {
     display: flex;
     flex-direction: column;
@@ -772,6 +845,7 @@ select:focus {
     padding: var(--spacing-2) 0;
     border-bottom: 1px solid var(--border-primary);
     font-size: var(--font-size-sm);
+    min-width: 0; /* Allow content to shrink */
 }
 
 .total-row:last-child {
@@ -784,11 +858,15 @@ select:focus {
 .total-label {
     color: var(--text-muted);
     font-weight: var(--font-weight-medium);
+    flex: 0 0 auto; /* Don't grow, don't shrink */
 }
 
 .total-amount {
     font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
+    text-align: right;
+    flex: 0 0 auto; /* Don't grow, don't shrink */
+    margin-left: var(--spacing-4); /* Fixed gap between label and amount */
 }
 
 /* ==========================================================================
@@ -2312,13 +2390,15 @@ select.inline-edit-input {
 
 .excess-funds-table tfoot .totals-row td {
     border-bottom: none;
-    padding: 18px 12px;
-    font-size: var(--font-size-lg);
+    padding: 15px 12px;
+    font-size: var(--font-size-base);
+    white-space: nowrap;
 }
 
 .excess-funds-table tfoot .totals-row td:first-child {
     color: var(--color-info);
     font-weight: var(--font-weight-bold);
+    white-space: nowrap;
 }
 
 /* Responsive adjustments for excess funds table */
@@ -2338,7 +2418,8 @@ select.inline-edit-input {
     
     .excess-funds-table tfoot .totals-row td {
         padding: 12px 6px;
-        font-size: 13px;
+        font-size: 12px;
+        white-space: nowrap;
     }
 }
 
@@ -2368,24 +2449,24 @@ select.inline-edit-input {
 
 .grid-item {
     position: absolute;
-    width: calc(33.333% - 20px);
-    margin: 0 15px 25px 0;
+    width: calc(33.333% - 16px);
+    margin: 0 8px 25px 0;
     padding: 0;
 }
 
 .grid-item-wide {
-    width: calc(66.666% - 10px);
-    margin: 0 15px 25px 0;
+    width: calc(66.666% - 16px);
+    margin: 0 8px 25px 0;
 }
 
 .grid-item-health-score {
-    width: calc(33.333% - 20px);
-    margin: 0 15px 25px 0;
+    width: calc(33.333% - 16px);
+    margin: 0 8px 25px 0;
 }
 
 .grid-item-small {
-    width: calc(33.333% - 20px);
-    margin: 0 15px 25px 0;
+    width: calc(33.333% - 16px);
+    margin: 0 8px 25px 0;
 }
 
 .analytics-card {
@@ -2469,17 +2550,17 @@ select.inline-edit-input {
 }
 
 .grid-item-wide.muuri-item-releasing {
-    width: calc(66.666% - 10px) !important;
+    width: calc(66.666% - 16px) !important;
     transition: all 0.3s ease;
 }
 
 .grid-item-health-score.muuri-item-releasing {
-    width: calc(33.333% - 20px) !important;
+    width: calc(33.333% - 16px) !important;
     transition: all 0.3s ease;
 }
 
 .grid-item-small.muuri-item-releasing {
-    width: calc(33.333% - 20px) !important;
+    width: calc(33.333% - 16px) !important;
     transition: all 0.3s ease;
 }
 
@@ -2563,10 +2644,12 @@ select.inline-edit-input {
 @media (max-width: 1200px) {
     .grid-item {
         width: calc(50% - 12px);
+        margin: 0 6px 25px 0;
     }
     
     .grid-item-wide {
-        width: 100%;
+        width: calc(100% - 12px);
+        margin: 0 6px 25px 0;
     }
 }
 
