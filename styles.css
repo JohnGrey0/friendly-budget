@@ -285,6 +285,18 @@ body {
     margin: 0 auto;
     padding: var(--spacing-5);
     width: 100%;
+    box-sizing: border-box;
+}
+
+/* Enhanced desktop container with better centering */
+@media (min-width: 1201px) {
+    .container {
+        max-width: 1180px;
+        padding: var(--spacing-6) var(--spacing-8);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: var(--border-radius-lg);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.1);
+    }
 }
 
 /* Responsive container padding */
@@ -559,11 +571,8 @@ header p {
     margin-top: var(--spacing-5);
 }
 
-/* People & Budget side-by-side layout */
+/* People section - full width layout */
 .people-budget-layout {
-    display: grid;
-    grid-template-columns: 7fr 3fr;
-    gap: var(--spacing-5);
     margin-bottom: var(--spacing-8);
 }
 
@@ -652,13 +661,36 @@ select:focus {
 }
 
 .sharing-toggle-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    display: flex;
     gap: var(--spacing-2);
     background: var(--bg-muted);
     padding: var(--spacing-1);
     border-radius: var(--border-radius-md);
     border: 1px solid var(--border-primary);
+    width: fit-content;
+    margin: 0 auto;
+}
+
+/* Desktop-specific button sizing */
+@media (min-width: 768px) {
+    .sharing-toggle-buttons {
+        margin: 0;
+    }
+    
+    /* Make budget settings section more compact on desktop */
+    .budget-settings-section {
+        max-width: 600px;
+    }
+    
+    .budget-settings-section .card {
+        max-width: 100%;
+        width: fit-content;
+        min-width: 500px;
+    }
+    
+    .global-sharing-control {
+        width: fit-content;
+    }
 }
 
 .btn-toggle {
@@ -675,6 +707,9 @@ select:focus {
     letter-spacing: normal;
     text-align: center;
     position: relative;
+    white-space: nowrap;
+    min-width: 120px;
+    flex-shrink: 0;
 }
 
 .btn-toggle:hover {
@@ -1389,10 +1424,239 @@ textarea {
     text-overflow: ellipsis;
 }
 
+/* Mobile responsiveness for people list - Clean 6-row layout */
+@media (max-width: 640px) {
+    .person-item {
+        padding: var(--spacing-4) var(--spacing-3);
+        margin-bottom: var(--spacing-4);
+        min-height: auto;
+    }
+    
+    /* Row 1: Avatar and Name (contribution moved to overlay) */
+    .person-header {
+        display: grid;
+        grid-template-columns: 50px 1fr;
+        gap: var(--spacing-3);
+        align-items: start;
+        margin-bottom: var(--spacing-4);
+        position: relative;
+    }
+    
+    .person-avatar {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: center;
+    }
+    
+    .person-main-info {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+        display: block;
+        overflow: hidden;
+    }
+    
+    .person-name {
+        font-size: var(--font-size-base);
+        font-weight: var(--font-weight-semibold);
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--text-primary) !important;
+        background: none !important;
+        padding: 0 !important;
+        line-height: 1.2;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+    }
+    
+    /* Move income summary to same line as name */
+    .person-main-info .person-income-summary {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-1);
+        margin: 0;
+        padding: 0;
+        background: none;
+        border-radius: 0;
+        flex-shrink: 0;
+    }
+    
+    .person-main-info .primary-income {
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+        color: var(--color-primary) !important;
+        padding: 0 !important;
+        background: none !important;
+        margin: 0;
+        text-decoration: none !important;
+        cursor: default !important;
+        white-space: nowrap;
+    }
+    
+    .person-main-info .income-period {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary) !important;
+        text-transform: none;
+        margin: 0;
+        white-space: nowrap;
+        opacity: 1 !important;
+    }
+    
+    /* Position contribution percentage under the name */
+    .person-contribution {
+        display: flex !important;
+        align-items: center;
+        justify-content: flex-start;
+        margin: var(--spacing-1) 0 0 0;
+        padding: var(--spacing-1);
+        background: var(--color-primary);
+        color: white;
+        border-radius: var(--border-radius-sm);
+        width: fit-content;
+        height: 20px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    
+    .contribution-percentage {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        color: white !important;
+        margin: 0;
+        line-height: 1;
+        white-space: nowrap;
+    }
+    
+    .contribution-label {
+        display: none;
+    }
+    
+    /* Custom split control positioned under name */
+    .custom-split-control {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        margin: var(--spacing-1) 0 0 0;
+        padding: var(--spacing-1);
+        background: var(--color-primary);
+        border-radius: var(--border-radius-sm);
+        width: fit-content;
+        height: 20px;
+        text-align: center;
+    }
+    
+    .custom-split-slider {
+        display: none; /* Hide slider in compact view */
+    }
+    
+    .custom-split-percentage {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        color: white !important;
+        margin: 0;
+        line-height: 1;
+        white-space: nowrap;
+    }
+    
+    /* Hide the standalone income summary since it's now in person-main-info */
+    .person-item > .person-income-summary {
+        display: none !important;
+    }
+    
+    /* Hide the standalone income summary since it's now in person-main-info */
+    .person-item > .person-income-summary {
+        display: none !important;
+    }
+    
+    /* Row 2: Details and Trash Can on same line, above progress bar */
+    .person-header-actions {
+        display: flex !important;
+        gap: var(--spacing-3);
+        align-items: center;
+        justify-content: flex-start;
+        margin-bottom: var(--spacing-3);
+    }
+    
+    .person-toggle-btn {
+        padding: var(--spacing-1) var(--spacing-2);
+        margin: 0;
+        font-size: var(--font-size-xs);
+        min-height: 28px;
+        max-height: 28px;
+        border-radius: var(--border-radius-sm);
+        background: var(--bg-muted);
+        color: var(--text-primary);
+        border: 1px solid var(--border-primary);
+        text-align: center;
+        line-height: 1;
+        font-weight: var(--font-weight-medium);
+        width: auto;
+        flex: 0 0 auto; /* Don't grow, just fit content */
+        max-width: 60px; /* Smaller max width */
+    }
+    
+    .person-toggle-btn:hover {
+        background: var(--color-primary-alpha);
+    }
+    
+    .remove-person-btn {
+        width: 32px !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        font-size: var(--font-size-sm) !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: var(--border-radius-sm) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+    
+    /* Row 3: Progress Bar (moved up to be right below actions) */
+    .income-bar {
+        margin-top: 0 !important;
+        margin-bottom: var(--spacing-3);
+        height: 10px;
+        background: var(--bg-muted);
+        border-radius: var(--border-radius-sm);
+        overflow: hidden;
+    }
+    
+    .income-bar-fill {
+        height: 100%;
+        border-radius: var(--border-radius-sm);
+        transition: width 0.3s ease;
+    }
+}
+
 .person-contribution {
     text-align: center;
     flex-shrink: 0;
     width: 90px; /* Increased width for custom controls */
+}
+
+/* Desktop-specific fixes for contribution and toggle button */
+@media (min-width: 641px) {
+    .person-contribution {
+        width: 110px; /* More space to prevent wrapping */
+        min-width: 110px;
+    }
+    
+    .person-toggle-btn {
+        width: 80px; /* More space to prevent "Details" wrapping */
+        min-width: 80px;
+        white-space: nowrap;
+    }
+    
+    .contribution-label {
+        white-space: nowrap;
+        font-size: var(--font-size-xs);
+    }
 }
 
 .contribution-percentage {
@@ -1526,6 +1790,51 @@ textarea {
     padding: 0 15px;
 }
 
+/* Mobile optimizations for person details */
+@media (max-width: 640px) {
+    .person-details-expanded {
+        padding: var(--spacing-4);
+        margin: var(--spacing-4) 0;
+        border-radius: var(--border-radius-md);
+        overflow-x: auto;
+        max-width: 100%;
+    }
+    
+    /* Make tables responsive in person details */
+    .person-details-expanded table {
+        width: 100%;
+        font-size: var(--font-size-sm);
+        table-layout: auto;
+    }
+    
+    .person-details-expanded th,
+    .person-details-expanded td {
+        padding: var(--spacing-2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+    }
+    
+    /* Stack income summary on mobile */
+    .income-summary {
+        padding: var(--spacing-4);
+        margin-top: var(--spacing-4);
+    }
+    
+    .summary-row {
+        flex-direction: column;
+        gap: var(--spacing-1);
+        margin-bottom: var(--spacing-2);
+        text-align: left;
+    }
+    
+    .summary-row span:first-child {
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+    }
+}
+
 .person-toggle-btn {
     background: none;
     border: none;
@@ -1539,9 +1848,10 @@ textarea {
     border-radius: var(--border-radius-sm);
     transition: var(--transition-smooth);
     margin-left: 10px;
-    width: 70px; /* Fixed width for consistent alignment */
+    width: 80px; /* Increased width to prevent wrapping */
     text-align: center;
     flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .person-toggle-btn:hover {
@@ -4003,11 +4313,6 @@ select.inline-edit-input {
         gap: 15px;
     }
     
-    .people-budget-layout {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    
     .charts-container {
         grid-template-columns: 1fr;
         gap: 15px;
@@ -4489,11 +4794,6 @@ select.inline-edit-input {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-    .people-budget-layout {
-        grid-template-columns: 1fr;
-        gap: 0;
-    }
-    
     .people-section {
         margin-bottom: 30px;
     }
@@ -4529,13 +4829,21 @@ body {
 }
 
 /* Prevent horizontal overflow on all levels */
-.container,
 section,
 .card,
 .budget-card {
     max-width: 100%;
     overflow-wrap: break-word;
     word-wrap: break-word;
+}
+
+/* Only apply container constraints on mobile */
+@media (max-width: 1200px) {
+    .container {
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+    }
 }
 
 /* Only apply form constraints on mobile */

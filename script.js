@@ -977,7 +977,7 @@ class BudgetTool {
                                     <div class="contribution-label">${this.globalSharingMethod === 'percentage' ? 'contribution' : 'of income'}</div>
                                 `}
                             </div>
-                            <div class="person-header-actions">
+                            <div class="person-header-actions" data-contribution="${incomePercentage.toFixed(0)}%">
                                 <button class="btn btn-danger btn-small remove-person-btn" data-person-id="${person.id}" title="Remove ${person.name}">
                                     🗑️
                                 </button>
