@@ -104,6 +104,20 @@
     --background-primary: var(--bg-card);
     --background-secondary: var(--bg-muted);
     --background-hover: var(--color-gray-100);
+    --table-row-hover: var(--color-gray-100);
+    --cell-hover-bg: var(--color-gray-200);
+    --cell-hover-border: var(--color-primary);
+    --cell-editing-bg: #fff3cd;
+    --cell-editing-border: #ffc107;
+    --calculated-cell-bg: #f8f9fa;
+    --calculated-cell-text: #6c757d;
+    --category-summary-bg: #f8f9fa;
+    --analytics-toggle-bg: #f8f9fa;
+    --analytics-toggle-border: #6f42c1;
+    --analytics-toggle-text: #555;
+    --milestone-card-bg: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    --milestone-card-border: #e9ecef;
+    --milestone-controls-bg: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     
     /* Semantic Colors */
     --color-success: #28a745;
@@ -179,6 +193,20 @@
     --background-primary: var(--bg-card);
     --background-secondary: var(--bg-muted);
     --background-hover: var(--color-gray-200);
+    --table-row-hover: var(--color-gray-300);
+    --cell-hover-bg: var(--color-gray-400);
+    --cell-hover-border: var(--color-primary);
+    --cell-editing-bg: #3d3d1e;
+    --cell-editing-border: #b8860b;
+    --calculated-cell-bg: var(--color-gray-300);
+    --calculated-cell-text: var(--text-muted);
+    --category-summary-bg: var(--color-gray-300);
+    --analytics-toggle-bg: var(--color-gray-300);
+    --analytics-toggle-border: var(--color-accent);
+    --analytics-toggle-text: var(--text-primary);
+    --milestone-card-bg: linear-gradient(135deg, var(--bg-card) 0%, var(--color-gray-200) 100%);
+    --milestone-card-border: var(--border-color);
+    --milestone-controls-bg: linear-gradient(135deg, var(--color-gray-300) 0%, var(--color-gray-200) 100%);
     
     /* Semantic Colors - Dark Mode */
     --color-success-bg: #1e3a1e;
@@ -1363,7 +1391,7 @@ th {
 }
 
 tr:hover {
-    background: var(--bg-muted);
+    background: var(--table-row-hover);
 }
 
 /* Expenses table specific styling - enhanced to match category breakdown table */
@@ -1393,7 +1421,7 @@ tr:hover {
 }
 
 #expensesTable tr:hover {
-    background: var(--bg-muted);
+    background: var(--table-row-hover);
 }
 
 #expensesTable tr:last-child td {
@@ -1466,8 +1494,8 @@ tr:hover {
 }
 
 .editable-cell:hover {
-    background: #e9ecef;
-    box-shadow: 0 0 0 1px #667eea;
+    background: var(--cell-hover-bg);
+    box-shadow: 0 0 0 1px var(--cell-hover-border);
 }
 
 .editable-cell::after {
@@ -1486,9 +1514,9 @@ tr:hover {
 }
 
 .editable-cell.editing {
-    background: #fff3cd;
+    background: var(--cell-editing-bg);
     padding: 0;
-    box-shadow: 0 0 0 2px #ffc107;
+    box-shadow: 0 0 0 2px var(--cell-editing-border);
 }
 
 .editable-cell.editing::after {
@@ -1517,12 +1545,6 @@ select.inline-edit-input {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
     cursor: pointer;
-}
-
-.calculated-cell {
-    background: var(--background-secondary);
-    font-style: italic;
-    color: var(--text-secondary);
 }
 
 .editable-person-field {
@@ -1602,9 +1624,9 @@ select.inline-edit-input {
 
 /* Better visual feedback for calculated vs editable fields */
 .calculated-cell {
-    background: #f8f9fa;
+    background: var(--calculated-cell-bg);
     font-style: italic;
-    color: #6c757d;
+    color: var(--calculated-cell-text);
     cursor: not-allowed;
 }
 
@@ -1622,7 +1644,7 @@ select.inline-edit-input {
 }
 
 .category-summary {
-    background: #f8f9fa;
+    background: var(--category-summary-bg);
     border-radius: var(--border-radius-md);
     padding: 15px;
     margin-bottom: 15px;
@@ -1745,7 +1767,7 @@ select.inline-edit-input {
 }
 
 .expense-summary-table tr:hover {
-    background: var(--bg-muted);
+    background: var(--table-row-hover);
 }
 
 .expense-summary-table .amount {
@@ -1832,7 +1854,7 @@ select.inline-edit-input {
 }
 
 .category-breakdown-table tr:hover {
-    background: var(--bg-muted);
+    background: var(--table-row-hover);
 }
 
 .category-breakdown-table .amount {
@@ -2119,7 +2141,7 @@ select.inline-edit-input {
 }
 
 .person-category-table tr:hover {
-    background: var(--background-secondary);
+    background: var(--table-row-hover);
 }
 
 .person-category-table .person-name {
@@ -2257,7 +2279,7 @@ select.inline-edit-input {
 }
 
 .excess-funds-table tr:hover {
-    background: var(--background-secondary);
+    background: var(--table-row-hover);
 }
 
 .excess-funds-table .positive {
@@ -2571,15 +2593,15 @@ select.inline-edit-input {
     justify-content: center;
     gap: 15px;
     padding: 15px;
-    background: #f8f9fa;
+    background: var(--analytics-toggle-bg);
     border-radius: var(--border-radius-md);
     margin-bottom: 25px;
-    border-left: 4px solid #6f42c1;
+    border-left: 4px solid var(--analytics-toggle-border);
 }
 
 .analytics-period-toggle label {
     font-weight: 600;
-    color: #555;
+    color: var(--analytics-toggle-text);
     white-space: nowrap;
 }
 
@@ -3066,10 +3088,10 @@ select.inline-edit-input {
 /* Milestones Styles */
 .milestones-controls {
     padding: 16px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background: var(--milestone-controls-bg);
     border-radius: var(--border-radius-lg);
     margin-bottom: 16px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--milestone-card-border);
 }
 
 .emergency-fund-flow {
@@ -3198,11 +3220,11 @@ select.inline-edit-input {
 
 /* New Milestone Card Styles */
 .milestone-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    background: var(--milestone-card-bg);
     border-radius: var(--border-radius-lg);
     padding: 16px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--milestone-card-border);
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;

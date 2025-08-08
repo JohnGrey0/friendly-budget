@@ -2094,36 +2094,44 @@ class BudgetTool {
         // Calculate percentage of slider filled
         const percentage = ((value - min) / (max - min)) * 100;
         
+        // Get theme-aware colors
+        const colors = this.getThemeColors();
+        const progressColor = colors.primary;
+        const trackColor = colors.bgMuted;
+        
         // Update background gradient to show progress
-        slider.style.background = `linear-gradient(90deg, #4a90e2 0%, #4a90e2 ${percentage}%, #e9ecef ${percentage}%, #e9ecef 100%)`;
+        slider.style.background = `linear-gradient(90deg, ${progressColor} 0%, ${progressColor} ${percentage}%, ${trackColor} ${percentage}%, ${trackColor} 100%)`;
     }
 
     updateScenarioSliderColors(slider, value) {
+        // Get theme-aware colors
+        const colors = this.getThemeColors();
+        
         // Determine color based on value (positive/negative/neutral)
         let progressColor, thumbColor;
         
         if (value > 0) {
             // Positive values - green for income increase, red for expense increase
             if (slider.id === 'incomeAdjustment') {
-                progressColor = '#28a745'; // Green for income increase (good)
-                thumbColor = '#28a745';
+                progressColor = colors.success; // Green for income increase (good)
+                thumbColor = colors.success;
             } else {
-                progressColor = '#dc3545'; // Red for expense increase (bad)
-                thumbColor = '#dc3545';
+                progressColor = colors.danger; // Red for expense increase (bad)
+                thumbColor = colors.danger;
             }
         } else if (value < 0) {
             // Negative values - red for income decrease, green for expense decrease
             if (slider.id === 'incomeAdjustment') {
-                progressColor = '#dc3545'; // Red for income decrease (bad)
-                thumbColor = '#dc3545';
+                progressColor = colors.danger; // Red for income decrease (bad)
+                thumbColor = colors.danger;
             } else {
-                progressColor = '#28a745'; // Green for expense decrease (good)
-                thumbColor = '#28a745';
+                progressColor = colors.success; // Green for expense decrease (good)
+                thumbColor = colors.success;
             }
         } else {
-            // Neutral (zero) - default blue
-            progressColor = '#4a90e2';
-            thumbColor = '#4a90e2';
+            // Neutral (zero) - default primary
+            progressColor = colors.primary;
+            thumbColor = colors.primary;
         }
         
         // Calculate percentage for background gradient
@@ -2131,8 +2139,8 @@ class BudgetTool {
         const max = parseFloat(slider.max) || 100;
         const percentage = ((value - min) / (max - min)) * 100;
         
-        // Update background with color
-        slider.style.background = `linear-gradient(90deg, ${progressColor} 0%, ${progressColor} ${percentage}%, #e9ecef ${percentage}%, #e9ecef 100%)`;
+        // Update background with color using theme-aware track color
+        slider.style.background = `linear-gradient(90deg, ${progressColor} 0%, ${progressColor} ${percentage}%, ${colors.bgMuted} ${percentage}%, ${colors.bgMuted} 100%)`;
         
         // Update thumb color
         slider.style.setProperty('--thumb-color', thumbColor);
@@ -3289,8 +3297,12 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
             emergencyFundMonthsSlider.addEventListener('input', () => {
                 this.emergencyFundTargetMonths = parseInt(emergencyFundMonthsSlider.value) || 6;
                 this.saveData();
-                this.updateSliderBackground(emergencyFundMonthsSlider);
                 this.renderFinancialMilestones();
+                // Update slider background after re-render
+                const updatedSlider = document.getElementById('emergencyFundMonths');
+                if (updatedSlider) {
+                    this.updateSliderBackground(updatedSlider);
+                }
             });
             emergencyFundMonthsSlider.setAttribute('data-listener-added', 'true');
             
