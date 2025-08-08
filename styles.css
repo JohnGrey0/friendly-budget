@@ -1499,30 +1499,30 @@ tr:hover {
 }
 
 .editable-cell {
-    cursor: pointer;
+    cursor: text;
     position: relative;
     border-radius: var(--border-radius-4);
     transition: all 0.2s ease;
+    /* Subtle border to hint at editability */
+    border: 1px solid transparent;
 }
 
 .editable-cell:hover {
     background: var(--cell-hover-bg);
     box-shadow: 0 0 0 1px var(--cell-hover-border);
+    /* Add a subtle dashed border on hover to indicate editability */
+    border: 1px dashed var(--cell-hover-border);
+    /* Use pencil cursor to clearly indicate editability */
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>') 2 14, text;
 }
 
+/* Remove the emoji entirely for cleaner look */
 .editable-cell::after {
-    content: "✏️";
-    position: absolute;
-    right: 4px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 12px;
-    opacity: 0.3;
-    transition: opacity 0.2s ease;
+    display: none;
 }
 
 .editable-cell:hover::after {
-    opacity: 1;
+    display: none;
 }
 
 .editable-cell.editing {
@@ -1542,7 +1542,7 @@ tr:hover {
     background: transparent;
     font-size: inherit;
     font-family: inherit;
-    cursor: pointer;
+    cursor: text;
 }
 
 .inline-edit-input:focus {
@@ -1560,28 +1560,29 @@ select.inline-edit-input {
 }
 
 .editable-person-field {
-    cursor: pointer;
+    cursor: text;
     padding: 2px 4px;
     border-radius: var(--border-radius-sm);
     transition: var(--transition-smooth);
     position: relative;
+    border: 1px solid transparent;
 }
 
 .editable-person-field:hover {
     background: var(--background-hover);
     box-shadow: 0 0 0 1px var(--color-primary);
+    border: 1px dashed var(--color-primary);
+    /* Use pencil cursor to clearly indicate editability */
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>') 2 14, text;
 }
 
+/* Remove the emoji entirely for cleaner look */
 .editable-person-field::after {
-    content: "✏️";
-    margin-left: 4px;
-    font-size: var(--font-size-xs);
-    opacity: 0.3;
-    transition: var(--transition-smooth);
+    display: none;
 }
 
 .editable-person-field:hover::after {
-    opacity: 1;
+    display: none;
 }
 
 .editable-person-field.editing {
