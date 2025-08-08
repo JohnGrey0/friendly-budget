@@ -245,15 +245,15 @@
                         <div class="scenario-controls">
                             <div class="scenario-slider">
                                 <label for="incomeAdjustment">Income Change: <span id="incomeChangeDisplay">0%</span></label>
-                                <input type="range" id="incomeAdjustment" min="-50" max="50" value="0" step="5">
+                                <input type="range" id="incomeAdjustment" min="-50" max="50" value="0" step="1">
                             </div>
                             <div class="scenario-slider">
                                 <label for="expenseAdjustment">Expense Change: <span id="expenseChangeDisplay">0%</span></label>
-                                <input type="range" id="expenseAdjustment" min="-50" max="50" value="0" step="5">
+                                <input type="range" id="expenseAdjustment" min="-50" max="50" value="0" step="1">
                             </div>
                             <div class="scenario-results" id="scenarioResults">
                                 <div class="scenario-metric">
-                                    <span class="scenario-label">New Savings Rate:</span>
+                                    <span class="scenario-label" id="savingsRateLabel">New Savings Rate:</span>
                                     <span class="scenario-value" id="newSavingsRate">20.5%</span>
                                 </div>
                                 <div class="scenario-metric">

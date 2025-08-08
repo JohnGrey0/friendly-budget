@@ -2735,6 +2735,14 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                                  this.analyticsPeriod === 'yearly' ? (newIncome - newExpenses) / 12 :
                                  (newIncome - newExpenses) * this.getHouseholdEffectivePayPeriods() / 12;
             
+            // Update label text based on whether sliders are at zero
+            const savingsRateLabel = document.getElementById('savingsRateLabel');
+            if (incomeChange === 0 && expenseChange === 0) {
+                savingsRateLabel.textContent = 'Current Savings Rate:';
+            } else {
+                savingsRateLabel.textContent = 'New Savings Rate:';
+            }
+            
             document.getElementById('newSavingsRate').textContent = `${Math.max(0, newSavingsRate).toFixed(1)}%`;
             document.getElementById('monthlySurplus').textContent = this.formatCurrency(monthlySurplus);
             
