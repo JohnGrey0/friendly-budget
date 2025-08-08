@@ -280,6 +280,19 @@ body {
     color: var(--text-primary);
 }
 
+/* Hide horizontal scrollbar only on tablet and smaller screens */
+/* This allows normal scrolling on desktop/large screens while preventing */
+/* horizontal scroll issues on mobile and tablet devices */
+@media (max-width: 1024px) {
+    html {
+        overflow-x: hidden;
+    }
+    
+    body {
+        overflow-x: hidden;
+    }
+}
+
 .container {
     max-width: var(--breakpoint-xl);
     margin: 0 auto;
@@ -470,7 +483,6 @@ button {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-md);
-    overflow: hidden;
     box-shadow: var(--shadow-sm);
 }
 
@@ -4849,24 +4861,21 @@ select.inline-edit-input {
    ========================================================================== */
 
 /* Universal responsive base and overflow prevention */
-* {
-    box-sizing: border-box;
-}
 
 /* Enhanced mobile scrolling and performance */
 html {
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
-    overflow-x: hidden;
     width: 100%;
+    height: 100%; /* Ensure proper height calculation */
 }
 
 body {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
+    min-height: 100%; /* Use 100% instead of 100vh to prevent issues */
 }
 
 /* Prevent horizontal overflow on all levels */
