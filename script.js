@@ -1858,7 +1858,18 @@ class BudgetTool {
     renderSavingsRate() {
         const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
         const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+        
+        // Calculate explicit savings (savings + emergency categories)
+        const explicitSavings = this.expenses
+            .filter(expense => expense.category === 'savings' || expense.category === 'emergency')
+            .reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        
+        // Calculate excess funds (unallocated income)
+        const excessFunds = Math.max(0, totalIncome - totalExpenses);
+        
+        // Total savings = explicit savings + excess funds
+        const totalSavings = explicitSavings + excessFunds;
+        const savingsRate = totalIncome > 0 ? (totalSavings / totalIncome * 100) : 0;
         
         document.getElementById('savingsRate').textContent = Math.max(0, savingsRate).toFixed(1) + '%';
         
@@ -2029,7 +2040,18 @@ class BudgetTool {
     renderBudgetHealthScore() {
         const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
         const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+        
+        // Calculate explicit savings (savings + emergency categories)
+        const explicitSavings = this.expenses
+            .filter(expense => expense.category === 'savings' || expense.category === 'emergency')
+            .reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+        
+        // Calculate excess funds (unallocated income)
+        const excessFunds = Math.max(0, totalIncome - totalExpenses);
+        
+        // Total savings = explicit savings + excess funds
+        const totalSavings = explicitSavings + excessFunds;
+        const savingsRate = totalIncome > 0 ? (totalSavings / totalIncome * 100) : 0;
         
         // Calculate health score (0-100)
         let score = 0;
@@ -2129,7 +2151,20 @@ class BudgetTool {
             
             const newIncome = baseIncome * (1 + incomeChange / 100);
             const newExpenses = baseExpenses * (1 + expenseChange / 100);
-            const newSavingsRate = newIncome > 0 ? ((newIncome - newExpenses) / newIncome * 100) : 0;
+            
+            // Calculate explicit savings in new scenario (savings + emergency categories)
+            const baseSavingsExpenses = this.expenses
+                .filter(expense => expense.category === 'savings' || expense.category === 'emergency')
+                .reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
+            const newSavingsExpenses = baseSavingsExpenses * (1 + expenseChange / 100);
+            
+            // Calculate new excess funds
+            const newExcessFunds = Math.max(0, newIncome - newExpenses);
+            
+            // Total savings = explicit savings + excess funds
+            const totalNewSavings = newSavingsExpenses + newExcessFunds;
+            const newSavingsRate = newIncome > 0 ? (totalNewSavings / newIncome * 100) : 0;
+            
             const monthlySurplus = this.analyticsPeriod === 'monthly' ? (newIncome - newExpenses) : 
                                  this.analyticsPeriod === 'yearly' ? (newIncome - newExpenses) / 12 :
                                  (newIncome - newExpenses) * this.getHouseholdEffectivePayPeriods() / 12;
