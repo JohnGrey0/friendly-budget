@@ -12,6 +12,9 @@ class BudgetTool {
         this.categoryToggleStates = JSON.parse(localStorage.getItem('budgetCategoryToggleStates')) || {};
         this.expenseCategoryToggleStates = JSON.parse(localStorage.getItem('budgetExpenseCategoryToggleStates')) || {};
         
+        // Initialize theme management
+        this.initializeTheme();
+        
         // Migrate existing expenses to have sharing method
         this.expenses.forEach(expense => {
             if (!expense.sharingMethod) {
@@ -39,6 +42,174 @@ class BudgetTool {
         // Recalculate income after everything is initialized
         this.recalculatePeopleIncome();
         this.saveData(); // Save the migrated data
+    }
+
+    /* ==========================================================================
+       THEME MANAGEMENT
+       ========================================================================== */
+
+    initializeTheme() {
+        // Check for saved theme preference, or default to system preference
+        let savedTheme = localStorage.getItem('budgetTheme');
+        
+        if (!savedTheme) {
+            // Detect system preference
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                savedTheme = 'dark';
+            } else {
+                savedTheme = 'light';
+            }
+        }
+        
+        this.setTheme(savedTheme, false); // false = no animation on initial load
+        
+        // Listen for system theme changes
+        if (window.matchMedia) {
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            mediaQuery.addEventListener('change', (e) => {
+                // Only auto-switch if user hasn't manually set a preference
+                if (!localStorage.getItem('budgetTheme')) {
+                    this.setTheme(e.matches ? 'dark' : 'light');
+                }
+            });
+        }
+        
+        // Set up theme toggle button
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => this.toggleTheme());
+            
+            // Add keyboard accessibility
+            themeToggle.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.toggleTheme();
+                }
+            });
+            
+            // Add proper ARIA attributes
+            themeToggle.setAttribute('aria-label', 'Toggle between light and dark themes');
+            themeToggle.setAttribute('role', 'switch');
+        }
+    }
+
+    setTheme(theme, animate = true) {
+        const root = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = themeToggle?.querySelector('.theme-icon');
+        const themeText = themeToggle?.querySelector('.theme-text');
+        
+        if (animate) {
+            // Add switching attribute to disable transitions temporarily
+            root.setAttribute('data-theme-switching', '');
+        }
+        
+        // Set the theme
+        root.setAttribute('data-theme', theme);
+        
+        // Update toggle button
+        if (themeIcon && themeText) {
+            if (theme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light Mode';
+                themeToggle.setAttribute('aria-pressed', 'true');
+                themeToggle.setAttribute('aria-label', 'Switch to light theme');
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark Mode';
+                themeToggle.setAttribute('aria-pressed', 'false');
+                themeToggle.setAttribute('aria-label', 'Switch to dark theme');
+            }
+        }
+        
+        // Save theme preference
+        localStorage.setItem('budgetTheme', theme);
+        
+        if (animate) {
+            // Remove switching attribute after a brief delay
+            setTimeout(() => {
+                root.removeAttribute('data-theme-switching');
+            }, 50);
+        }
+        
+        // Dispatch theme change event for other components that might need to react
+        window.dispatchEvent(new CustomEvent('themeChanged', { 
+            detail: { theme } 
+        }));
+        
+        // Regenerate charts with new theme colors
+        this.updateChartsForTheme();
+    }
+
+    updateChartsForTheme() {
+        // Regenerate all charts to use new theme colors
+        setTimeout(() => {
+            this.renderAnalytics();
+        }, 100); // Small delay to ensure CSS variables are updated
+    }
+
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        this.setTheme(newTheme);
+    }
+
+    // Get CSS variable value for theme-aware colors
+    getCSSVariable(varName) {
+        return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    }
+
+    // Get theme-aware colors for charts
+    getThemeColors() {
+        return {
+            primary: this.getCSSVariable('--color-primary'),
+            success: this.getCSSVariable('--color-success') || '#28a745',
+            danger: this.getCSSVariable('--color-danger') || '#dc3545',
+            warning: this.getCSSVariable('--color-warning') || '#ffc107',
+            info: this.getCSSVariable('--color-info') || '#17a2b8',
+            textPrimary: this.getCSSVariable('--text-primary'),
+            textSecondary: this.getCSSVariable('--text-secondary'),
+            bgCard: this.getCSSVariable('--bg-card'),
+            bgMuted: this.getCSSVariable('--bg-muted')
+        };
+    }
+
+    // Get theme-aware chart color palette
+    getChartColorPalette() {
+        const colors = this.getThemeColors();
+        return [
+            colors.primary,
+            colors.success,
+            colors.danger,
+            colors.warning,
+            colors.info,
+            '#9b59b6', // Purple
+            '#e67e22', // Orange
+            '#1abc9c', // Turquoise
+            '#34495e', // Dark blue-gray
+            '#e74c3c', // Red
+            '#f39c12', // Yellow
+            '#2ecc71'  // Green
+        ];
+    }
+
+    // Create theme-aware dataset with background colors
+    createChartDataset(label, data, colorIndex = 0, options = {}) {
+        const colors = this.getChartColorPalette();
+        const baseColor = colors[colorIndex % colors.length];
+        
+        return {
+            label,
+            data,
+            borderColor: baseColor,
+            backgroundColor: baseColor + '20', // 20% opacity
+            borderWidth: options.borderWidth || 2,
+            fill: options.fill !== undefined ? options.fill : false,
+            tension: options.tension || 0.4,
+            pointRadius: options.pointRadius || 4,
+            pointHoverRadius: options.pointHoverRadius || 6,
+            ...options
+        };
     }
 
     initializeEventListeners() {
@@ -1968,31 +2139,34 @@ class BudgetTool {
     }
 
     updateScenarioDisplayColors(displayElement, value, type) {
+        // Get theme-aware colors
+        const colors = this.getThemeColors();
+        
         // Determine color and background based on value and type
         let color, backgroundColor;
         
         if (value > 0) {
             // Positive values
             if (type === 'income') {
-                color = '#28a745'; // Green for income increase (good)
-                backgroundColor = 'rgba(40, 167, 69, 0.1)';
+                color = colors.success; // Green for income increase (good)
+                backgroundColor = colors.success + '20'; // 20% opacity
             } else {
-                color = '#dc3545'; // Red for expense increase (bad)
-                backgroundColor = 'rgba(220, 53, 69, 0.1)';
+                color = colors.danger; // Red for expense increase (bad)
+                backgroundColor = colors.danger + '20'; // 20% opacity
             }
         } else if (value < 0) {
             // Negative values
             if (type === 'income') {
-                color = '#dc3545'; // Red for income decrease (bad)
-                backgroundColor = 'rgba(220, 53, 69, 0.1)';
+                color = colors.danger; // Red for income decrease (bad)
+                backgroundColor = colors.danger + '20'; // 20% opacity
             } else {
-                color = '#28a745'; // Green for expense decrease (good)
-                backgroundColor = 'rgba(40, 167, 69, 0.1)';
+                color = colors.success; // Green for expense decrease (good)
+                backgroundColor = colors.success + '20'; // 20% opacity
             }
         } else {
             // Neutral (zero) - default blue
-            color = '#4a90e2';
-            backgroundColor = 'rgba(74, 144, 226, 0.1)';
+            color = colors.primary;
+            backgroundColor = colors.primary + '20'; // 20% opacity
         }
         
         // Apply colors
@@ -2560,39 +2734,18 @@ Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncom
             data: {
                 labels: labels,
                 datasets: [
-                    {
-                        label: `Savings Growth (per ${periodLabel})`,
-                        data: savingsData,
-                        borderColor: '#28a745',
-                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    this.createChartDataset(`Savings Growth (per ${periodLabel})`, savingsData, 1, {
                         borderWidth: 3,
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    },
-                    {
-                        label: `Emergency Fund Growth (per ${periodLabel})`,
-                        data: emergencyData,
-                        borderColor: '#dc3545',
-                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        fill: false
+                    }),
+                    this.createChartDataset(`Emergency Fund Growth (per ${periodLabel})`, emergencyData, 2, {
                         borderWidth: 3,
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    },
-                    {
-                        label: `Total Savings Growth (per ${periodLabel})`,
-                        data: totalSavingsData,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: false
+                    }),
+                    this.createChartDataset(`Total Savings Growth (per ${periodLabel})`, totalSavingsData, 0, {
                         borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }
+                        fill: true
+                    })
                 ]
             },
             options: {
@@ -2601,23 +2754,34 @@ Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncom
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            color: this.getThemeColors().textPrimary
+                        }
                     },
                     title: {
                         display: true,
-                        text: `${projectionPeriods}-${timeUnit} Savings Projection (${this.formatCurrency(periodSavings + periodEmergency)}/${periodLabel})`
+                        text: `${projectionPeriods}-${timeUnit} Savings Projection (${this.formatCurrency(periodSavings + periodEmergency)}/${periodLabel})`,
+                        color: this.getThemeColors().textPrimary
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
                         ticks: {
+                            color: this.getThemeColors().textSecondary,
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
+                        },
+                        grid: {
+                            color: this.getThemeColors().bgMuted
                         }
                     },
                     x: {
+                        ticks: {
+                            color: this.getThemeColors().textSecondary
+                        },
                         grid: {
                             display: false
                         }
@@ -2625,7 +2789,7 @@ Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncom
                 },
                 elements: {
                     point: {
-                        hoverBackgroundColor: 'white',
+                        hoverBackgroundColor: this.getThemeColors().bgCard,
                         hoverBorderWidth: 2
                     }
                 }
