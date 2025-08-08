@@ -119,6 +119,12 @@
     --milestone-card-border: #e9ecef;
     --milestone-controls-bg: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     
+    /* Subcategory Styles */
+    --subcategory-item-bg: #f8f9fa;
+    --subcategory-item-hover: #e9ecef;
+    --subcategory-name-color: #333;
+    --subcategory-indent-color: #666;
+    
     /* Semantic Colors */
     --color-success: #28a745;
     --color-success-dark: #20c997;
@@ -207,6 +213,12 @@
     --milestone-card-bg: linear-gradient(135deg, var(--bg-card) 0%, var(--color-gray-200) 100%);
     --milestone-card-border: var(--border-color);
     --milestone-controls-bg: linear-gradient(135deg, var(--color-gray-300) 0%, var(--color-gray-200) 100%);
+    
+    /* Subcategory Styles - Dark Mode */
+    --subcategory-item-bg: var(--color-gray-200);
+    --subcategory-item-hover: var(--color-gray-300);
+    --subcategory-name-color: var(--text-primary);
+    --subcategory-indent-color: var(--text-secondary);
     
     /* Semantic Colors - Dark Mode */
     --color-success-bg: #1e3a1e;
@@ -1881,7 +1893,7 @@ select.inline-edit-input {
 .subcategory-indent {
     padding-left: 30px !important;
     font-size: 13px;
-    color: #666;
+    color: var(--subcategory-indent-color);
     font-style: italic;
 }
 
@@ -2798,14 +2810,14 @@ select.inline-edit-input {
     align-items: center;
     gap: 12px;
     padding: 12px;
-    background: #f8f9fa;
+    background: var(--subcategory-item-bg);
     border-radius: var(--border-radius-md);
     transition: all 0.2s ease;
     border-left: 3px solid transparent;
 }
 
 .top-subcategory-item:hover {
-    background: #e9ecef;
+    background: var(--subcategory-item-hover);
     transform: translateX(2px);
 }
 
@@ -2830,7 +2842,7 @@ select.inline-edit-input {
 .subcategory-name {
     font-weight: 600;
     font-size: 14px;
-    color: #333;
+    color: var(--subcategory-name-color);
     margin-bottom: 2px;
     white-space: nowrap;
     overflow: hidden;

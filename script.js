@@ -139,12 +139,44 @@ class BudgetTool {
         
         // Regenerate charts with new theme colors
         this.updateChartsForTheme();
+        
+        // Update all slider backgrounds with new theme colors
+        this.updateAllSliderBackgrounds();
     }
 
     updateChartsForTheme() {
         // Regenerate all charts to use new theme colors
         setTimeout(() => {
             this.renderAnalytics();
+        }, 100); // Small delay to ensure CSS variables are updated
+    }
+
+    updateAllSliderBackgrounds() {
+        // Update all slider backgrounds to use new theme colors
+        setTimeout(() => {
+            // Update analytics sliders
+            const incomeSlider = document.getElementById('incomeAdjustment');
+            const expenseSlider = document.getElementById('expenseAdjustment');
+            if (incomeSlider) {
+                this.updateSliderBackground(incomeSlider);
+                this.updateScenarioSliderColors(incomeSlider, parseInt(incomeSlider.value));
+            }
+            if (expenseSlider) {
+                this.updateSliderBackground(expenseSlider);
+                this.updateScenarioSliderColors(expenseSlider, parseInt(expenseSlider.value));
+            }
+            
+            // Update emergency fund slider
+            const emergencyFundMonthsSlider = document.getElementById('emergencyFundMonths');
+            if (emergencyFundMonthsSlider) {
+                this.updateSliderBackground(emergencyFundMonthsSlider);
+            }
+            
+            // Update any custom split sliders
+            const customSliders = document.querySelectorAll('.custom-split-slider');
+            customSliders.forEach(slider => {
+                this.updateSliderBackground(slider);
+            });
         }, 100); // Small delay to ensure CSS variables are updated
     }
 
