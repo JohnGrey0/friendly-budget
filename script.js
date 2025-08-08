@@ -5,6 +5,8 @@ class BudgetTool {
         this.payPeriods = parseInt(localStorage.getItem('budgetPayPeriods')) || 26;
         this.globalSharingMethod = localStorage.getItem('budgetGlobalSharingMethod') || 'percentage';
         this.analyticsPeriod = localStorage.getItem('budgetAnalyticsPeriod') || 'biweekly';
+        this.currentEmergencyFund = parseFloat(localStorage.getItem('budgetCurrentEmergencyFund')) || 0;
+        this.emergencyFundTargetMonths = parseInt(localStorage.getItem('budgetEmergencyFundTargetMonths')) || 6;
         
         // Migrate existing expenses to have sharing method
         this.expenses.forEach(expense => {
@@ -565,6 +567,8 @@ class BudgetTool {
         // Keep global payPeriods for backward compatibility, but individual person payPeriods take precedence
         localStorage.setItem('budgetPayPeriods', this.payPeriods.toString());
         localStorage.setItem('budgetGlobalSharingMethod', this.globalSharingMethod);
+        localStorage.setItem('budgetCurrentEmergencyFund', this.currentEmergencyFund.toString());
+        localStorage.setItem('budgetEmergencyFundTargetMonths', this.emergencyFundTargetMonths.toString());
     }
 
     formatCurrency(amount) {
@@ -2446,7 +2450,13 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         
         // Get emergency fund target months from slider
         const emergencyFundMonthsSlider = document.getElementById('emergencyFundMonths');
-        const emergencyFundMonths = parseInt(emergencyFundMonthsSlider.value) || 6;
+        
+        // Set the saved value to the slider if it hasn't been set yet
+        if (!emergencyFundMonthsSlider.value || emergencyFundMonthsSlider.value == 6) {
+            emergencyFundMonthsSlider.value = this.emergencyFundTargetMonths;
+        }
+        
+        const emergencyFundMonths = parseInt(emergencyFundMonthsSlider.value) || this.emergencyFundTargetMonths || 6;
         
         // Calculate emergency fund goal based on selected months
         const monthlyExpenses = this.analyticsPeriod === 'monthly' ? totalExpenses : 
@@ -2467,7 +2477,13 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
 
         // Get current emergency fund from input field
         const currentEmergencyFundInput = document.getElementById('currentEmergencyFund');
-        const currentEmergencyFund = parseFloat(currentEmergencyFundInput.value) || 0;
+        
+        // Set the saved value to the input field if it hasn't been set yet
+        if (!currentEmergencyFundInput.value && this.currentEmergencyFund > 0) {
+            currentEmergencyFundInput.value = this.currentEmergencyFund;
+        }
+        
+        const currentEmergencyFund = parseFloat(currentEmergencyFundInput.value) || this.currentEmergencyFund || 0;
         const emergencyFundProgress = emergencyFundGoal > 0 ? (currentEmergencyFund / emergencyFundGoal) * 100 : 0;
         const remainingNeeded = Math.max(0, emergencyFundGoal - currentEmergencyFund);
         
@@ -2575,6 +2591,8 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         // Add event listeners to update when inputs change
         if (!currentEmergencyFundInput.hasAttribute('data-listener-added')) {
             currentEmergencyFundInput.addEventListener('input', () => {
+                this.currentEmergencyFund = parseFloat(currentEmergencyFundInput.value) || 0;
+                this.saveData();
                 this.renderFinancialMilestones();
             });
             currentEmergencyFundInput.setAttribute('data-listener-added', 'true');
@@ -2582,6 +2600,8 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         
         if (!emergencyFundMonthsSlider.hasAttribute('data-listener-added')) {
             emergencyFundMonthsSlider.addEventListener('input', () => {
+                this.emergencyFundTargetMonths = parseInt(emergencyFundMonthsSlider.value) || 6;
+                this.saveData();
                 this.updateSliderBackground(emergencyFundMonthsSlider);
                 this.renderFinancialMilestones();
             });
@@ -3117,3 +3137,214 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
 
 // Initialize the budget tool when the page loads
 const budgetTool = new BudgetTool();
+
+// Initialize Muuri grid for dynamic analytics layout
+let analyticsGrid;
+
+// Wait for Muuri library to be loaded and DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAnalyticsGrid();
+});
+
+function initializeAnalyticsGrid() {
+    // Check if Muuri is available and grid element exists
+    if (typeof Muuri === 'undefined' || !document.getElementById('analyticsGrid')) {
+        console.warn('Muuri library not loaded or analytics grid not found');
+        return;
+    }
+
+    try {
+        analyticsGrid = new Muuri('#analyticsGrid', {
+            items: '.grid-item',
+            dragEnabled: true,
+            dragHandle: '.card-drag-handle',
+            dragStartPredicate: {
+                distance: 0,
+                delay: 0
+            },
+            dragSortHeuristics: {
+                sortInterval: 50,
+                minDragDistance: 10,
+                minBounceBackAngle: 1
+            },
+            dragContainer: document.body,
+            dragReleaseDuration: 300,
+            dragReleaseEasing: 'ease-out',
+            dragCssProps: {
+                touchAction: 'none',
+                userSelect: 'none',
+                userDrag: 'none',
+                tapHighlightColor: 'rgba(0, 0, 0, 0)',
+                touchCallout: 'none',
+                contentZooming: 'none'
+            },
+            dragPlaceholder: {
+                enabled: true,
+                duration: 300,
+                createElement: function (item) {
+                    const element = item.getElement();
+                    const placeholder = element.cloneNode(true);
+                    placeholder.classList.add('muuri-placeholder');
+                    placeholder.style.opacity = '0.5';
+                    placeholder.style.transform = 'scale(0.95)';
+                    return placeholder;
+                }
+            },
+            layout: {
+                fillGaps: true,
+                horizontal: false,
+                alignRight: false,
+                alignBottom: false,
+                rounding: true
+            },
+            layoutDuration: 300,
+            layoutEasing: 'ease-out',
+            sortData: {
+                order: function (item, element) {
+                    return parseInt(element.getAttribute('data-order') || '999');
+                }
+            }
+        });
+
+        // Apply default order on initialization
+        analyticsGrid.sort('order');
+
+        // Save layout when items are moved
+        analyticsGrid.on('move', function () {
+            saveAnalyticsLayout();
+        });
+
+        // Handle drag start for smooth transitions
+        analyticsGrid.on('dragStart', function (item) {
+            const element = item.getElement();
+            // Store original dimensions to prevent flash
+            const rect = element.getBoundingClientRect();
+            element.setAttribute('data-original-width', rect.width);
+            element.setAttribute('data-original-height', rect.height);
+        });
+
+        // Handle drag release for smooth sizing
+        analyticsGrid.on('dragReleaseStart', function (item) {
+            const element = item.getElement();
+            const card = element.querySelector('.analytics-card');
+            
+            // Ensure card maintains proper size during release
+            if (card) {
+                card.style.width = '100%';
+                card.style.height = 'auto';
+            }
+        });
+
+        // Clean up after release is complete
+        analyticsGrid.on('dragReleaseEnd', function (item) {
+            const element = item.getElement();
+            const card = element.querySelector('.analytics-card');
+            
+            // Remove any temporary styles
+            if (card) {
+                card.style.width = '';
+                card.style.height = '';
+            }
+            
+            // Clean up data attributes
+            element.removeAttribute('data-original-width');
+            element.removeAttribute('data-original-height');
+        });
+
+        // Load saved layout if it exists
+        loadAnalyticsLayout();
+
+        // Add reset layout button
+        addLayoutControls();
+
+    } catch (error) {
+        console.error('Error initializing analytics grid:', error);
+    }
+}
+
+function saveAnalyticsLayout() {
+    if (!analyticsGrid) return;
+    
+    const items = analyticsGrid.getItems();
+    const layout = items.map((item, index) => ({
+        cardType: item.getElement().querySelector('.analytics-card').getAttribute('data-card-type'),
+        order: index
+    }));
+    
+    localStorage.setItem('analyticsLayout', JSON.stringify(layout));
+}
+
+function loadAnalyticsLayout() {
+    if (!analyticsGrid) return;
+    
+    const savedLayout = localStorage.getItem('analyticsLayout');
+    
+    // If no saved layout exists, use default order
+    if (!savedLayout) {
+        analyticsGrid.sort('order');
+        return;
+    }
+    
+    try {
+        const layout = JSON.parse(savedLayout);
+        const items = analyticsGrid.getItems();
+        
+        // Sort items according to saved layout
+        const sortedItems = layout.map(layoutItem => {
+            return items.find(item => {
+                const cardType = item.getElement().querySelector('.analytics-card').getAttribute('data-card-type');
+                return cardType === layoutItem.cardType;
+            });
+        }).filter(Boolean);
+        
+        // Only apply saved layout if we found all items, otherwise use default
+        if (sortedItems.length === items.length) {
+            analyticsGrid.sort(sortedItems);
+        } else {
+            // Fallback to default order if saved layout is incomplete
+            console.log('Saved layout incomplete, using default order');
+            analyticsGrid.sort('order');
+        }
+    } catch (error) {
+        console.error('Error loading analytics layout, using default order:', error);
+        analyticsGrid.sort('order');
+    }
+}
+
+function resetAnalyticsLayout() {
+    if (!analyticsGrid) return;
+    
+    // Remove saved layout
+    localStorage.removeItem('analyticsLayout');
+    
+    // Reset to default order using data-order attributes
+    analyticsGrid.sort('order');
+    budgetTool.showAlert('Analytics layout has been reset to default', 'Layout Reset', 'success');
+}
+
+function addLayoutControls() {
+    // Add layout control buttons to the analytics section
+    const analyticsSection = document.querySelector('.analytics-section');
+    if (!analyticsSection) return;
+    
+    // Check if controls already exist
+    if (analyticsSection.querySelector('.layout-controls')) return;
+    
+    const controlsDiv = document.createElement('div');
+    controlsDiv.className = 'layout-controls';
+    controlsDiv.innerHTML = `
+        <div class="layout-controls-wrapper">
+            <span class="layout-help-text">💡 Drag cards by their ⋮⋮ handle to rearrange</span>
+            <button id="resetLayout" class="btn btn-secondary btn-small">🔄 Reset Layout</button>
+        </div>
+    `;
+    
+    // Insert before the analytics grid
+    const analyticsGrid = document.getElementById('analyticsGrid');
+    if (analyticsGrid) {
+        analyticsGrid.parentNode.insertBefore(controlsDiv, analyticsGrid);
+        
+        // Add event listener for reset button
+        document.getElementById('resetLayout').addEventListener('click', resetAnalyticsLayout);
+    }
+}
