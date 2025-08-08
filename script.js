@@ -3344,7 +3344,10 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                 // Only include global sharing method if it's not default
                 ...(this.globalSharingMethod !== 'percentage' && { g: sharingMap[this.globalSharingMethod] }),
                 // Only include analytics period if it's not default
-                ...(this.analyticsPeriod !== 'biweekly' && { a: this.analyticsPeriod[0] }) // 'b', 'm', 'y'
+                ...(this.analyticsPeriod !== 'biweekly' && { a: this.analyticsPeriod[0] }), // 'b', 'm', 'y'
+                // Include emergency fund data if set
+                ...(this.currentEmergencyFund > 0 && { ef: this.currentEmergencyFund }),
+                ...(this.emergencyFundTargetMonths !== 6 && { em: this.emergencyFundTargetMonths })
             };
 
             // Compress and encode the data
@@ -3452,6 +3455,10 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                     // Restore settings with defaults
                     this.globalSharingMethod = sharingMap[shareData.g] || 'percentage';
                     this.analyticsPeriod = periodMap[shareData.a] || 'biweekly';
+                    
+                    // Restore emergency fund data
+                    this.currentEmergencyFund = shareData.ef || 0;
+                    this.emergencyFundTargetMonths = shareData.em || 6;
                 } else {
                     // Old format compatibility
                     this.people = shareData.p.map((p, index) => ({
@@ -3475,6 +3482,10 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                     
                     this.globalSharingMethod = shareData.gsm || 'percentage';
                     this.analyticsPeriod = shareData.ap || 'biweekly';
+                    
+                    // Emergency fund data (old format may not have these)
+                    this.currentEmergencyFund = shareData.ef || 0;
+                    this.emergencyFundTargetMonths = shareData.em || 6;
                 }
                 
                 // Save to localStorage
