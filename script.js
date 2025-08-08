@@ -1588,6 +1588,48 @@ class BudgetTool {
         });
     }
 
+    setupEmergencyFundEditing() {
+        const editableAmount = document.querySelector('.editable-emergency-amount');
+        if (!editableAmount) return;
+
+        editableAmount.addEventListener('click', (e) => {
+            if (editableAmount.classList.contains('editing')) return;
+
+            const originalAmount = parseFloat(editableAmount.getAttribute('data-current-amount')) || 0;
+            const originalContent = editableAmount.innerHTML;
+
+            editableAmount.classList.add('editing');
+            editableAmount.innerHTML = `<input type="number" class="inline-edit-input" value="${originalAmount}" min="0" step="100" style="width: 100%; text-align: right;">`;
+
+            const inputElement = editableAmount.querySelector('.inline-edit-input');
+            inputElement.focus();
+            inputElement.select();
+
+            const saveEdit = () => {
+                const newValue = parseFloat(inputElement.value) || 0;
+                this.currentEmergencyFund = newValue;
+                this.saveData();
+                this.renderFinancialMilestones();
+            };
+
+            const cancelEdit = () => {
+                editableAmount.classList.remove('editing');
+                editableAmount.innerHTML = originalContent;
+            };
+
+            inputElement.addEventListener('blur', saveEdit);
+            inputElement.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit();
+                }
+            });
+        });
+    }
+
     renderBiWeeklySummary() {
         const container = document.getElementById('biWeeklySummary');
         
@@ -1870,7 +1912,7 @@ class BudgetTool {
                     </tbody>
                     <tfoot>
                         <tr class="totals-row">
-                            <td><strong>Household Total</strong></td>
+                            <td><strong></strong></td>
                             <td class="amount" title="Sum of all pay period incomes: ${this.formatCurrency(totalPayPeriodIncome)}"><strong>${this.formatCurrency(totalPayPeriodIncome)}</strong></td>
                             <td class="amount" title="Sum of all pay period expenses: ${this.formatCurrency(totalPayPeriodExpenses)}"><strong>${this.formatCurrency(totalPayPeriodExpenses)}</strong></td>
                             <td class="amount ${totalPayPeriodExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(totalPayPeriodIncome)} - ${this.formatCurrency(totalPayPeriodExpenses)} = ${this.formatCurrency(totalPayPeriodExcess)}">
@@ -1955,7 +1997,7 @@ class BudgetTool {
                     </tbody>
                     <tfoot>
                         <tr class="totals-row">
-                            <td><strong>Category Totals</strong></td>
+                            <td><strong></strong></td>
                             ${categories.map(category => `<td class="amount"><strong>${this.formatCurrency(categoryColumnTotals[category])}</strong></td>`).join('')}
                             <td class="amount total-cell"><strong>${this.formatCurrency(grandTotal)}</strong></td>
                         </tr>
@@ -3264,15 +3306,8 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
             return sum + monthlyAmount;
         }, 0);
 
-        // Get current emergency fund from input field
-        const currentEmergencyFundInput = document.getElementById('currentEmergencyFund');
-        
-        // Set the saved value to the input field if it hasn't been set yet
-        if (!currentEmergencyFundInput.value && this.currentEmergencyFund > 0) {
-            currentEmergencyFundInput.value = this.currentEmergencyFund;
-        }
-        
-        const currentEmergencyFund = parseFloat(currentEmergencyFundInput.value) || this.currentEmergencyFund || 0;
+        // Get current emergency fund from stored value or use default
+        const currentEmergencyFund = this.currentEmergencyFund || 0;
         const emergencyFundProgress = emergencyFundGoal > 0 ? (currentEmergencyFund / emergencyFundGoal) * 100 : 0;
         const remainingNeeded = Math.max(0, emergencyFundGoal - currentEmergencyFund);
         
@@ -3303,7 +3338,7 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Current</span>
-                        <span class="stat-value">${this.formatCurrency(currentEmergencyFund)}</span>
+                        <span class="stat-value editable-emergency-amount" data-current-amount="${currentEmergencyFund}">${this.formatCurrency(currentEmergencyFund)}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Monthly Savings</span>
@@ -3374,20 +3409,14 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         
         container.innerHTML = html;
         
+        // Setup inline editing for emergency fund amount
+        this.setupEmergencyFundEditing();
+        
         // Update the months display
         const emergencyMonthsDisplay = document.getElementById('emergencyMonthsDisplay');
         emergencyMonthsDisplay.textContent = `${emergencyFundMonths} month${emergencyFundMonths === 1 ? '' : 's'}`;
         
         // Add event listeners to update when inputs change
-        if (!currentEmergencyFundInput.hasAttribute('data-listener-added')) {
-            currentEmergencyFundInput.addEventListener('input', () => {
-                this.currentEmergencyFund = parseFloat(currentEmergencyFundInput.value) || 0;
-                this.saveData();
-                this.renderFinancialMilestones();
-            });
-            currentEmergencyFundInput.setAttribute('data-listener-added', 'true');
-        }
-        
         if (!emergencyFundMonthsSlider.hasAttribute('data-listener-added')) {
             emergencyFundMonthsSlider.addEventListener('input', () => {
                 this.emergencyFundTargetMonths = parseInt(emergencyFundMonthsSlider.value) || 6;

@@ -790,6 +790,31 @@ select:focus {
     color: var(--text-primary);
 }
 
+/* Editable Emergency Fund Amount */
+.editable-emergency-amount {
+    cursor: text;
+    padding: 2px 4px;
+    border-radius: var(--border-radius-sm);
+    transition: var(--transition-smooth);
+    position: relative;
+    border: 1px solid transparent;
+    color: var(--color-success) !important;
+    font-weight: var(--font-weight-bold);
+}
+
+.editable-emergency-amount:hover {
+    background: var(--background-hover);
+    border: 1px dashed var(--color-success);
+    /* Use pencil cursor to clearly indicate editability */
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>') 2 14, text;
+}
+
+.editable-emergency-amount.editing {
+    background: var(--color-success-bg);
+    border: 2px solid var(--color-success);
+    color: var(--text-primary) !important;
+}
+
 /* Household Totals Summary within People Card */
 .household-totals-summary {
     margin-top: var(--spacing-6);
@@ -3418,6 +3443,25 @@ select.inline-edit-input {
 
 .stat-value.deficit {
     color: var(--color-danger);
+}
+
+/* Milestone Target Control within the card */
+.milestone-target-control {
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--background-secondary);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.milestone-target-control .milestone-input-group {
+    margin: 0;
+}
+
+.milestone-target-control .milestone-input-group label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: 8px;
 }
 
 .milestone-progress-section {
