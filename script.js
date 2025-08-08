@@ -110,6 +110,14 @@ class BudgetTool {
             if (e.key === 'Enter') this.addPerson();
         });
 
+        // Update placeholder text when pay period changes
+        document.getElementById('personPayPeriods').addEventListener('change', (e) => {
+            this.updatePayPlaceholder();
+        });
+
+        // Initialize placeholder text
+        this.updatePayPlaceholder();
+
         document.getElementById('expenseName').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addExpense();
         });
@@ -194,7 +202,7 @@ class BudgetTool {
         const payPeriods = parseInt(document.getElementById('personPayPeriods').value);
 
         if (!name || isNaN(biWeeklyPay) || biWeeklyPay <= 0) {
-            this.showAlert('Please enter a valid name and bi-weekly pay amount.', 'Invalid Input', 'error');
+            this.showAlert('Please enter a valid name and pay amount.', 'Invalid Input', 'error');
             return;
         }
 
@@ -321,8 +329,8 @@ class BudgetTool {
                         <input type="text" id="editName_${id}" value="${person.name}" placeholder="Person's name">
                     </div>
                     <div class="input-group">
-                        <label for="editPay_${id}">Bi-weekly Pay:</label>
-                        <input type="number" id="editPay_${id}" value="${person.biWeeklyPay}" placeholder="Bi-weekly pay" step="0.01">
+                        <label for="editPay_${id}">${this.getPayFrequencyLabel(person.payPeriods || 26)} Pay:</label>
+                        <input type="number" id="editPay_${id}" value="${person.biWeeklyPay}" placeholder="${this.getPayFrequencyLabel(person.payPeriods || 26)} pay" step="0.01">
                     </div>
                 </div>
                 <div class="edit-buttons">
@@ -352,7 +360,7 @@ class BudgetTool {
         const newPay = parseFloat(document.getElementById(`editPay_${id}`).value);
 
         if (!newName || isNaN(newPay) || newPay <= 0) {
-            this.showAlert('Please enter a valid name and bi-weekly pay amount.', 'Invalid Input', 'error');
+            this.showAlert('Please enter a valid name and pay amount.', 'Invalid Input', 'error');
             return;
         }
 
@@ -1223,37 +1231,6 @@ class BudgetTool {
                         </tfoot>
                     </table>
                 </div>
-
-                <!-- Summary Totals Table -->
-                <div class="summary-totals">
-                    <h4>Summary Totals</h4>
-                    <table class="expense-summary-table">
-                        <thead>
-                            <tr>
-                                <th>Period</th>
-                                <th>Total Expenses</th>
-                                <th>Per Person Average</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="bi-weekly-row">
-                                <td><strong>Bi-weekly</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalBiWeeklyExpenses)}</strong></td>
-                                <td class="amount">${this.formatCurrency(totalBiWeeklyExpenses / this.people.length)}</td>
-                            </tr>
-                            <tr class="monthly-row">
-                                <td><strong>Monthly</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalMonthlyExpenses)}</strong></td>
-                                <td class="amount">${this.formatCurrency(totalMonthlyExpenses / this.people.length)}</td>
-                            </tr>
-                            <tr class="yearly-row">
-                                <td><strong>Yearly</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalYearlyExpenses)}</strong></td>
-                                <td class="amount">${this.formatCurrency(totalYearlyExpenses / this.people.length)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
         `;
 
@@ -1681,6 +1658,26 @@ class BudgetTool {
         return frequencies[payPeriods] || `${payPeriods}/year`;
     }
 
+    updatePayPlaceholder() {
+        const payPeriods = parseInt(document.getElementById('personPayPeriods').value);
+        const payInput = document.getElementById('biWeeklyPay');
+        const frequencyLabel = this.getPayFrequencyLabel(payPeriods).toLowerCase();
+        
+        payInput.placeholder = `${this.getPayFrequencyLabel(payPeriods)} pay ($)`;
+    }
+
+    updateSliderBackground(slider) {
+        const value = slider.value;
+        const min = slider.min || 0;
+        const max = slider.max || 100;
+        
+        // Calculate percentage of slider filled
+        const percentage = ((value - min) / (max - min)) * 100;
+        
+        // Update background gradient to show progress
+        slider.style.background = `linear-gradient(90deg, #4a90e2 0%, #4a90e2 ${percentage}%, #e9ecef ${percentage}%, #e9ecef 100%)`;
+    }
+
     // Helper function to capitalize category names
     capitalizeCategory(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
@@ -1865,14 +1862,14 @@ class BudgetTool {
             .filter(expense => expense.category === 'savings' || expense.category === 'emergency')
             .reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
         
-        // Calculate excess funds (unallocated income)
-        const excessFunds = Math.max(0, totalIncome - totalExpenses);
+        // Calculate excess funds (can be negative if expenses exceed income)
+        const excessFunds = totalIncome - totalExpenses;
         
         // Total savings = explicit savings + excess funds
         const totalSavings = explicitSavings + excessFunds;
         const savingsRate = totalIncome > 0 ? (totalSavings / totalIncome * 100) : 0;
         
-        document.getElementById('savingsRate').textContent = Math.max(0, savingsRate).toFixed(1) + '%';
+        document.getElementById('savingsRate').textContent = savingsRate.toFixed(1) + '%';
         
         // Update tooltip with actual values
         const circle = document.querySelector('.metric-circle');
@@ -1886,16 +1883,18 @@ Formula: (Savings + Emergency + Excess) ÷ Income × 100%
 Breakdown:
 • Savings expenses: ${this.formatCurrency(savingsExpenses)}
 • Emergency expenses: ${this.formatCurrency(emergencyExpenses)}
-• Excess funds: ${this.formatCurrency(excessFunds)}
+• Excess funds: ${this.formatCurrency(excessFunds)}${excessFunds < 0 ? ' (deficit)' : ''}
 • Total savings: ${this.formatCurrency(totalSavings)}
 • Total income: ${this.formatCurrency(totalIncome)}
 
-Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncome)} = ${savingsRate.toFixed(1)}%`;
+Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncome)} = ${savingsRate.toFixed(1)}%${savingsRate < 0 ? ' (deficit spending)' : ''}`;
         
         circle.setAttribute('title', tooltipText);
         
         // Update circle color based on savings rate
-        if (savingsRate >= 20) {
+        if (savingsRate < 0) {
+            circle.style.background = 'linear-gradient(135deg, #dc3545 0%, #a71e2a 100%)'; // Dark red for deficit
+        } else if (savingsRate >= 20) {
             circle.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
         } else if (savingsRate >= 10) {
             circle.style.background = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
@@ -2028,11 +2027,16 @@ Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncom
             projectionPeriods = 5;
             periodLabel = 'year';
             timeUnit = 'Year';
-        } else {
-            // Monthly/Bi-weekly view: 1-year projection (12 months)
+        } else if (this.analyticsPeriod === 'monthly') {
+            // Monthly view: 1-year projection (12 months)
             projectionPeriods = 12;
-            periodLabel = this.analyticsPeriod === 'monthly' ? 'month' : 'bi-weekly period';
+            periodLabel = 'month';
             timeUnit = 'Month';
+        } else {
+            // Bi-weekly view: 6-month projection (26 bi-weekly periods = ~6 months)
+            projectionPeriods = 13; // 0 to 13 gives us ~6 months of bi-weekly periods
+            periodLabel = 'bi-weekly period';
+            timeUnit = 'Bi-weekly';
         }
         
         // Generate projection data
@@ -2051,10 +2055,22 @@ Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncom
                 // 5-year projection with year labels
                 date.setFullYear(date.getFullYear() + i);
                 labels.push(i === 0 ? 'Now' : date.getFullYear().toString());
-            } else {
-                // 1-year projection with month labels (regardless of bi-weekly/monthly period)
+            } else if (this.analyticsPeriod === 'monthly') {
+                // 1-year projection with month labels
                 date.setMonth(date.getMonth() + i);
                 labels.push(i === 0 ? 'Now' : date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+            } else {
+                // 6-month projection with bi-weekly labels
+                const biWeeklyDate = new Date();
+                biWeeklyDate.setDate(biWeeklyDate.getDate() + (i * 14)); // Add 14 days for each bi-weekly period
+                if (i === 0) {
+                    labels.push('Now');
+                } else if (i % 2 === 0) {
+                    // Show label every 2 bi-weekly periods (monthly)
+                    labels.push(biWeeklyDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                } else {
+                    labels.push(''); // Empty label for cleaner display
+                }
             }
             
             // Calculate accumulated savings for this time period
@@ -2062,17 +2078,14 @@ Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncom
                 // For yearly: multiply by number of years
                 savingsAccumulated = periodSavings * i;
                 emergencyAccumulated = periodEmergency * i;
+            } else if (this.analyticsPeriod === 'monthly') {
+                // For monthly: multiply by number of months
+                savingsAccumulated = periodSavings * i;
+                emergencyAccumulated = periodEmergency * i;
             } else {
-                // For monthly/bi-weekly: convert to monthly accumulation for 1-year view
-                const monthlyEquivalent = this.analyticsPeriod === 'monthly' ? 
-                    periodSavings : 
-                    (periodSavings * this.getHouseholdEffectivePayPeriods()) / 12;
-                const monthlyEmergencyEquivalent = this.analyticsPeriod === 'monthly' ? 
-                    periodEmergency : 
-                    (periodEmergency * this.getHouseholdEffectivePayPeriods()) / 12;
-                
-                savingsAccumulated = monthlyEquivalent * i;
-                emergencyAccumulated = monthlyEmergencyEquivalent * i;
+                // For bi-weekly: multiply by number of bi-weekly periods
+                savingsAccumulated = periodSavings * i;
+                emergencyAccumulated = periodEmergency * i;
             }
             
             savingsData.push(savingsAccumulated);
@@ -2468,14 +2481,51 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         }
         
         let html = `
-            <div class="milestone-item">
-                <div class="milestone-label">Emergency Fund (${emergencyFundMonths} months: ${this.formatCurrency(emergencyFundGoal)} target)</div>
-                <div class="milestone-details">Monthly savings: ${this.formatCurrency(monthlyEmergencySavings)} from Emergency expenses</div>
-                <div class="milestone-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${Math.min(100, emergencyFundProgress)}%"></div>
+            <div class="milestone-card emergency-fund-milestone">
+                <div class="milestone-header">
+                    <div class="milestone-icon">🛡️</div>
+                    <div class="milestone-title">
+                        <h5>Emergency Fund</h5>
+                        <p class="milestone-subtitle">${emergencyFundMonths} months of expenses</p>
                     </div>
-                    <span class="milestone-time">${typeof monthsToEmergencyFund === 'number' ? monthsToEmergencyFund + ' months to go' : monthsToEmergencyFund}</span>
+                </div>
+                
+                <div class="milestone-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Target</span>
+                        <span class="stat-value">${this.formatCurrency(emergencyFundGoal)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Current</span>
+                        <span class="stat-value">${this.formatCurrency(currentEmergencyFund)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Monthly Savings</span>
+                        <span class="stat-value">${this.formatCurrency(monthlyEmergencySavings)}</span>
+                    </div>
+                </div>
+                
+                <div class="milestone-progress-section">
+                    <div class="progress-header">
+                        <span class="progress-label">Progress</span>
+                        <span class="progress-percentage">${Math.min(100, emergencyFundProgress).toFixed(1)}%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" style="width: ${Math.min(100, emergencyFundProgress)}%"></div>
+                        </div>
+                    </div>
+                    <div class="progress-footer">
+                        <span class="time-remaining">
+                            ${typeof monthsToEmergencyFund === 'number' ? 
+                                `${monthsToEmergencyFund} months remaining` : 
+                                monthsToEmergencyFund === 'Complete!' ? 
+                                    '✅ Goal achieved!' : 
+                                    '⚠️ ' + monthsToEmergencyFund
+                            }
+                        </span>
+                        ${remainingNeeded > 0 ? `<span class="amount-needed">${this.formatCurrency(remainingNeeded)} needed</span>` : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -2483,13 +2533,34 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         // Add a debt payoff milestone if they're spending more than earning
         if (monthlySurplus < 0) {
             html += `
-                <div class="milestone-item">
-                    <div class="milestone-label">Break Even Budget</div>
-                    <div class="milestone-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: 0%; background: #dc3545;"></div>
+                <div class="milestone-card deficit-milestone">
+                    <div class="milestone-header">
+                        <div class="milestone-icon">⚠️</div>
+                        <div class="milestone-title">
+                            <h5>Budget Balance</h5>
+                            <p class="milestone-subtitle">Spending exceeds income</p>
                         </div>
-                        <span class="milestone-time">Reduce expenses by ${this.formatCurrency(Math.abs(monthlySurplus))} monthly</span>
+                    </div>
+                    
+                    <div class="milestone-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Monthly Deficit</span>
+                            <span class="stat-value deficit">${this.formatCurrency(Math.abs(monthlySurplus))}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="milestone-progress-section">
+                        <div class="progress-header">
+                            <span class="progress-label">Action Required</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill deficit-bar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="progress-footer">
+                            <span class="time-remaining">Reduce expenses or increase income</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2511,9 +2582,13 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         
         if (!emergencyFundMonthsSlider.hasAttribute('data-listener-added')) {
             emergencyFundMonthsSlider.addEventListener('input', () => {
+                this.updateSliderBackground(emergencyFundMonthsSlider);
                 this.renderFinancialMilestones();
             });
             emergencyFundMonthsSlider.setAttribute('data-listener-added', 'true');
+            
+            // Initialize slider background
+            this.updateSliderBackground(emergencyFundMonthsSlider);
         }
     }
 
