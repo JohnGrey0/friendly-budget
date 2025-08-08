@@ -2817,10 +2817,11 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
         const remainingNeeded = Math.max(0, emergencyFundGoal - currentEmergencyFund);
         
         let monthsToEmergencyFund;
+        
         if (remainingNeeded === 0) {
             monthsToEmergencyFund = 'Complete!';
         } else if (monthlyEmergencySavings <= 0) {
-            monthsToEmergencyFund = 'Add "Emergency" category expense';
+            monthsToEmergencyFund = 'Set up savings';
         } else {
             monthsToEmergencyFund = Math.ceil(remainingNeeded / monthlyEmergencySavings);
         }
@@ -2969,6 +2970,7 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
             const alertHeader = modal.querySelector('.alert-header');
             const okButton = document.getElementById('alertOkButton');
             const cancelButton = document.getElementById('alertCancelButton');
+            const alertContent = modal.querySelector('.alert-content');
 
             // Set content
             alertTitle.textContent = title;
@@ -3004,11 +3006,37 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
             // Handle OK button
             const handleOk = () => {
                 modal.style.display = 'none';
-                okButton.removeEventListener('click', handleOk);
+                cleanup();
                 resolve(true);
             };
 
+            // Handle click outside to close
+            const handleClickOutside = (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                    cleanup();
+                    resolve(true);
+                }
+            };
+
+            // Handle Escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    modal.style.display = 'none';
+                    cleanup();
+                    resolve(true);
+                }
+            };
+
+            const cleanup = () => {
+                okButton.removeEventListener('click', handleOk);
+                modal.removeEventListener('click', handleClickOutside);
+                document.removeEventListener('keydown', handleEscape);
+            };
+
             okButton.addEventListener('click', handleOk);
+            modal.addEventListener('click', handleClickOutside);
+            document.addEventListener('keydown', handleEscape);
         });
     }
 
@@ -3050,14 +3078,36 @@ Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : '
                 resolve(false);
             };
 
+            // Handle click outside to close (acts like cancel)
+            const handleClickOutside = (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                    cleanup();
+                    resolve(false);
+                }
+            };
+
+            // Handle Escape key (acts like cancel)
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    modal.style.display = 'none';
+                    cleanup();
+                    resolve(false);
+                }
+            };
+
             const cleanup = () => {
                 okButton.removeEventListener('click', handleOk);
                 cancelButton.removeEventListener('click', handleCancel);
+                modal.removeEventListener('click', handleClickOutside);
+                document.removeEventListener('keydown', handleEscape);
                 okButton.textContent = 'OK';
             };
 
             okButton.addEventListener('click', handleOk);
             cancelButton.addEventListener('click', handleCancel);
+            modal.addEventListener('click', handleClickOutside);
+            document.addEventListener('keydown', handleEscape);
         });
     }
 

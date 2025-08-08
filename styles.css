@@ -1713,12 +1713,12 @@ select.inline-edit-input {
 }
 
 .grid-item-health-score {
-    width: calc(40% - 12px);
+    width: calc(33.333% - 20px);
     margin: 0 15px 25px 0;
 }
 
 .grid-item-small {
-    width: calc(25% - 15px);
+    width: calc(33.333% - 20px);
     margin: 0 15px 25px 0;
 }
 
@@ -1737,6 +1737,19 @@ select.inline-edit-input {
     position: relative;
     width: 100%;
     box-sizing: border-box;
+}
+
+/* Vertical height classes for consistent card sizing */
+.analytics-card.height-standard {
+    min-height: 200px;
+}
+
+.analytics-card.height-tall {
+    min-height: 350px;
+}
+
+.analytics-card.height-extra-tall {
+    min-height: 500px;
 }
 
 .analytics-card:hover {
@@ -1795,12 +1808,12 @@ select.inline-edit-input {
 }
 
 .grid-item-health-score.muuri-item-releasing {
-    width: calc(40% - 12px) !important;
+    width: calc(33.333% - 20px) !important;
     transition: all 0.3s ease;
 }
 
 .grid-item-small.muuri-item-releasing {
-    width: calc(25% - 15px) !important;
+    width: calc(33.333% - 20px) !important;
     transition: all 0.3s ease;
 }
 
@@ -1967,7 +1980,7 @@ select.inline-edit-input {
 
 .chart-wrapper {
     position: relative;
-    min-height: 180px;
+    min-height: 160px;
     height: auto;
     display: flex;
     justify-content: center;
@@ -2227,15 +2240,15 @@ select.inline-edit-input {
     display: flex;
     flex-direction: row;
     align-items: flex-start;
-    gap: 20px;
+    gap: 15px;
     height: auto;
     justify-content: flex-start;
     flex: 1;
 }
 
 .health-score-circle {
-    width: 100px;
-    height: 100px;
+    width: 85px;
+    height: 85px;
     border-radius: 50%;
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     display: flex;
@@ -2255,12 +2268,12 @@ select.inline-edit-input {
 }
 
 .health-score-value {
-    font-size: 1.6rem;
+    font-size: 1.4rem;
     font-weight: bold;
 }
 
 .health-score-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -2268,21 +2281,21 @@ select.inline-edit-input {
 .health-indicators {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
     align-self: flex-start;
-    min-width: 160px;
-    padding-top: 10px;
+    min-width: 140px;
+    padding-top: 8px;
 }
 
 .health-indicator {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    line-height: 1.4;
+    gap: 6px;
+    font-size: 0.8rem;
+    line-height: 1.3;
     white-space: nowrap;
 }
 
@@ -2438,11 +2451,18 @@ select.inline-edit-input {
     border: 1px solid #e9ecef;
 }
 
+.emergency-fund-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
 .milestone-input-group {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-bottom: 16px;
+    position: relative;
 }
 
 .milestone-input-group:last-child {
@@ -2452,13 +2472,13 @@ select.inline-edit-input {
 .milestone-input-group label {
     font-weight: 600;
     color: #495057;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.milestone-input-group label::before {
+.milestone-input-group label[for="emergencyFundMonths"]::before {
     content: "🎯";
     font-size: 1rem;
 }
@@ -2777,6 +2797,18 @@ select.inline-edit-input {
     background: rgba(108, 117, 125, 0.1);
     padding: 4px 8px;
     border-radius: 6px;
+}
+
+.milestone-advice {
+    margin-top: 12px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.05) 0%, rgba(32, 201, 151, 0.05) 100%);
+    border: 1px solid rgba(40, 167, 69, 0.15);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #495057;
+    line-height: 1.4;
+    font-style: italic;
 }
 
 /* Responsive adjustments for analytics */

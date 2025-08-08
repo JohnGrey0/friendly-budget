@@ -171,7 +171,7 @@
             </div>
             <div class="analytics-grid" id="analyticsGrid">
                 <div class="grid-item grid-item-health-score" data-order="1">
-                    <div class="analytics-card" data-card-type="health-score">
+                    <div class="analytics-card height-standard" data-card-type="health-score">
                         <div class="card-drag-handle">⋮⋮</div>
                         <h4>Budget Health Score</h4>
                         <div class="health-score-wrapper">
@@ -185,7 +185,7 @@
                 </div>
                 
                 <div class="grid-item grid-item-small" data-order="2">
-                    <div class="analytics-card" data-card-type="savings-rate">
+                    <div class="analytics-card height-standard" data-card-type="savings-rate">
                         <div class="card-drag-handle">⋮⋮</div>
                         <h4>Savings Rate</h4>
                         <div class="savings-metric">
@@ -198,17 +198,20 @@
                 </div>
                 
                 <div class="grid-item" data-order="3">
-                    <div class="analytics-card" data-card-type="milestones">
+                    <div class="analytics-card height-tall" data-card-type="milestones">
                         <div class="card-drag-handle">⋮⋮</div>
-                        <h4>Financial Milestones</h4>
+                        <h4>Emergency Fund Planning</h4>
                         <div class="milestones-controls">
-                            <div class="milestone-input-group">
-                                <label for="emergencyFundMonths">Emergency Fund Target: <span id="emergencyMonthsDisplay">6 months</span></label>
-                                <input type="range" id="emergencyFundMonths" min="1" max="12" value="6" step="1">
-                            </div>
-                            <div class="milestone-input-group emergency-fund-input">
-                                <label for="currentEmergencyFund">Current Emergency Fund:</label>
-                                <input type="number" id="currentEmergencyFund" placeholder="$0" min="0" step="100">
+                            <div class="emergency-fund-flow">
+                                <div class="milestone-input-group">
+                                    <label for="currentEmergencyFund">💰 Current Savings:</label>
+                                    <input type="number" id="currentEmergencyFund" placeholder="Enter current amount" min="0" step="100">
+                                </div>
+                                
+                                <div class="milestone-input-group">
+                                    <label for="emergencyFundMonths">Target Coverage: <span id="emergencyMonthsDisplay">6 months</span></label>
+                                    <input type="range" id="emergencyFundMonths" min="3" max="12" value="6" step="1">
+                                </div>
                             </div>
                         </div>
                         <div class="milestones-list" id="milestonesList">
@@ -218,7 +221,7 @@
                 </div>
                 
                 <div class="grid-item" data-order="4">
-                    <div class="analytics-card" data-card-type="subcategories">
+                    <div class="analytics-card height-standard" data-card-type="subcategories">
                         <div class="card-drag-handle">⋮⋮</div>
                         <h4>All Subcategories</h4>
                         <div class="subcategory-bars" id="subcategoryBars"></div>
@@ -226,7 +229,7 @@
                 </div>
                 
                 <div class="grid-item grid-item-wide" data-order="5">
-                    <div class="analytics-card" data-card-type="expense-distribution">
+                    <div class="analytics-card height-standard" data-card-type="expense-distribution">
                         <div class="card-drag-handle">⋮⋮</div>
                         <h4>Expense Distribution</h4>
                         <div class="chart-wrapper">
@@ -236,7 +239,7 @@
                 </div>
                 
                 <div class="grid-item" data-order="6">
-                    <div class="analytics-card" data-card-type="scenario-modeling">
+                    <div class="analytics-card height-tall" data-card-type="scenario-modeling">
                         <div class="card-drag-handle">⋮⋮</div>
                         <h4>Budget Scenario Modeling</h4>
                         <div class="scenario-controls">
@@ -263,7 +266,7 @@
                 </div>
                 
                 <div class="grid-item grid-item-wide" data-order="7">
-                    <div class="analytics-card" data-card-type="savings-projection">
+                    <div class="analytics-card height-standard" data-card-type="savings-projection">
                         <div class="card-drag-handle">⋮⋮</div>
                         <h4>Savings Growth Projection</h4>
                         <div class="chart-wrapper">
@@ -273,7 +276,7 @@
                 </div>
                 
                 <div class="grid-item grid-item-wide" data-order="8">
-                    <div class="analytics-card" data-card-type="subcategory-breakdown">
+                    <div class="analytics-card height-tall" data-card-type="subcategory-breakdown">
                         <div class="card-drag-handle">⋮⋮</div>
                         <h4>Subcategory Breakdown</h4>
                         <div class="chart-wrapper">
