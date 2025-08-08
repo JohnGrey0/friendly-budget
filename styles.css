@@ -273,9 +273,17 @@
     box-sizing: border-box;
 }
 
+html {
+    background: var(--bg-body);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: 100% 100vh;
+    min-height: 100%;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--bg-body);
+    background: transparent; /* Let html background show through */
     min-height: 100vh;
     color: var(--text-primary);
 }
@@ -286,6 +294,9 @@ body {
 @media (max-width: 1024px) {
     html {
         overflow-x: hidden;
+        /* Disable fixed background on mobile for better performance */
+        background-attachment: scroll;
+        background-size: 100% 100%;
     }
     
     body {
