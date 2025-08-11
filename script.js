@@ -1,1581 +1,659 @@
-class BudgetTool {
+/**
+ * Modern Responsive Family Budget Tool
+ * Built with Bootstrap 5.3.0 for seamless device experience
+ * Author: Budget Tool Team
+ * Version: 2.0.0
+ */
+
+class ResponsiveBudgetTool {
     constructor() {
-        this.people = JSON.parse(localStorage.getItem('budgetPeople')) || [];
-        this.expenses = JSON.parse(localStorage.getItem('budgetExpenses')) || [];
-        this.payPeriods = parseInt(localStorage.getItem('budgetPayPeriods')) || 26;
-        this.globalSharingMethod = localStorage.getItem('budgetGlobalSharingMethod') || 'percentage';
-        this.analyticsPeriod = localStorage.getItem('budgetAnalyticsPeriod') || 'biweekly';
-        this.currentEmergencyFund = parseFloat(localStorage.getItem('budgetCurrentEmergencyFund')) || 0;
-        this.emergencyFundTargetMonths = parseInt(localStorage.getItem('budgetEmergencyFundTargetMonths')) || 6;
-        
-        // Category toggle states
-        this.categoryToggleStates = JSON.parse(localStorage.getItem('budgetCategoryToggleStates')) || {};
-        this.expenseCategoryToggleStates = JSON.parse(localStorage.getItem('budgetExpenseCategoryToggleStates')) || {};
-        
-        // Initialize theme management
-        this.initializeTheme();
-        
-        // Migrate existing expenses to have sharing method
-        this.expenses.forEach(expense => {
-            if (!expense.sharingMethod) {
-                expense.sharingMethod = 'percentage'; // default to percentage-based sharing for existing expenses
-            }
-        });
-        
-        // Migrate existing people to have individual pay periods
-        this.people.forEach(person => {
-            if (!person.payPeriods) {
-                person.payPeriods = this.payPeriods; // Use the global pay periods as default
-            }
-        });
-        
-        // Initialize custom split percentages for existing people
-        this.initializeCustomSplits();
-        
-        this.initializeEventListeners();
-        
-        // Check for shared budget in URL after initialization
-        this.loadSharedBudget();
-        
-        this.render();
-        
-        // Recalculate income after everything is initialized
-        this.recalculatePeopleIncome();
-        this.saveData(); // Save the migrated data
+        // Data Storage
+        this.people = [];
+        this.expenses = [];
+        this.settings = {
+            globalSharingMethod: 'percentage',
+            customPercentages: {}, // Will store person.id -> percentage mappings
+            emergencyFundTarget: 0,
+            emergencyFundTargetMonths: 6,
+            theme: 'light',
+            analyticsPeriod: 'monthly'
+        };
+
+        // UI State
+        this.activeTab = 'people';
+        this.editingPerson = null;
+        this.editingExpense = null;
+        this.charts = {};
+
+        // Initialize the application
+        this.init();
     }
 
-    /* ==========================================================================
-       THEME MANAGEMENT
-       ========================================================================== */
-
-    initializeTheme() {
-        // Check for saved theme preference, or default to system preference
-        let savedTheme = localStorage.getItem('budgetTheme');
-        
-        if (!savedTheme) {
-            // Detect system preference
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                savedTheme = 'dark';
-            } else {
-                savedTheme = 'light';
+    /**
+     * Initialize the budget tool
+     */
+    async init() {
+        try {
+            this.loadData();
+            this.initializeTheme();
+            
+            // Wait for DOM to be fully ready before setting up tabs
+            if (document.readyState === 'loading') {
+                await new Promise(resolve => {
+                    document.addEventListener('DOMContentLoaded', resolve);
+                });
             }
-        }
-        
-        this.setTheme(savedTheme, false); // false = no animation on initial load
-        
-        // Listen for system theme changes
-        if (window.matchMedia) {
-            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            mediaQuery.addEventListener('change', (e) => {
-                // Only auto-switch if user hasn't manually set a preference
-                if (!localStorage.getItem('budgetTheme')) {
-                    this.setTheme(e.matches ? 'dark' : 'light');
-                }
-            });
-        }
-        
-        // Set up theme toggle button
-        const themeToggle = document.getElementById('themeToggle');
-        if (themeToggle) {
-            themeToggle.addEventListener('click', () => this.toggleTheme());
             
-            // Add keyboard accessibility
-            themeToggle.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    this.toggleTheme();
-                }
-            });
+            // Wait a bit more for Bootstrap to initialize
+            await new Promise(resolve => setTimeout(resolve, 100));
             
-            // Add proper ARIA attributes
-            themeToggle.setAttribute('aria-label', 'Toggle between light and dark themes');
-            themeToggle.setAttribute('role', 'switch');
+            this.setupEventListeners();
+            this.restoreActiveTab();
+            // Initialize pay label
+            this.updatePayLabel();
+            // Render after restoring active tab to ensure proper initialization
+            this.render();
+            this.showToast('Budget tool loaded successfully!', 'success');
+        } catch (error) {
+            console.error('Initialization error:', error);
+            this.showToast('Error loading budget tool', 'error');
         }
     }
 
-    setTheme(theme, animate = true) {
-        const root = document.documentElement;
-        const themeToggle = document.getElementById('themeToggle');
-        const themeIcon = themeToggle?.querySelector('.theme-icon');
-        const themeText = themeToggle?.querySelector('.theme-text');
-        
-        if (animate) {
-            // Add switching attribute to disable transitions temporarily
-            root.setAttribute('data-theme-switching', '');
-        }
-        
-        // Set the theme
-        root.setAttribute('data-theme', theme);
-        
-        // Update toggle button
-        if (themeIcon && themeText) {
-            if (theme === 'dark') {
-                themeIcon.textContent = '☀️';
-                themeText.textContent = 'Light Mode';
-                themeToggle.setAttribute('aria-pressed', 'true');
-                themeToggle.setAttribute('aria-label', 'Switch to light theme');
+    /**
+     * Restore the active tab from localStorage
+     */
+    restoreActiveTab() {
+        try {
+            // Activate the saved tab
+            const tabElement = document.getElementById(`${this.activeTab}-tab`);
+            if (tabElement && bootstrap && bootstrap.Tab) {
+                console.log('Attempting to restore tab:', this.activeTab);
+                const tab = new bootstrap.Tab(tabElement);
+                tab.show();
+                console.log('Tab restored successfully');
             } else {
-                themeIcon.textContent = '🌙';
-                themeText.textContent = 'Dark Mode';
-                themeToggle.setAttribute('aria-pressed', 'false');
-                themeToggle.setAttribute('aria-label', 'Switch to dark theme');
+                console.log('Bootstrap not ready or tab element not found, using default tab');
+                // Fallback to default tab if Bootstrap isn't ready
+                this.activeTab = 'people';
             }
+        } catch (error) {
+            console.error('Error restoring tab:', error);
+            // Fallback to default tab
+            this.activeTab = 'people';
         }
-        
-        // Save theme preference
-        localStorage.setItem('budgetTheme', theme);
-        
-        if (animate) {
-            // Remove switching attribute after a brief delay
-            setTimeout(() => {
-                root.removeAttribute('data-theme-switching');
-            }, 50);
+    }
+
+    /**
+     * Load data from localStorage
+     */
+    loadData() {
+        try {
+            const savedPeople = localStorage.getItem('budgetPeople');
+            const savedExpenses = localStorage.getItem('budgetExpenses');
+            const savedSettings = localStorage.getItem('budgetSettings');
+            const savedActiveTab = localStorage.getItem('budgetActiveTab');
+
+            if (savedPeople) {
+                this.people = JSON.parse(savedPeople);
+            }
+
+            if (savedExpenses) {
+                this.expenses = JSON.parse(savedExpenses);
+            }
+
+            if (savedSettings) {
+                this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
+            }
+
+            if (savedActiveTab) {
+                this.activeTab = savedActiveTab;
+            }
+
+            // Migrate old data if necessary
+            this.migrateData();
+        } catch (error) {
+            console.error('Error loading data:', error);
+            this.showToast('Error loading saved data', 'warning');
         }
-        
-        // Dispatch theme change event for other components that might need to react
-        window.dispatchEvent(new CustomEvent('themeChanged', { 
-            detail: { theme } 
+    }
+
+    /**
+     * Save data to localStorage
+     */
+    saveData() {
+        try {
+            localStorage.setItem('budgetPeople', JSON.stringify(this.people));
+            localStorage.setItem('budgetExpenses', JSON.stringify(this.expenses));
+            localStorage.setItem('budgetSettings', JSON.stringify(this.settings));
+        } catch (error) {
+            console.error('Error saving data:', error);
+            this.showToast('Error saving data', 'error');
+        }
+    }
+
+    /**
+     * Migrate old data structure to new format
+     */
+    migrateData() {
+        // Ensure all people have required fields
+        this.people = this.people.map(person => {
+            const migrated = {
+                id: person.id || Date.now() + Math.random(),
+                name: person.name || 'Unknown',
+                biWeeklyPay: parseFloat(person.biWeeklyPay) || 0,
+                payPeriods: parseInt(person.payPeriods) || 26,
+                customSplits: person.customSplits || {},
+                ...person
+            };
+            
+            // Migrate to payPerPeriod field if it doesn't exist
+            if (!migrated.hasOwnProperty('payPerPeriod')) {
+                migrated.payPerPeriod = migrated.biWeeklyPay;
+            }
+            
+            return migrated;
+        });
+
+        // Ensure all expenses have required fields
+        this.expenses = this.expenses.map(expense => ({
+            id: expense.id || Date.now() + Math.random(),
+            name: expense.name || 'Unknown Expense',
+            monthlyAmount: parseFloat(expense.monthlyAmount) || 0,
+            category: expense.category || 'other',
+            subCategory: expense.subCategory || '',
+            sharingMethod: expense.sharingMethod || this.settings.globalSharingMethod,
+            customSplits: expense.customSplits || {},
+            ...expense
         }));
-        
-        // Regenerate charts with new theme colors
-        this.updateChartsForTheme();
-        
-        // Update all slider backgrounds with new theme colors
-        this.updateAllSliderBackgrounds();
+
+        this.saveData();
     }
 
-    updateChartsForTheme() {
-        // Regenerate all charts to use new theme colors
-        setTimeout(() => {
-            this.renderAnalytics();
-        }, 100); // Small delay to ensure CSS variables are updated
-    }
+    /**
+     * Set up all event listeners
+     */
+    setupEventListeners() {
+        // Theme toggle
+        document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
 
-    updateAllSliderBackgrounds() {
-        // Update all slider backgrounds to use new theme colors
-        setTimeout(() => {
-            // Update analytics sliders
-            const incomeSlider = document.getElementById('incomeAdjustment');
-            const expenseSlider = document.getElementById('expenseAdjustment');
-            if (incomeSlider) {
-                this.updateSliderBackground(incomeSlider);
-                this.updateScenarioSliderColors(incomeSlider, parseInt(incomeSlider.value));
-            }
-            if (expenseSlider) {
-                this.updateSliderBackground(expenseSlider);
-                this.updateScenarioSliderColors(expenseSlider, parseInt(expenseSlider.value));
-            }
-            
-            // Update emergency fund slider
-            const emergencyFundMonthsSlider = document.getElementById('emergencyFundMonths');
-            if (emergencyFundMonthsSlider) {
-                this.updateSliderBackground(emergencyFundMonthsSlider);
-            }
-            
-            // Update any custom split sliders
-            const customSliders = document.querySelectorAll('.custom-split-slider');
-            customSliders.forEach(slider => {
-                this.updateSliderBackground(slider);
+        // Navigation actions
+        document.getElementById('shareBtn').addEventListener('click', () => this.shareBudget());
+        document.getElementById('exportBtn').addEventListener('click', () => this.exportToPDF());
+        document.getElementById('clearAllBtn').addEventListener('click', () => this.confirmClearAll());
+
+        // Tab navigation with manual fallback
+        const tabButtons = document.querySelectorAll('[data-bs-toggle="pill"]');
+        console.log('Found tab buttons:', tabButtons.length);
+        tabButtons.forEach(button => {
+            // Add both Bootstrap event and manual click handler
+            button.addEventListener('shown.bs.tab', (e) => {
+                try {
+                    console.log('Bootstrap tab shown event fired for:', e.target.getAttribute('data-bs-target'));
+                    this.activeTab = e.target.getAttribute('data-bs-target').replace('#', '').replace('-panel', '');
+                    console.log('Active tab set to:', this.activeTab);
+                    this.onTabChange();
+                } catch (error) {
+                    console.error('Error in Bootstrap tab change handler:', error);
+                }
             });
-        }, 100); // Small delay to ensure CSS variables are updated
-    }
+            
+            // Manual click handler as fallback
+            button.addEventListener('click', (e) => {
+                try {
+                    console.log('Manual click on tab:', e.target.getAttribute('data-bs-target'));
+                    const targetPanel = e.target.getAttribute('data-bs-target');
+                    if (targetPanel) {
+                        // Hide all panels
+                        document.querySelectorAll('.tab-pane').forEach(panel => {
+                            panel.classList.remove('show', 'active');
+                        });
+                        
+                        // Show target panel
+                        const panel = document.querySelector(targetPanel);
+                        if (panel) {
+                            panel.classList.add('show', 'active');
+                            console.log('Manually activated panel:', targetPanel);
+                        }
+                        
+                        // Update active tab
+                        this.activeTab = targetPanel.replace('#', '').replace('-panel', '');
+                        console.log('Manual tab change to:', this.activeTab);
+                        
+                        // Update button states
+                        document.querySelectorAll('[data-bs-toggle="pill"]').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+                        
+                        // Trigger content update
+                        setTimeout(() => this.onTabChange(), 50);
+                    }
+                } catch (error) {
+                    console.error('Error in manual tab change handler:', error);
+                }
+            });
+        });
 
-    toggleTheme() {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        this.setTheme(newTheme);
-    }
-
-    // Get CSS variable value for theme-aware colors
-    getCSSVariable(varName) {
-        return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-    }
-
-    // Get theme-aware colors for charts
-    getThemeColors() {
-        return {
-            primary: this.getCSSVariable('--color-primary'),
-            success: this.getCSSVariable('--color-success') || '#28a745',
-            danger: this.getCSSVariable('--color-danger') || '#dc3545',
-            warning: this.getCSSVariable('--color-warning') || '#ffc107',
-            info: this.getCSSVariable('--color-info') || '#17a2b8',
-            textPrimary: this.getCSSVariable('--text-primary'),
-            textSecondary: this.getCSSVariable('--text-secondary'),
-            bgCard: this.getCSSVariable('--bg-card'),
-            bgMuted: this.getCSSVariable('--bg-muted')
-        };
-    }
-
-    // Get theme-aware chart color palette
-    getChartColorPalette() {
-        const colors = this.getThemeColors();
-        return [
-            colors.primary,
-            colors.success,
-            colors.danger,
-            colors.warning,
-            colors.info,
-            '#9b59b6', // Purple
-            '#e67e22', // Orange
-            '#1abc9c', // Turquoise
-            '#34495e', // Dark blue-gray
-            '#e74c3c', // Red
-            '#f39c12', // Yellow
-            '#2ecc71'  // Green
-        ];
-    }
-
-    // Create theme-aware dataset with background colors
-    createChartDataset(label, data, colorIndex = 0, options = {}) {
-        const colors = this.getChartColorPalette();
-        const baseColor = colors[colorIndex % colors.length];
-        
-        return {
-            label,
-            data,
-            borderColor: baseColor,
-            backgroundColor: baseColor + '20', // 20% opacity
-            borderWidth: options.borderWidth || 2,
-            fill: options.fill !== undefined ? options.fill : false,
-            tension: options.tension || 0.4,
-            pointRadius: options.pointRadius || 4,
-            pointHoverRadius: options.pointHoverRadius || 6,
-            ...options
-        };
-    }
-
-    initializeEventListeners() {
-        // Add person
-        document.getElementById('addPerson').addEventListener('click', () => {
+        // People form
+        document.getElementById('addPersonForm').addEventListener('submit', (e) => {
+            e.preventDefault();
             this.addPerson();
         });
 
-        // Add Enter key support for people form
-        const peopleFormInputs = ['personName', 'biWeeklyPay', 'personPayPeriods'];
-        peopleFormInputs.forEach(inputId => {
-            document.getElementById(inputId).addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.addPerson();
-                }
-            });
-        });
-
-        // Add expense
-        document.getElementById('addExpense').addEventListener('click', () => {
+        // Expense form
+        document.getElementById('addExpenseForm').addEventListener('submit', (e) => {
+            e.preventDefault();
             this.addExpense();
         });
 
-        // Add Enter key support for expense form
-        const expenseFormInputs = ['expenseName', 'monthlyAmount', 'subCategory'];
-        expenseFormInputs.forEach(inputId => {
-            document.getElementById(inputId).addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.addExpense();
+        // Global settings
+        document.querySelectorAll('input[name="sharingMethod"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.globalSharingMethod = e.target.value;
+                
+                // Show/hide custom split section
+                const customSplitSection = document.getElementById('customSplitSection');
+                if (e.target.value === 'custom') {
+                    customSplitSection.style.display = 'block';
+                    this.initializeCustomPercentages();
+                    this.renderCustomSplitSliders();
+                } else {
+                    customSplitSection.style.display = 'none';
+                }
+                
+                // Update all existing expenses to use the new sharing method
+                this.expenses.forEach(expense => {
+                    expense.sharingMethod = this.settings.globalSharingMethod;
+                });
+                
+                this.saveData();
+                this.render();
+                
+                if (this.expenses.length > 0) {
+                    this.showToast(`Updated ${this.expenses.length} expenses to use ${this.getSharingMethodLabel(e.target.value)}`, 'success');
+                } else {
+                    this.showToast('Sharing method updated', 'success');
                 }
             });
         });
 
-        // Clear all expenses
-        document.getElementById('clearAllExpenses').addEventListener('click', () => {
-            this.clearAllExpenses();
+        // Emergency fund settings
+        document.getElementById('emergencyFund').addEventListener('input', (e) => {
+            this.settings.emergencyFundTarget = parseFloat(e.target.value) || 0;
+            this.saveData();
+            this.renderAnalytics();
         });
 
-        // Refresh expense table
-        document.getElementById('refreshExpenseTable').addEventListener('click', () => {
-            this.refreshExpenseTable();
+        document.getElementById('emergencyMonths').addEventListener('input', (e) => {
+            this.settings.emergencyFundTargetMonths = parseInt(e.target.value);
+            document.getElementById('emergencyMonthsDisplay').textContent = `${e.target.value} months`;
+            this.saveData();
+            this.renderAnalytics();
         });
 
-        // Apply global sharing method
-        document.getElementById('setPercentageSharing').addEventListener('click', () => {
-            this.setGlobalSharingMethod('percentage');
-        });
+        // Clear expenses button
+        document.getElementById('clearExpensesBtn').addEventListener('click', () => this.confirmClearExpenses());
 
-        document.getElementById('setEvenSharing').addEventListener('click', () => {
-            this.setGlobalSharingMethod('even');
-        });
+        // Window resize handling
+        window.addEventListener('resize', this.debounce(() => this.onResize(), 250));
 
-        document.getElementById('setCustomSharing').addEventListener('click', () => {
-            this.setGlobalSharingMethod('custom');
-        });
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+    }
 
-        // Analytics period toggle
-        document.getElementById('setBiWeeklyPeriod').addEventListener('click', () => {
-            this.setAnalyticsPeriod('biweekly');
-        });
+    /**
+     * Handle tab changes
+     */
+    onTabChange() {
+        // Save the active tab to localStorage
+        localStorage.setItem('budgetActiveTab', this.activeTab);
+        
+        switch (this.activeTab) {
+            case 'people':
+                this.renderPeople();
+                break;
+            case 'expenses':
+                this.renderExpenses();
+                break;
+            case 'summary':
+                this.renderSummary();
+                break;
+            case 'analytics':
+                this.renderAnalytics();
+                break;
+        }
+    }
 
-        document.getElementById('setMonthlyPeriod').addEventListener('click', () => {
-            this.setAnalyticsPeriod('monthly');
-        });
-
-        document.getElementById('setYearlyPeriod').addEventListener('click', () => {
-            this.setAnalyticsPeriod('yearly');
-        });
-
-        // Enter key handling
-        document.getElementById('personName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addPerson();
-        });
-
-        document.getElementById('biWeeklyPay').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addPerson();
-        });
-
-        document.getElementById('personPayPeriods').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addPerson();
-        });
-
-        // Update placeholder text when pay period changes
-        document.getElementById('personPayPeriods').addEventListener('change', (e) => {
-            this.updatePayPlaceholder();
-        });
-
-        // Initialize placeholder text
-        this.updatePayPlaceholder();
-
-        document.getElementById('expenseName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addExpense();
-        });
-
-        document.getElementById('monthlyAmount').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addExpense();
-        });
-
-        document.getElementById('subCategory').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addExpense();
-        });
-
-        // PDF Export
-        document.getElementById('exportPdf').addEventListener('click', () => {
-            this.exportToPDF();
-        });
-
-        // Share Budget
-        document.getElementById('shareBudget').addEventListener('click', () => {
-            this.shareBudget();
-        });
-
-        // Clear All Data
-        document.getElementById('clearAllData').addEventListener('click', () => {
-            this.clearAllData();
-        });
-
-        // Analytics period toggle
-        document.getElementById('setBiWeeklyPeriod').addEventListener('click', () => {
-            this.setAnalyticsPeriod('biweekly');
-        });
-
-        document.getElementById('setMonthlyPeriod').addEventListener('click', () => {
-            this.setAnalyticsPeriod('monthly');
-        });
-
-        document.getElementById('setYearlyPeriod').addEventListener('click', () => {
-            this.setAnalyticsPeriod('yearly');
-        });
-
-        // Enter key handling
-        document.getElementById('personName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addPerson();
-        });
-
-        document.getElementById('biWeeklyPay').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addPerson();
-        });
-
-        document.getElementById('expenseName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addExpense();
-        });
-
-        document.getElementById('monthlyAmount').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addExpense();
-        });
-
-        document.getElementById('subCategory').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addExpense();
-        });
-
-        // Event delegation for remove buttons
-        document.addEventListener('click', (e) => {
-            // Handle remove person buttons
-            if (e.target.classList.contains('remove-person-btn') || e.target.closest('.remove-person-btn')) {
-                const button = e.target.classList.contains('remove-person-btn') ? e.target : e.target.closest('.remove-person-btn');
-                const personId = parseInt(button.getAttribute('data-person-id'));
-                this.removePerson(personId);
-            }
-            // Handle remove expense buttons
-            else if (e.target.classList.contains('remove-expense-btn') || e.target.closest('.remove-expense-btn')) {
-                const button = e.target.classList.contains('remove-expense-btn') ? e.target : e.target.closest('.remove-expense-btn');
-                const expenseId = parseInt(button.getAttribute('data-expense-id'));
-                this.removeExpense(expenseId);
+    /**
+     * Handle window resize
+     */
+    onResize() {
+        // Redraw charts if they exist
+        Object.values(this.charts).forEach(chart => {
+            if (chart && typeof chart.resize === 'function') {
+                chart.resize();
             }
         });
     }
 
-    initializeCustomSplits() {
-        // Initialize custom split percentages for all people
-        if (this.people.length > 0) {
-            const totalIncome = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
-            
-            this.people.forEach(person => {
-                if (!person.customSplitPercentage) {
-                    // Set initial custom split based on income percentage
-                    person.customSplitPercentage = totalIncome > 0 ? 
-                        Math.round((person.yearlyPay / totalIncome) * 100) : 
-                        Math.round(100 / this.people.length);
-                }
-            });
-            
-            // Normalize to ensure total equals 100%
-            this.normalizeCustomSplits();
+    /**
+     * Handle keyboard shortcuts
+     */
+    handleKeyboardShortcuts(e) {
+        // Ctrl/Cmd + 1-4 for tab navigation
+        if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '4') {
+            e.preventDefault();
+            const tabIndex = parseInt(e.key) - 1;
+            const tabs = ['people', 'expenses', 'summary', 'analytics'];
+            const targetTab = tabs[tabIndex];
+            if (targetTab) {
+                document.getElementById(`${targetTab}-tab`).click();
+            }
+        }
+
+        // Escape to cancel editing
+        if (e.key === 'Escape') {
+            this.cancelEditing();
         }
     }
 
-    normalizeCustomSplits() {
-        if (this.people.length === 0) return;
+    /**
+     * Render all components
+     */
+    render() {
+        this.renderPeople();
+        this.renderExpenses();
+        this.updateCounts();
+        this.updateGlobalSettings();
         
-        const totalSplit = this.people.reduce((sum, person) => sum + (person.customSplitPercentage || 0), 0);
-        
-        if (totalSplit !== 100) {
-            // Adjust the first person's percentage to make total 100%
-            const adjustment = 100 - totalSplit;
-            this.people[0].customSplitPercentage = (this.people[0].customSplitPercentage || 0) + adjustment;
+        // Only re-render current active tab content if it's summary or analytics
+        // and only if the tab is actually visible
+        if (this.activeTab === 'summary') {
+            const summaryPanel = document.getElementById('summary-panel');
+            if (summaryPanel && summaryPanel.classList.contains('active')) {
+                this.renderSummary();
+            }
+        } else if (this.activeTab === 'analytics') {
+            const analyticsPanel = document.getElementById('analytics-panel');
+            if (analyticsPanel && analyticsPanel.classList.contains('active')) {
+                this.renderAnalytics();
+            }
         }
     }
 
+    /**
+     * Update global settings UI
+     */
+    updateGlobalSettings() {
+        // Update sharing method radio buttons
+        const sharingMethodRadio = document.querySelector(`input[name="sharingMethod"][value="${this.settings.globalSharingMethod}"]`);
+        if (sharingMethodRadio) {
+            sharingMethodRadio.checked = true;
+        }
+
+        // Show/hide custom split section
+        const customSplitSection = document.getElementById('customSplitSection');
+        if (customSplitSection) {
+            if (this.settings.globalSharingMethod === 'custom') {
+                customSplitSection.style.display = 'block';
+                this.initializeCustomPercentages();
+                this.renderCustomSplitSliders();
+            } else {
+                customSplitSection.style.display = 'none';
+            }
+        }
+
+        // Update expense form sharing method dropdown
+        const expenseSharingDropdown = document.getElementById('expenseSharingMethod');
+        if (expenseSharingDropdown) {
+            expenseSharingDropdown.value = this.settings.globalSharingMethod;
+        }
+
+        // Update emergency fund values
+        const emergencyFundInput = document.getElementById('emergencyFund');
+        if (emergencyFundInput) {
+            emergencyFundInput.value = this.settings.emergencyFundTarget;
+        }
+
+        const emergencyMonthsInput = document.getElementById('emergencyMonths');
+        const emergencyMonthsDisplay = document.getElementById('emergencyMonthsDisplay');
+        if (emergencyMonthsInput && emergencyMonthsDisplay) {
+            emergencyMonthsInput.value = this.settings.emergencyFundTargetMonths;
+            emergencyMonthsDisplay.textContent = `${this.settings.emergencyFundTargetMonths} months`;
+        }
+    }
+
+    /**
+     * Update count badges
+     */
+    updateCounts() {
+        document.getElementById('peopleCount').textContent = this.people.length;
+        document.getElementById('expenseCount').textContent = this.expenses.length;
+    }
+
+    // ==========================================================================
+    // PEOPLE MANAGEMENT
+    // ==========================================================================
+
+    /**
+     * Update pay amount label based on selected pay period
+     */
+    updatePayLabel() {
+        const payPeriods = parseInt(document.getElementById('payPeriods').value);
+        const label = document.getElementById('payAmountLabel');
+        const help = document.getElementById('payAmountHelp');
+        
+        const scheduleLabels = {
+            52: { label: 'Weekly Pay Amount *', help: 'Enter your weekly pay amount' },
+            26: { label: 'Bi-weekly Pay Amount *', help: 'Enter your bi-weekly pay amount' },
+            24: { label: 'Semi-monthly Pay Amount *', help: 'Enter your semi-monthly pay amount' },
+            12: { label: 'Monthly Pay Amount *', help: 'Enter your monthly pay amount' }
+        };
+        
+        const scheduleInfo = scheduleLabels[payPeriods] || scheduleLabels[26];
+        label.textContent = scheduleInfo.label;
+        help.textContent = scheduleInfo.help;
+    }
+
+    /**
+     * Add a new person
+     */
     addPerson() {
         const name = document.getElementById('personName').value.trim();
-        const biWeeklyPay = parseFloat(document.getElementById('biWeeklyPay').value);
-        const payPeriods = parseInt(document.getElementById('personPayPeriods').value);
+        const payPerPeriod = parseFloat(document.getElementById('biWeeklyPay').value) || 0;
+        const payPeriods = parseInt(document.getElementById('payPeriods').value) || 26;
 
-        if (!name || isNaN(biWeeklyPay) || biWeeklyPay <= 0) {
-            this.showAlert('Please enter a valid name and pay amount.', 'Invalid Input', 'error');
+        // Validation
+        if (!name) {
+            this.showToast('Please enter a name', 'error');
+            document.getElementById('personName').focus();
             return;
         }
 
+        if (payPerPeriod <= 0) {
+            this.showToast('Please enter a valid pay amount', 'error');
+            document.getElementById('biWeeklyPay').focus();
+            return;
+        }
+
+        // Check for duplicate names
+        if (this.people.some(person => person.name.toLowerCase() === name.toLowerCase())) {
+            this.showToast('A person with this name already exists', 'error');
+            document.getElementById('personName').focus();
+            return;
+        }
+
+        // Create new person - store actual pay per period, not "biWeeklyPay"
         const person = {
-            id: Date.now(),
+            id: Date.now() + Math.random(),
             name,
-            biWeeklyPay,
-            payPeriods,
-            monthlyPay: this.calculateMonthlyFromBiWeekly(biWeeklyPay, payPeriods),
-            yearlyPay: biWeeklyPay * payPeriods,
-            customSplitPercentage: 0 // Will be calculated below
+            payPerPeriod,  // Actual amount per pay period
+            payPeriods,    // Number of periods per year
+            customSplits: {},
+            // Keep biWeeklyPay for backward compatibility, but calculate it properly
+            biWeeklyPay: payPerPeriod
         };
 
         this.people.push(person);
         
-        // Recalculate custom splits for all people
-        this.initializeCustomSplits();
+        // Reinitialize custom percentages if using custom sharing method
+        if (this.settings.globalSharingMethod === 'custom') {
+            this.initializeCustomPercentages();
+        }
         
-        this.clearPersonForm();
         this.saveData();
         this.render();
-        
-        // Focus on name field for easy consecutive entry
+
+        // Clear form
+        document.getElementById('addPersonForm').reset();
         document.getElementById('personName').focus();
+
+        this.showToast(`${name} added successfully!`, 'success');
     }
 
-    addExpense() {
-        const name = document.getElementById('expenseName').value.trim();
-        const monthlyAmount = parseFloat(document.getElementById('monthlyAmount').value);
-        const category = document.getElementById('category').value;
-        const subCategory = document.getElementById('subCategory').value.trim();
-        const sharingMethod = document.getElementById('sharingMethod').value;
-
-        if (!name || isNaN(monthlyAmount) || monthlyAmount <= 0) {
-            this.showAlert('Please enter a valid expense name and monthly amount.', 'Invalid Input', 'error');
-            return;
-        }
-
-        const expense = {
-            id: Date.now(),
-            name,
-            monthlyAmount,
-            biWeeklyAmount: this.calculateBiWeeklyFromMonthly(monthlyAmount),
-            category,
-            subCategory,
-            sharingMethod
-        };
-
-        this.expenses.push(expense);
-        this.clearExpenseForm();
-        this.saveData();
-        this.render();
-    }
-
-    setGlobalSharingMethod(method) {
-        this.globalSharingMethod = method;
-        
-        // Update button states
-        const buttons = document.querySelectorAll('.btn-toggle');
-        buttons.forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-method') === method) {
-                btn.classList.add('active');
-            }
-        });
-
-        // Update the expense form dropdown to match
-        document.getElementById('sharingMethod').value = method;
-
-        if (this.expenses.length === 0) {
-            this.saveData(); // Save the global setting even if no expenses
-            this.render(); // Re-render to show/hide custom split controls
-            return;
-        }
-
-        // Update all expenses with the selected sharing method
-        this.expenses.forEach(expense => {
-            expense.sharingMethod = method;
-        });
-
-        this.saveData();
-        this.render();
-    }
-
-    setAnalyticsPeriod(period) {
-        this.analyticsPeriod = period;
-        
-        // Update button states
-        const buttons = document.querySelectorAll('.period-toggle-buttons .btn-toggle');
-        buttons.forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-period') === period) {
-                btn.classList.add('active');
-            }
-        });
-
-        localStorage.setItem('budgetAnalyticsPeriod', period);
-        this.renderAnalytics(); // Re-render analytics with new period
-    }
-
-    async removePerson(id) {
-        const person = this.people.find(p => p.id === id);
-        if (!person) return;
-        
-        const confirmed = await this.showConfirm(
-            `Are you sure you want to remove ${person.name} from the budget?`, 
-            'Remove Person'
-        );
-        
-        if (confirmed) {
-            this.people = this.people.filter(person => person.id !== id);
-            
-            // Recalculate custom splits if needed
-            if (this.people.length > 0) {
-                this.initializeCustomSplits();
-            }
-            
-            this.saveData();
-            this.render();
-        }
-    }
-
-    editPerson(id) {
+    /**
+     * Remove a person
+     */
+    removePerson(id) {
         const person = this.people.find(p => p.id === id);
         if (!person) return;
 
-        // Store original content in a data attribute
-        const personElement = document.querySelector(`[data-person-id="${id}"]`);
-        personElement.setAttribute('data-original-content', personElement.innerHTML);
-
-        personElement.innerHTML = `
-            <div class="person-edit-form">
-                <div class="edit-inputs">
-                    <div class="input-group">
-                        <label for="editName_${id}">Name:</label>
-                        <input type="text" id="editName_${id}" value="${person.name}" placeholder="Person's name">
-                    </div>
-                    <div class="input-group">
-                        <label for="editPay_${id}">${this.getPayFrequencyLabel(person.payPeriods || 26)} Pay:</label>
-                        <input type="number" id="editPay_${id}" value="${person.biWeeklyPay}" placeholder="${this.getPayFrequencyLabel(person.payPeriods || 26)} pay" step="0.01">
-                    </div>
-                </div>
-                <div class="edit-buttons">
-                    <button class="btn btn-primary" onclick="budgetTool.savePerson(${id})">Save</button>
-                    <button class="btn btn-secondary" onclick="budgetTool.cancelEditPerson(${id})">Cancel</button>
-                </div>
-            </div>
-        `;
-
-        // Focus on the name input
-        document.getElementById(`editName_${id}`).focus();
-
-        // Add keyboard event listeners
-        document.getElementById(`editName_${id}`).addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.savePerson(id);
-            if (e.key === 'Escape') this.cancelEditPerson(id);
-        });
-
-        document.getElementById(`editPay_${id}`).addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.savePerson(id);
-            if (e.key === 'Escape') this.cancelEditPerson(id);
-        });
-    }
-
-    savePerson(id) {
-        const newName = document.getElementById(`editName_${id}`).value.trim();
-        const newPay = parseFloat(document.getElementById(`editPay_${id}`).value);
-
-        if (!newName || isNaN(newPay) || newPay <= 0) {
-            this.showAlert('Please enter a valid name and pay amount.', 'Invalid Input', 'error');
-            return;
-        }
-
-        const person = this.people.find(p => p.id === id);
-        if (person) {
-            person.name = newName;
-            person.biWeeklyPay = newPay;
-            const payPeriods = person.payPeriods || this.payPeriods;
-            person.monthlyPay = this.calculateMonthlyFromBiWeekly(newPay, payPeriods);
-            person.yearlyPay = newPay * payPeriods;
-        }
-
-        this.saveData();
-        this.render();
-    }
-
-    cancelEditPerson(id) {
-        const personElement = document.querySelector(`[data-person-id="${id}"]`);
-        const originalContent = personElement.getAttribute('data-original-content');
-        personElement.innerHTML = originalContent;
-        personElement.removeAttribute('data-original-content');
-    }
-
-    async removeExpense(id) {
-        const expense = this.expenses.find(e => e.id === id);
-        if (!expense) return;
-        
-        const confirmed = await this.showConfirm(
-            `Are you sure you want to remove the expense "${expense.name}"?`, 
-            'Remove Expense'
-        );
-        
-        if (confirmed) {
-            this.expenses = this.expenses.filter(expense => expense.id !== id);
-            this.saveData();
-            this.render();
-        }
-    }
-
-    async clearAllExpenses() {
-        if (this.expenses.length === 0) {
-            await this.showAlert('There are no expenses to clear.', 'No Expenses', 'info');
-            return;
-        }
-
-        const confirmed = await this.showConfirm(
-            `Are you sure you want to remove all ${this.expenses.length} expenses? This action cannot be undone.`, 
-            'Clear All Expenses'
-        );
-        
-        if (confirmed) {
-            this.expenses = [];
-            this.saveData();
-            this.render();
-            await this.showAlert('All expenses have been cleared.', 'Expenses Cleared', 'success');
-        }
-    }
-
-    async clearAllData() {
-        if (this.people.length === 0 && this.expenses.length === 0) {
-            await this.showAlert('There is no data to clear.', 'No Data', 'info');
-            return;
-        }
-
-        const dataCount = this.people.length + this.expenses.length;
-        
-        // Build a better formatted warning message with HTML
-        let warningMessage = `⚠️ Are you sure you want to clear ALL budget data?\n\n`;
-        warningMessage += `📊 <strong>WHAT WILL BE DELETED:</strong>\n`;
-        warningMessage += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-        warningMessage += `👥 <strong>People:</strong> ${this.people.length}\n`;
-        warningMessage += `💰 <strong>Expenses:</strong> ${this.expenses.length}\n`;
-        warningMessage += `⚙️ <strong>Settings:</strong> All preferences\n`;
-        warningMessage += `💾 <strong>Storage:</strong> All saved data\n\n`;
-        warningMessage += `🚨 <strong>This action CANNOT be undone!</strong>\n`;
-        warningMessage += `You will get a completely fresh start.`;
-        
-        const confirmed = await this.showConfirm(
-            warningMessage, 
-            'Clear All Data'
-        );
-        
-        if (confirmed) {
-            // Clear all data arrays
-            this.people = [];
-            this.expenses = [];
-            
-            // Reset settings to defaults
-            this.globalSharingMethod = 'percentage';
-            this.analyticsPeriod = 'biweekly';
-            
-            // Clear localStorage
-            localStorage.removeItem('budgetPeople');
-            localStorage.removeItem('budgetExpenses');
-            localStorage.removeItem('budgetGlobalSharingMethod');
-            localStorage.removeItem('budgetAnalyticsPeriod');
-            
-            // Clear all form inputs
-            document.getElementById('personName').value = '';
-            document.getElementById('biWeeklyPay').value = '';
-            document.getElementById('personPayPeriods').value = '26';
-            document.getElementById('expenseName').value = '';
-            document.getElementById('monthlyAmount').value = '';
-            document.getElementById('category').value = 'bills';
-            document.getElementById('subCategory').value = '';
-            document.getElementById('sharingMethod').value = 'percentage';
-            
-            // Force complete re-render
-            this.render();
-            
-            // Additional forced refresh of key components
-            setTimeout(() => {
-                this.renderAnalytics();
-                this.renderBiWeeklySummary();
-                this.renderPersonCategoryBreakdown();
-                this.renderExcessFunds();
-            }, 100);
-            
-            await this.showAlert('All data has been cleared. You now have a fresh start!', 'Data Cleared', 'success');
-        }
-    }
-
-    refreshExpenseTable() {
-        // Force a complete refresh of expense calculations and rendering
-        this.recalculateExpenseBiWeekly();
-        this.saveData();
-        this.render();
-        
-        // Show a brief confirmation
-        this.showAlert('Expense table refreshed successfully.', 'Table Refreshed', 'success');
-    }
-
-    calculateMonthlyFromBiWeekly(biWeeklyAmount, payPeriods) {
-        return (biWeeklyAmount * payPeriods) / 12;
-    }
-
-    calculateBiWeeklyFromMonthly(monthlyAmount) {
-        // Use household's weighted average pay periods
-        const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
-        return (monthlyAmount * 12) / effectivePayPeriods;
-    }
-
-    // Calculate the household's effective pay periods based on income weighting
-    getHouseholdEffectivePayPeriods() {
-        if (this.people.length === 0) {
-            return 26; // Default to bi-weekly if no people
-        }
-
-        // Weight pay periods by each person's income contribution
-        const totalYearlyIncome = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
-        
-        if (totalYearlyIncome === 0) {
-            // If no income, use simple average
-            const avgPayPeriods = this.people.reduce((sum, person) => sum + (person.payPeriods || 26), 0) / this.people.length;
-            return avgPayPeriods;
-        }
-
-        // Weighted average based on income
-        const weightedSum = this.people.reduce((sum, person) => {
-            const payPeriods = person.payPeriods || 26;
-            const weight = person.yearlyPay / totalYearlyIncome;
-            return sum + (payPeriods * weight);
-        }, 0);
-
-        return weightedSum;
-    }
-
-    recalculatePeopleIncome() {
-        this.people.forEach(person => {
-            // Use person's individual pay periods if available, fallback to global
-            const payPeriods = person.payPeriods || this.payPeriods;
-            person.monthlyPay = this.calculateMonthlyFromBiWeekly(person.biWeeklyPay, payPeriods);
-            person.yearlyPay = person.biWeeklyPay * payPeriods;
-        });
-    }
-
-    recalculateExpenseBiWeekly() {
-        this.expenses.forEach(expense => {
-            expense.biWeeklyAmount = this.calculateBiWeeklyFromMonthly(expense.monthlyAmount);
-        });
-    }
-
-    clearPersonForm() {
-        document.getElementById('personName').value = '';
-        document.getElementById('biWeeklyPay').value = '';
-        document.getElementById('personPayPeriods').value = '26'; // Default to bi-weekly
-    }
-
-    clearExpenseForm() {
-        document.getElementById('expenseName').value = '';
-        document.getElementById('monthlyAmount').value = '';
-        document.getElementById('subCategory').value = '';
-        document.getElementById('sharingMethod').value = this.globalSharingMethod;
-        
-        // Focus back to the expense name input for easy continuous entry
-        document.getElementById('expenseName').focus();
-    }
-
-    saveData() {
-        localStorage.setItem('budgetPeople', JSON.stringify(this.people));
-        localStorage.setItem('budgetExpenses', JSON.stringify(this.expenses));
-        // Keep global payPeriods for backward compatibility, but individual person payPeriods take precedence
-        localStorage.setItem('budgetPayPeriods', this.payPeriods.toString());
-        localStorage.setItem('budgetGlobalSharingMethod', this.globalSharingMethod);
-        localStorage.setItem('budgetCurrentEmergencyFund', this.currentEmergencyFund.toString());
-        localStorage.setItem('budgetEmergencyFundTargetMonths', this.emergencyFundTargetMonths.toString());
-        localStorage.setItem('budgetCategoryToggleStates', JSON.stringify(this.categoryToggleStates));
-        localStorage.setItem('budgetExpenseCategoryToggleStates', JSON.stringify(this.expenseCategoryToggleStates));
-    }
-
-    formatCurrency(amount) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount);
-    }
-
-    // Helper methods for analytics period calculations
-    getAnalyticsAmount(biWeeklyAmount) {
-        const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
-        switch (this.analyticsPeriod) {
-            case 'monthly':
-                return biWeeklyAmount * effectivePayPeriods / 12;
-            case 'yearly':
-                return biWeeklyAmount * effectivePayPeriods;
-            default: // biweekly
-                return biWeeklyAmount;
-        }
-    }
-
-    getAnalyticsLabel() {
-        switch (this.analyticsPeriod) {
-            case 'monthly':
-                return 'Monthly';
-            case 'yearly':
-                return 'Yearly';
-            default: // biweekly
-                return 'Bi-weekly';
-        }
-    }
-
-    getPersonAnalyticsAmount(person) {
-        const biWeeklyPay = person.biWeeklyPay;
-        switch (this.analyticsPeriod) {
-            case 'monthly':
-                return person.monthlyPay;
-            case 'yearly':
-                return person.yearlyPay;
-            default: // biweekly
-                return biWeeklyPay;
-        }
-    }
-
-    calculatePercentDifference(amount, total) {
-        if (total === 0) return 0;
-        return ((amount / total) * 100).toFixed(1);
-    }
-
-    render() {
-        this.renderSharingButtons();
-        this.renderAnalyticsPeriodButtons();
-        this.renderExpenseForm();
-        this.renderPeople();
-        this.renderExpenses();
-        this.renderBiWeeklySummary();
-        this.renderPersonCategoryBreakdown();
-        this.renderExcessFunds();
-        this.renderAnalytics();
-        
-        // Initialize table sorting after rendering
-        setTimeout(() => this.initializeTableSorting(), 100);
-    }
-
-    renderSharingButtons() {
-        const buttons = document.querySelectorAll('.btn-toggle');
-        buttons.forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-method') === this.globalSharingMethod) {
-                btn.classList.add('active');
-            }
-        });
-    }
-
-    renderAnalyticsPeriodButtons() {
-        const buttons = document.querySelectorAll('.period-toggle-buttons .btn-toggle');
-        buttons.forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-period') === this.analyticsPeriod) {
-                btn.classList.add('active');
-            }
-        });
-    }
-
-    renderExpenseForm() {
-        document.getElementById('sharingMethod').value = this.globalSharingMethod;
-    }
-
-    renderPeople() {
-        const peopleList = document.getElementById('peopleList');
-        
-        if (this.people.length === 0) {
-            peopleList.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">👥</div>
-                    <div class="empty-title">No people added yet</div>
-                    <div class="empty-subtitle">Add someone to get started with your budget!</div>
-                </div>
-            `;
-            return;
-        }
-
-        const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
-
-        let html = this.people.map((person, index) => {
-            const incomePercentage = totalYearly > 0 ? (person.yearlyPay / totalYearly * 100) : 0;
-            
-            return `
-                <div class="person-item compact" data-person-id="${person.id}">
-                        <div class="person-header-with-toggle">
-                        <div class="person-header">
-                            <div class="person-avatar">
-                                <div class="avatar-circle" style="background: ${this.getPersonColor(index)}">
-                                    ${person.name.charAt(0).toUpperCase()}
-                                </div>
-                            </div>
-                            <div class="person-main-info">
-                                <div class="person-name-container">
-                                    <div class="person-name editable-person-field" data-field="name" data-type="text">${person.name}</div>
-                                </div>
-                                <div class="person-income-summary">
-                                    <span class="primary-income editable-person-field" data-field="biWeeklyPay" data-type="number">${this.formatCurrency(person.biWeeklyPay)}</span>
-                                    <span class="income-period">${person.payPeriods || 26} - ${this.getPayFrequencyLabel(person.payPeriods || 26)}</span>
-                                </div>
-                            </div>
-                            <div class="person-contribution">
-                                ${this.globalSharingMethod === 'custom' ? `
-                                    <div class="custom-split-control">
-                                        <input type="range" 
-                                               min="0" 
-                                               max="100" 
-                                               step="1"
-                                               value="${person.customSplitPercentage || 0}" 
-                                               class="custom-split-slider" 
-                                               data-person-id="${person.id}"
-                                               style="--progress: ${person.customSplitPercentage || 0}%">
-                                        <div class="custom-split-percentage">
-                                            ${person.customSplitPercentage || 0}%
-                                        </div>
-                                    </div>
-                                    <div class="contribution-label">expense split</div>
-                                ` : `
-                                    <div class="contribution-percentage">
-                                        ${incomePercentage.toFixed(0)}%
-                                    </div>
-                                    <div class="contribution-label">${this.globalSharingMethod === 'percentage' ? 'contribution' : 'of income'}</div>
-                                `}
-                            </div>
-                            <div class="person-header-actions" data-contribution="${incomePercentage.toFixed(0)}%">
-                                <button class="btn btn-danger btn-small remove-person-btn" data-person-id="${person.id}" title="Remove ${person.name}">
-                                    🗑️
-                                </button>
-                            </div>
-                        </div>
-                        <button class="person-toggle-btn collapsed" data-person-id="${person.id}">
-                            Details
-                        </button>
-                    </div>                    <div class="income-bar" style="margin-top: 15px;">
-                        <div class="income-bar-fill" style="width: ${incomePercentage}%; background: ${this.getPersonColor(index)}"></div>
-                    </div>
-                    
-                    <div class="person-details-expanded collapsed" data-person-id="${person.id}">
-                        <div class="income-breakdown">
-                            <div class="income-item">
-                                <span class="income-label">Monthly</span>
-                                <span class="income-value">${this.formatCurrency(person.monthlyPay)}</span>
-                            </div>
-                            <div class="income-item">
-                                <span class="income-label">Yearly</span>
-                                <span class="income-value">${this.formatCurrency(person.yearlyPay)}</span>
-                            </div>
-                            <div class="income-item">
-                                <span class="income-label">Pay Periods</span>
-                                <span class="income-value editable-person-field" data-field="payPeriods" data-type="select">${person.payPeriods || 26}/year</span>
-                            </div>
-                            <div class="income-item">
-                                <span class="income-label">Pay Frequency</span>
-                                <span class="income-value">${this.getPayFrequencyLabel(person.payPeriods || 26)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // Add household totals section at the end if we have people
-        if (this.people.length > 0) {
-            const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
-            const totalMonthly = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
-            const totalBiWeekly = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
-            
-            html += `
-                <div class="household-totals-summary">
-                    <h4 class="totals-title">Household Income</h4>
-                    <div class="header-household-totals">
-                        <div class="header-total-item">
-                            <span class="header-total-label">Bi-weekly</span>
-                            <span class="header-total-amount">${this.formatCurrency(totalBiWeekly)}</span>
-                        </div>
-                        <div class="header-total-item">
-                            <span class="header-total-label">Monthly</span>
-                            <span class="header-total-amount">${this.formatCurrency(totalMonthly)}</span>
-                        </div>
-                        <div class="header-total-item">
-                            <span class="header-total-label">Yearly</span>
-                            <span class="header-total-amount">${this.formatCurrency(totalYearly)}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        peopleList.innerHTML = html;
-        
-        // Setup inline editing for people
-        this.setupInlinePersonEditing();
-        
-        // Setup custom split sliders
-        this.setupCustomSplitSliders();
-        
-        // Setup person detail toggles
-        this.setupPersonToggle();
-    }
-
-    renderHouseholdTotals() {
-        // This function is now primarily for backward compatibility
-        // The main household totals are now displayed within the people card
-        
-        // Update header totals if that element exists
-        this.renderHeaderHouseholdTotals();
-        
-        // Legacy support for separate household totals card if it still exists
-        const householdTotals = document.getElementById('householdTotals');
-        if (!householdTotals) return;
-        
-        if (this.people.length === 0) {
-            householdTotals.innerHTML = '<div class="empty-state">Add people to see totals</div>';
-            return;
-        }
-
-        const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
-        const totalMonthly = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
-        const totalBiWeekly = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
-
-        householdTotals.innerHTML = `
-            <div class="household-totals-content">
-                <div class="total-row">
-                    <span class="total-label">Bi-weekly:</span>
-                    <span class="total-amount">${this.formatCurrency(totalBiWeekly)}</span>
-                </div>
-                <div class="total-row">
-                    <span class="total-label">Monthly:</span>
-                    <span class="total-amount">${this.formatCurrency(totalMonthly)}</span>
-                </div>
-                <div class="total-row">
-                    <span class="total-label">Yearly:</span>
-                    <span class="total-amount">${this.formatCurrency(totalYearly)}</span>
-                </div>
-            </div>
-        `;
-    }
-
-    renderHeaderHouseholdTotals() {
-        const headerTotals = document.getElementById('headerHouseholdTotals');
-        if (!headerTotals) return;
-        
-        if (this.people.length === 0) {
-            headerTotals.innerHTML = '<div class="empty-state">No household data</div>';
-            return;
-        }
-
-        const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
-        const totalMonthly = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
-        const totalBiWeekly = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
-
-        headerTotals.innerHTML = `
-            <div class="header-household-totals">
-                <div class="header-total-item">
-                    <span class="header-total-label">Bi-weekly</span>
-                    <span class="header-total-amount">${this.formatCurrency(totalBiWeekly)}</span>
-                </div>
-                <div class="header-total-item">
-                    <span class="header-total-label">Monthly</span>
-                    <span class="header-total-amount">${this.formatCurrency(totalMonthly)}</span>
-                </div>
-                <div class="header-total-item">
-                    <span class="header-total-label">Yearly</span>
-                    <span class="header-total-amount">${this.formatCurrency(totalYearly)}</span>
-                </div>
-            </div>
-        `;
-    }
-
-    setupCustomSplitSliders() {
-        const sliders = document.querySelectorAll('.custom-split-slider');
-        sliders.forEach(slider => {
-            // Input event for real-time updates while dragging
-            slider.addEventListener('input', (e) => {
-                const personId = parseInt(e.target.getAttribute('data-person-id'));
-                const percentage = parseInt(e.target.value);
+        this.showConfirm(
+            `Remove ${person.name}?`,
+            `Are you sure you want to remove ${person.name} from your budget?`,
+            () => {
+                this.people = this.people.filter(p => p.id !== id);
                 
-                // Update the display immediately for smooth feedback
-                const percentageDisplay = e.target.parentNode.querySelector('.custom-split-percentage');
-                percentageDisplay.textContent = `${percentage}%`;
-                
-                // Update slider progress visualization
-                e.target.style.setProperty('--progress', `${percentage}%`);
-                
-                // Add visual feedback
-                percentageDisplay.style.background = 'rgba(102, 126, 234, 0.2)';
-                percentageDisplay.style.transform = 'scale(1.05)';
-            });
-            
-            // Change event for final calculation and data saving
-            slider.addEventListener('change', (e) => {
-                const personId = parseInt(e.target.getAttribute('data-person-id'));
-                const percentage = parseInt(e.target.value);
-                
-                // Update the person's custom split percentage
-                const person = this.people.find(p => p.id === personId);
-                if (person) {
-                    person.customSplitPercentage = percentage;
-                    
-                    // Auto-adjust other sliders to keep total at 100%
-                    this.autoAdjustCustomSplits(personId);
-                    
-                    this.saveData();
-                    
-                    // Re-render to update all sliders and calculations
-                    this.render();
+                // Remove from custom percentages and reinitialize if using custom sharing method
+                if (this.settings.customPercentages) {
+                    delete this.settings.customPercentages[id];
                 }
-            });
-            
-            // Mouse events for better visual feedback
-            slider.addEventListener('mousedown', (e) => {
-                e.target.style.transform = 'scaleY(1.2)';
-            });
-            
-            slider.addEventListener('mouseup', (e) => {
-                e.target.style.transform = 'scaleY(1)';
-                
-                // Reset percentage display styling
-                const percentageDisplay = e.target.parentNode.querySelector('.custom-split-percentage');
-                percentageDisplay.style.background = 'rgba(102, 126, 234, 0.1)';
-                percentageDisplay.style.transform = 'scale(1)';
-            });
-            
-            slider.addEventListener('mouseleave', (e) => {
-                e.target.style.transform = 'scaleY(1)';
-                
-                // Reset percentage display styling
-                const percentageDisplay = e.target.parentNode.querySelector('.custom-split-percentage');
-                percentageDisplay.style.background = 'rgba(102, 126, 234, 0.1)';
-                percentageDisplay.style.transform = 'scale(1)';
-            });
-        });
-    }
-
-    autoAdjustCustomSplits(excludePersonId) {
-        const excludedPerson = this.people.find(p => p.id === excludePersonId);
-        const otherPeople = this.people.filter(p => p.id !== excludePersonId);
-        
-        if (otherPeople.length === 0) return;
-        
-        const excludedPercentage = excludedPerson.customSplitPercentage || 0;
-        const remainingPercentage = 100 - excludedPercentage;
-        
-        // Distribute remaining percentage proportionally among other people
-        const currentOtherTotal = otherPeople.reduce((sum, p) => sum + (p.customSplitPercentage || 0), 0);
-        
-        if (currentOtherTotal > 0) {
-            // Calculate new percentages with better rounding to avoid drift
-            let distributed = 0;
-            otherPeople.forEach((person, index) => {
-                const currentPercentage = person.customSplitPercentage || 0;
-                const proportion = currentPercentage / currentOtherTotal;
-                
-                if (index === otherPeople.length - 1) {
-                    // Last person gets whatever is left to ensure total = 100%
-                    person.customSplitPercentage = remainingPercentage - distributed;
-                } else {
-                    const newPercentage = Math.round(remainingPercentage * proportion);
-                    person.customSplitPercentage = newPercentage;
-                    distributed += newPercentage;
+                if (this.settings.globalSharingMethod === 'custom' && this.people.length > 1) {
+                    this.initializeCustomPercentages();
                 }
-            });
-        } else {
-            // Equal distribution if no previous percentages
-            const equalShare = Math.floor(remainingPercentage / otherPeople.length);
-            const remainder = remainingPercentage - (equalShare * otherPeople.length);
-            
-            otherPeople.forEach((person, index) => {
-                person.customSplitPercentage = equalShare + (index < remainder ? 1 : 0);
-            });
+                
+                this.saveData();
+                this.render();
+                this.showToast(`${person.name} removed`, 'info');
+            }
+        );
+    }
+
+    /**
+     * Start editing a person inline
+     */
+    editPerson(id, field) {
+        // Prevent event bubbling
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
         }
-        
-        // Don't call normalizeCustomSplits here as it might adjust the excluded person
-        // The excluded person's percentage should stay exactly as the user set it
-    }
 
-    setupInlinePersonEditing() {
-        const editableFields = document.querySelectorAll('.editable-person-field');
-        editableFields.forEach(field => {
-            field.addEventListener('click', (e) => this.startPersonFieldEdit(e));
-        });
-    }
-
-    startPersonFieldEdit(e) {
-        e.stopPropagation(); // Prevent event bubbling
-        const field = e.target;
-        if (field.classList.contains('editing')) return;
-
-        const personItem = field.closest('.person-item');
-        const personId = parseInt(personItem.getAttribute('data-person-id'));
-        const fieldName = field.getAttribute('data-field');
-        const fieldType = field.getAttribute('data-type');
-        const person = this.people.find(p => p.id === personId);
-        
+        const person = this.people.find(p => p.id === id);
         if (!person) return;
 
-        field.classList.add('editing');
-        const originalContent = field.innerHTML;
-        let currentValue = person[fieldName];
+        // Find the element that was clicked
+        const element = event.target;
         
-        let inputElement;
+        // Don't edit if already editing
+        if (element.querySelector('input, select')) {
+            return;
+        }
         
-        if (fieldType === 'select' && fieldName === 'payPeriods') {
-            inputElement = document.createElement('select');
-            inputElement.className = 'inline-edit-input';
-            inputElement.innerHTML = `
-                <option value="26" ${currentValue == 26 ? 'selected' : ''}>26 (bi-weekly)</option>
-                <option value="24" ${currentValue == 24 ? 'selected' : ''}>24 (semi-monthly)</option>
-                <option value="12" ${currentValue == 12 ? 'selected' : ''}>12 (monthly)</option>
-                <option value="52" ${currentValue == 52 ? 'selected' : ''}>52 (weekly)</option>
+        const originalValue = person[field];
+        const originalContent = element.innerHTML;
+        
+        // Create appropriate input based on field type
+        let input;
+        
+        if (field === 'payPeriods') {
+            input = document.createElement('select');
+            input.className = 'form-select form-select-sm inline-edit';
+            input.innerHTML = `
+                <option value="52" ${person.payPeriods === 52 ? 'selected' : ''}>Weekly (52/year)</option>
+                <option value="26" ${person.payPeriods === 26 ? 'selected' : ''}>Bi-weekly (26/year)</option>
+                <option value="24" ${person.payPeriods === 24 ? 'selected' : ''}>Semi-monthly (24/year)</option>
+                <option value="12" ${person.payPeriods === 12 ? 'selected' : ''}>Monthly (12/year)</option>
             `;
+        } else if (field === 'biWeeklyPay') {
+            input = document.createElement('input');
+            input.type = 'number';
+            input.step = '0.01';
+            input.min = '0';
+            input.className = 'form-control form-control-sm inline-edit';
+            input.value = originalValue;
         } else {
-            inputElement = document.createElement('input');
-            inputElement.type = fieldType === 'number' ? 'number' : 'text';
-            inputElement.className = 'inline-edit-input';
-            
-            if (fieldType === 'number') {
-                inputElement.step = '0.01';
-                inputElement.value = currentValue;
-            } else {
-                inputElement.value = currentValue || '';
-            }
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control form-control-sm inline-edit';
+            input.value = originalValue || '';
         }
 
-        field.innerHTML = '';
-        field.appendChild(inputElement);
+        // Replace element content with input
+        element.innerHTML = '';
+        element.appendChild(input);
         
-        if (fieldType === 'select') {
-            // For select, just focus without trying to click
-            inputElement.focus();
-        } else {
-            inputElement.focus();
-        }
+        // Style the input to exactly match the div.fw-bold appearance in side-by-side layout
+        input.style.width = '100%';
+        input.style.textAlign = 'right';
+        input.style.fontWeight = 'bold';
+        input.style.background = 'transparent';
+        input.style.border = 'none';
+        input.style.borderRadius = '0';
+        input.style.padding = '0';
+        input.style.margin = '0';
+        input.style.height = 'auto';
+        input.style.lineHeight = 'inherit';
+        input.style.fontSize = 'inherit';
+        input.style.outline = 'none';
+        input.style.boxSizing = 'border-box';
         
+        // Focus the input
+        setTimeout(() => {
+            input.focus();
+            if (input.type === 'text' || input.type === 'number') {
+                input.select();
+            }
+        }, 10);
+
+        // Handle save
         const saveEdit = () => {
-            let newValue;
+            const newValue = input.value.trim();
             
-            if (fieldType === 'select') {
-                newValue = parseInt(inputElement.value);
-            } else if (fieldType === 'number') {
-                newValue = parseFloat(inputElement.value.trim());
-                if (isNaN(newValue) || newValue <= 0) {
-                    this.showAlert('Please enter a valid amount greater than 0.', 'Invalid Input', 'error');
-                    inputElement.focus();
+            // Validate
+            if (field === 'biWeeklyPay') {
+                const numValue = parseFloat(newValue);
+                if (isNaN(numValue) || numValue < 0) {
+                    this.showToast('Please enter a valid pay amount', 'error');
+                    input.focus();
                     return;
                 }
-            } else {
-                newValue = inputElement.value.trim();
-                if (fieldName === 'name' && !newValue) {
-                    this.showAlert('Please enter a person\'s name.', 'Invalid Input', 'error');
-                    inputElement.focus();
-                    return;
-                }
-            }
-
-            // Update the person
-            person[fieldName] = newValue;
-            
-            // Recalculate dependent fields
-            if (fieldName === 'biWeeklyPay' || fieldName === 'payPeriods') {
-                const payPeriods = person.payPeriods || 26;
-                person.monthlyPay = this.calculateMonthlyFromBiWeekly(person.biWeeklyPay, payPeriods);
-                person.yearlyPay = person.biWeeklyPay * payPeriods;
-                
-                // If pay periods changed, recalculate expense bi-weekly amounts since they depend on household effective pay periods
-                if (fieldName === 'payPeriods') {
-                    this.recalculateExpenseBiWeekly();
-                }
-            }
-
-            this.saveData();
-            this.render();
-        };
-
-        const cancelEdit = () => {
-            field.classList.remove('editing');
-            field.innerHTML = originalContent;
-            this.setupInlinePersonEditing();
-            this.setupPersonToggle();
-        };
-
-        if (fieldType === 'select') {
-            // For select elements, save immediately on change
-            inputElement.addEventListener('change', saveEdit);
-            // Add click event to prevent propagation
-            inputElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-        } else {
-            inputElement.addEventListener('blur', saveEdit);
-            inputElement.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    saveEdit();
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    cancelEdit();
-                }
-            });
-        }
-    }
-
-    setupPersonToggle() {
-        const toggleBtns = document.querySelectorAll('.person-toggle-btn');
-        toggleBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const personId = btn.dataset.personId;
-                const detailsDiv = document.querySelector(`.person-details-expanded[data-person-id="${personId}"]`);
-                const personItem = btn.closest('.person-item');
-                
-                if (detailsDiv && personItem) {
-                    const isCollapsed = detailsDiv.classList.contains('collapsed');
-                    
-                    if (isCollapsed) {
-                        // Expand
-                        detailsDiv.classList.remove('collapsed');
-                        btn.classList.remove('collapsed');
-                        personItem.classList.remove('compact');
-                        btn.textContent = 'Details';
-                    } else {
-                        // Collapse
-                        detailsDiv.classList.add('collapsed');
-                        btn.classList.add('collapsed');
-                        personItem.classList.add('compact');
-                        btn.textContent = 'Details';
-                    }
-                }
-            });
-        });
-    }
-
-    renderExpenses() {
-        const tbody = document.querySelector('#expensesTable tbody');
-        
-        if (this.expenses.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No expenses added yet.</td></tr>';
-            return;
-        }
-
-        // Group expenses by category
-        const expensesByCategory = {};
-        this.expenses.forEach(expense => {
-            const category = expense.category;
-            if (!expensesByCategory[category]) {
-                expensesByCategory[category] = [];
-            }
-            expensesByCategory[category].push(expense);
-        });
-
-        let html = '';
-        
-        // Render each category with its expenses
-        Object.keys(expensesByCategory).forEach(category => {
-            const categoryExpenses = expensesByCategory[category];
-            const categoryTotal = categoryExpenses.reduce((sum, expense) => sum + expense.monthlyAmount, 0);
-            const categoryCount = categoryExpenses.length;
-            
-            // Category header row
-            // Check saved state for this expense category
-            const isCollapsed = this.expenseCategoryToggleStates[category] !== undefined ? 
-                this.expenseCategoryToggleStates[category] : false; // default expanded
-            const toggleIcon = isCollapsed ? '▶' : '▼';
-            const collapsedClass = isCollapsed ? 'collapsed' : '';
-            
-            html += `
-                <tr class="expense-category-header ${collapsedClass}" data-category="${category}">
-                    <td class="expense-category-toggle">
-                        <span class="toggle-icon">${toggleIcon}</span>
-                        <strong>${this.capitalizeCategory(category)}</strong>
-                    </td>
-                    <td class="category-summary">${categoryCount} expense${categoryCount !== 1 ? 's' : ''} • ${this.formatCurrency(categoryTotal)}</td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-            `;
-            
-            // Individual expense rows (respect saved state)
-            categoryExpenses.forEach(expense => {
-                // Check saved state for display
-                const showExpense = this.expenseCategoryToggleStates[category] !== undefined ? 
-                    !this.expenseCategoryToggleStates[category] : true; // show if not collapsed (default expanded)
-                const displayStyle = showExpense ? '' : ' style="display: none;"';
-                
-                html += `
-                    <tr class="expense-item-row" data-expense-id="${expense.id}" data-parent-category="${category}"${displayStyle}>
-                        <td class="editable-cell expense-indent" data-field="name" data-type="text">${expense.name}</td>
-                        <td class="editable-cell" data-field="monthlyAmount" data-type="number">${this.formatCurrency(expense.monthlyAmount)}</td>
-                        <td class="editable-cell" data-field="category" data-type="select">
-                            <span class="category-badge ${this.getCategoryClass(expense.category)}">${this.capitalizeCategory(expense.category)}</span>
-                        </td>
-                        <td class="editable-cell" data-field="subCategory" data-type="text">
-                            ${expense.subCategory ? 
-                                `<span class="subcategory-badge ${this.getSubcategoryClass(expense.subCategory)}">${expense.subCategory}</span>` : 
-                                '<span class="subcategory-default">-</span>'
-                            }
-                        </td>
-                        <td class="editable-cell" data-field="sharingMethod" data-type="select">
-                            <span class="sharing-badge">${
-                                expense.sharingMethod === 'even' ? '⚖️' : 
-                                expense.sharingMethod === 'custom' ? '🎛️' : '📊'
-                            }</span>
-                        </td>
-                        <td>
-                            <button class="btn btn-danger remove-expense-btn" data-expense-id="${expense.id}">🗑️</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        });
-
-        tbody.innerHTML = html;
-        
-        // Setup expense category collapse/expand functionality
-        this.setupExpenseCategoryToggle();
-
-        // Add click event listeners for inline editing
-        this.setupInlineEditing();
-    }
-
-    setupInlineEditing() {
-        // Remove existing listeners to prevent duplicates
-        const editableCells = document.querySelectorAll('.editable-cell');
-        editableCells.forEach(cell => {
-            cell.addEventListener('click', (e) => this.startCellEdit(e));
-        });
-    }
-
-    startCellEdit(e) {
-        const cell = e.target.closest('.editable-cell');
-        if (!cell || cell.classList.contains('editing')) return;
-
-        const row = cell.closest('tr');
-        const expenseId = parseInt(row.getAttribute('data-expense-id'));
-        const field = cell.getAttribute('data-field');
-        const type = cell.getAttribute('data-type');
-        const expense = this.expenses.find(e => e.id === expenseId);
-        
-        if (!expense) return;
-
-        cell.classList.add('editing');
-        const originalContent = cell.innerHTML;
-        let currentValue = expense[field];
-        
-        // Create appropriate input based on type
-        let inputElement;
-        
-        if (type === 'select') {
-            inputElement = document.createElement('select');
-            if (field === 'category') {
-                inputElement.innerHTML = `
-                    <option value="bills" ${expense.category === 'bills' ? 'selected' : ''}>Bills</option>
-                    <option value="savings" ${expense.category === 'savings' ? 'selected' : ''}>Savings</option>
-                    <option value="emergency" ${expense.category === 'emergency' ? 'selected' : ''}>Emergency</option>
-                    <option value="food" ${expense.category === 'food' ? 'selected' : ''}>Food</option>
-                    <option value="transport" ${expense.category === 'transport' ? 'selected' : ''}>Transport</option>
-                    <option value="entertainment" ${expense.category === 'entertainment' ? 'selected' : ''}>Entertainment</option>
-                    <option value="other" ${expense.category === 'other' ? 'selected' : ''}>Other</option>
-                `;
-            } else if (field === 'sharingMethod') {
-                inputElement.innerHTML = `
-                    <option value="even" ${expense.sharingMethod === 'even' ? 'selected' : ''}>⚖️ 50/50</option>
-                    <option value="percentage" ${expense.sharingMethod === 'percentage' ? 'selected' : ''}>📊 % Weighted</option>
-                    <option value="custom" ${expense.sharingMethod === 'custom' ? 'selected' : ''}>🎛️ Custom</option>
-                `;
-            }
-        } else {
-            inputElement = document.createElement('input');
-            inputElement.type = type === 'number' ? 'number' : 'text';
-            if (type === 'number') {
-                inputElement.step = '0.01';
-                inputElement.value = currentValue;
-            } else {
-                inputElement.value = currentValue || '';
-            }
-        }
-
-        inputElement.className = 'inline-edit-input';
-        cell.innerHTML = '';
-        cell.appendChild(inputElement);
-        inputElement.focus();
-        
-        // Handle save/cancel
-        const saveEdit = () => {
-            let newValue = inputElement.value.trim();
-            
-            if (type === 'number') {
-                newValue = parseFloat(newValue);
-                if (isNaN(newValue) || newValue <= 0) {
-                    this.showAlert('Please enter a valid amount greater than 0.', 'Invalid Input', 'error');
-                    inputElement.focus();
-                    return;
-                }
-            }
-            
-            if (field === 'name' && !newValue) {
-                this.showAlert('Please enter an expense name.', 'Invalid Input', 'error');
-                inputElement.focus();
+                person[field] = numValue;
+            } else if (field === 'payPeriods') {
+                person[field] = parseInt(newValue);
+            } else if (field === 'name' && !newValue) {
+                this.showToast('Name cannot be empty', 'error');
+                input.focus();
                 return;
+            } else {
+                person[field] = newValue;
             }
 
-            // Update the expense
-            expense[field] = newValue;
-            if (field === 'monthlyAmount') {
-                expense.biWeeklyAmount = this.calculateBiWeeklyFromMonthly(newValue);
-            }
-
+            // Save and re-render
             this.saveData();
             this.render();
+            this.showToast('Person updated', 'success');
         };
 
+        // Handle cancel
         const cancelEdit = () => {
-            cell.classList.remove('editing');
-            cell.innerHTML = originalContent;
-            this.setupInlineEditing();
+            element.innerHTML = originalContent;
         };
 
-        inputElement.addEventListener('blur', saveEdit);
-        inputElement.addEventListener('keypress', (e) => {
+        // Event listeners
+        input.addEventListener('keydown', (e) => {
+            e.stopPropagation();
             if (e.key === 'Enter') {
                 e.preventDefault();
                 saveEdit();
@@ -1584,2648 +662,2699 @@ class BudgetTool {
                 cancelEdit();
             }
         });
-    }
 
-    setupEmergencyFundEditing() {
-        const editableAmount = document.querySelector('.editable-emergency-amount');
-        if (!editableAmount) return;
-
-        editableAmount.addEventListener('click', (e) => {
-            if (editableAmount.classList.contains('editing')) return;
-
-            const originalAmount = parseFloat(editableAmount.getAttribute('data-current-amount')) || 0;
-            const originalContent = editableAmount.innerHTML;
-
-            editableAmount.classList.add('editing');
-            editableAmount.innerHTML = `<input type="number" class="inline-edit-input" value="${originalAmount}" min="0" step="100" style="width: 100%; text-align: right;">`;
-
-            const inputElement = editableAmount.querySelector('.inline-edit-input');
-            inputElement.focus();
-            inputElement.select();
-
-            const saveEdit = () => {
-                const newValue = parseFloat(inputElement.value) || 0;
-                this.currentEmergencyFund = newValue;
-                this.saveData();
-                this.renderFinancialMilestones();
-            };
-
-            const cancelEdit = () => {
-                editableAmount.classList.remove('editing');
-                editableAmount.innerHTML = originalContent;
-            };
-
-            inputElement.addEventListener('blur', saveEdit);
-            inputElement.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    saveEdit();
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    cancelEdit();
-                }
+        // For select elements, save on change or blur
+        if (input.tagName === 'SELECT') {
+            input.addEventListener('change', (e) => {
+                e.stopPropagation();
+                saveEdit();
             });
+            input.addEventListener('blur', (e) => {
+                // Small delay to allow for other events
+                setTimeout(saveEdit, 100);
+            });
+        } else {
+            input.addEventListener('blur', (e) => {
+                // Small delay to allow for other events
+                setTimeout(saveEdit, 100);
+            });
+        }
+
+        // Prevent clicks on the input from bubbling up
+        input.addEventListener('click', (e) => {
+            e.stopPropagation();
         });
     }
 
-    renderBiWeeklySummary() {
-        const container = document.getElementById('biWeeklySummary');
+    /**
+     * Render people list
+     */
+    renderPeople() {
+        const container = document.getElementById('peopleList');
         
-        if (this.people.length === 0 || this.expenses.length === 0) {
-            container.innerHTML = '<div class="empty-state">Add people and expenses to see the summary.</div>';
+        if (this.people.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-people"></i>
+                    <h3>No household members yet</h3>
+                    <p>Add your first household member using the form above to get started with your budget planning.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Calculate total household income for percentage calculations
+        const totalHouseholdIncome = this.people.reduce((sum, person) => {
+            return sum + (this.calculatePersonAnnualIncome(person) / 12);
+        }, 0);
+
+        const totalHouseholdExpenses = this.expenses.reduce((sum, expense) => {
+            return sum + expense.monthlyAmount;
+        }, 0);
+
+        // Color gradients for different users
+        const colorGradients = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+            'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+            'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+        ];
+
+        // Add household summary if there are multiple people
+        let householdSummary = '';
+        if (this.people.length > 1) {
+            const householdTakeHome = totalHouseholdIncome - totalHouseholdExpenses;
+            // Use proper savings calculation that includes savings categories and excess funds
+            const totalHouseholdSavings = this.calculateTotalSavings(totalHouseholdIncome, totalHouseholdExpenses);
+            const householdSavingsRate = totalHouseholdIncome > 0 ? 
+                Math.round((totalHouseholdSavings / totalHouseholdIncome) * 100) : 0;
+
+            householdSummary = `
+                <div class="card mb-3" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white;">
+                    <div class="card-body">
+                        <h6 class="card-title mb-3 text-white">
+                            <i class="bi bi-house-heart me-2"></i>Household Overview
+                        </h6>
+                        <div class="row text-center">
+                            <div class="col-6 col-lg-3 mb-2">
+                                <div class="fw-bold fs-5">$${this.formatNumber(totalHouseholdIncome)}</div>
+                                <small class="opacity-75">Monthly Income</small>
+                            </div>
+                            <div class="col-6 col-lg-3 mb-2">
+                                <div class="fw-bold fs-5">$${this.formatNumber(totalHouseholdExpenses)}</div>
+                                <small class="opacity-75">Monthly Expenses</small>
+                            </div>
+                            <div class="col-6 col-lg-3 mb-2">
+                                <div class="fw-bold fs-5 ${householdTakeHome >= 0 ? 'text-light' : 'text-warning'}">
+                                    $${this.formatNumber(Math.abs(householdTakeHome))}
+                                </div>
+                                <small class="opacity-75">${householdTakeHome >= 0 ? 'Remainder' : 'Deficit'}</small>
+                            </div>
+                            <div class="col-6 col-lg-3 mb-2">
+                                <div class="fw-bold fs-5">${householdSavingsRate}%</div>
+                                <small class="opacity-75">Savings Rate</small>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="opacity-75">Household Financial Health</small>
+                                <small class="opacity-75">${householdSavingsRate}%</small>
+                            </div>
+                            <div class="progress" style="height: 8px; background-color: rgba(255,255,255,0.2);">
+                                <div class="progress-bar bg-light" style="width: ${Math.min(100, Math.max(0, householdSavingsRate))}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = householdSummary + this.people.map((person, index) => {
+            const income = this.calculatePersonIncome(person);
+            const contributionPercentage = totalHouseholdIncome > 0 ? 
+                Math.round((income.monthly / totalHouseholdIncome) * 100) : 0;
+            
+            // Get unique color gradient for this person
+            const personGradient = colorGradients[index % colorGradients.length];
+
+            return `
+                <div class="person-card fade-in" style="border: 2px solid transparent; background: ${personGradient}; color: white; margin-bottom: 1.5rem;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="person-avatar me-3" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);">
+                                ${person.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0 text-white editable" onclick="budgetTool.editPerson(${person.id}, 'name')" title="Click to edit name">${this.escapeHtml(person.name)}</h5>
+                                    <div class="text-end">
+                                        <span class="badge bg-light text-dark">${contributionPercentage}%</span>
+                                        <div class="small opacity-75">of household income</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Income Breakdown -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-lg-3">
+                                <div class="d-flex justify-content-between align-items-center p-2 rounded income-box editable-box" onclick="budgetTool.editPerson(${person.id}, 'biWeeklyPay')" title="Click to edit pay" style="background: rgba(255,255,255,0.15); cursor: pointer;">
+                                    <small class="opacity-75">${this.getPayPeriodLabel(person.payPeriods)}:</small>
+                                    <div class="fw-bold income-value">$${this.formatNumber(income.payPeriod)}</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="d-flex justify-content-between align-items-center p-2 rounded income-box" style="background: rgba(255,255,255,0.15);">
+                                    <small class="opacity-75">Monthly:</small>
+                                    <div class="fw-bold income-value">$${this.formatNumber(income.monthly)}</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="d-flex justify-content-between align-items-center p-2 rounded income-box" style="background: rgba(255,255,255,0.15);">
+                                    <small class="opacity-75">Yearly:</small>
+                                    <div class="fw-bold income-value">$${this.formatNumber(income.yearly)}</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="d-flex justify-content-between align-items-center p-2 rounded income-box editable-box" onclick="budgetTool.editPerson(${person.id}, 'payPeriods')" title="Click to edit pay periods" style="background: rgba(255,255,255,0.15); cursor: pointer;">
+                                    <small class="opacity-75">Pay Periods:</small>
+                                    <div class="fw-bold income-value">${person.payPeriods}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contribution Bar -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="opacity-75">Household Contribution</small>
+                                <small class="opacity-75">${contributionPercentage}%</small>
+                            </div>
+                            <div class="progress" style="height: 8px; background-color: rgba(255,255,255,0.2);">
+                                <div class="progress-bar bg-light" style="width: ${contributionPercentage}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-end gap-2">
+                            <button class="btn btn-outline-light btn-sm" onclick="budgetTool.removePerson(${person.id})" title="Remove">
+                                <i class="bi bi-trash me-1"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ==========================================================================
+    // EXPENSE MANAGEMENT
+    // ==========================================================================
+
+    /**
+     * Add a new expense
+     */
+    addExpense() {
+        const name = document.getElementById('expenseName').value.trim();
+        const monthlyAmount = parseFloat(document.getElementById('monthlyAmount').value) || 0;
+        const category = document.getElementById('category').value;
+        const subCategory = document.getElementById('subCategory').value;
+        const sharingMethod = document.getElementById('expenseSharingMethod').value;
+
+        // Validation
+        if (!name) {
+            this.showToast('Please enter an expense name', 'error');
+            document.getElementById('expenseName').focus();
+            return;
+        }
+
+        if (monthlyAmount <= 0) {
+            this.showToast('Please enter a valid expense amount', 'error');
+            document.getElementById('monthlyAmount').focus();
+            return;
+        }
+
+        // Create new expense
+        const expense = {
+            id: Date.now() + Math.random(),
+            name,
+            monthlyAmount,
+            category,
+            subCategory,
+            sharingMethod,
+            customSplits: {}
+        };
+
+        this.expenses.push(expense);
+        this.saveData();
+        this.render();
+
+        // Clear form
+        document.getElementById('addExpenseForm').reset();
+        document.getElementById('expenseName').focus();
+
+        this.showToast(`${name} added successfully!`, 'success');
+    }
+
+    /**
+     * Edit custom splits for an expense
+     */
+    editCustomSplits(expenseId) {
+        const expense = this.expenses.find(e => e.id === expenseId);
+        if (!expense) return;
+
+        // Create modal content for custom splits
+        let modalHTML = `
+            <div class="mb-3">
+                <h6><strong>${this.escapeHtml(expense.name)}</strong> - Custom Splits</h6>
+                <p class="text-muted small">Set individual amounts for each person. Total: $${this.formatNumber(expense.monthlyAmount)}/month</p>
+            </div>
+        `;
+
+        this.people.forEach(person => {
+            const currentAmount = expense.customSplits[person.id] || 0;
+            modalHTML += `
+                <div class="row mb-3 align-items-center">
+                    <div class="col-6">
+                        <label class="form-label mb-0">${this.escapeHtml(person.name)}</label>
+                    </div>
+                    <div class="col-6">
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="customSplit_${person.id}" 
+                                   value="${currentAmount}" step="0.01" min="0" max="${expense.monthlyAmount}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        modalHTML += `
+            <div class="alert alert-info small mt-3">
+                <strong>Tip:</strong> Amounts should add up to $${this.formatNumber(expense.monthlyAmount)}. Any difference will be automatically adjusted.
+            </div>
+        `;
+
+        this.showConfirm(
+            'Set Custom Splits',
+            modalHTML,
+            () => {
+                // Save custom splits
+                let totalAssigned = 0;
+                this.people.forEach(person => {
+                    const input = document.getElementById(`customSplit_${person.id}`);
+                    const amount = parseFloat(input.value) || 0;
+                    expense.customSplits[person.id] = amount;
+                    totalAssigned += amount;
+                });
+
+                // Auto-adjust if totals don't match (assign difference to first person)
+                const difference = expense.monthlyAmount - totalAssigned;
+                if (Math.abs(difference) > 0.01 && this.people.length > 0) {
+                    expense.customSplits[this.people[0].id] += difference;
+                    this.showToast(`Adjusted ${this.people[0].name}'s amount by $${this.formatNumber(Math.abs(difference))} to balance total`, 'info');
+                }
+
+                this.saveData();
+                this.render();
+                this.showToast('Custom splits saved!', 'success');
+            }
+        );
+    }
+
+    /**
+     * Remove an expense
+     */
+    removeExpense(id) {
+        const expense = this.expenses.find(e => e.id === id);
+        if (!expense) return;
+
+        this.showConfirm(
+            `Remove ${expense.name}?`,
+            `Are you sure you want to remove "${expense.name}" from your expenses?`,
+            () => {
+                this.expenses = this.expenses.filter(e => e.id !== id);
+                this.saveData();
+                this.render();
+                this.showToast(`${expense.name} removed`, 'info');
+            }
+        );
+    }
+
+    /**
+     * Start editing an expense inline
+     */
+    editExpense(id, field) {
+        // Prevent event bubbling
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+
+        const expense = this.expenses.find(e => e.id === id);
+        if (!expense) return;
+
+        // Find the element that was clicked
+        const element = event.target;
+        
+        // Don't edit if already editing
+        if (element.querySelector('input, select')) {
+            return;
+        }
+        
+        const originalValue = expense[field];
+        const originalContent = element.innerHTML;
+        
+        // Create appropriate input based on field type
+        let input;
+        
+        if (field === 'category') {
+            input = document.createElement('select');
+            input.className = 'form-select form-select-sm inline-edit';
+            input.innerHTML = `
+                <option value="bills" ${expense.category === 'bills' ? 'selected' : ''}>Bills</option>
+                <option value="emergency" ${expense.category === 'emergency' ? 'selected' : ''}>Emergency</option>
+                <option value="savings" ${expense.category === 'savings' ? 'selected' : ''}>Savings</option>
+            `;
+        } else if (field === 'subCategory') {
+            input = document.createElement('select');
+            input.className = 'form-select form-select-sm inline-edit';
+            input.innerHTML = `
+                <option value="">No subcategory</option>
+                <option value="food" ${expense.subCategory === 'food' ? 'selected' : ''}>Food</option>
+                <option value="transport" ${expense.subCategory === 'transport' ? 'selected' : ''}>Transport</option>
+                <option value="entertainment" ${expense.subCategory === 'entertainment' ? 'selected' : ''}>Entertainment</option>
+                <option value="utilities" ${expense.subCategory === 'utilities' ? 'selected' : ''}>Utilities</option>
+                <option value="insurance" ${expense.subCategory === 'insurance' ? 'selected' : ''}>Insurance</option>
+                <option value="healthcare" ${expense.subCategory === 'healthcare' ? 'selected' : ''}>Healthcare</option>
+                <option value="education" ${expense.subCategory === 'education' ? 'selected' : ''}>Education</option>
+                <option value="housing" ${expense.subCategory === 'housing' ? 'selected' : ''}>Housing</option>
+                <option value="clothing" ${expense.subCategory === 'clothing' ? 'selected' : ''}>Clothing</option>
+                <option value="personal-care" ${expense.subCategory === 'personal-care' ? 'selected' : ''}>Personal Care</option>
+                <option value="subscriptions" ${expense.subCategory === 'subscriptions' ? 'selected' : ''}>Subscriptions</option>
+                <option value="debt-payments" ${expense.subCategory === 'debt-payments' ? 'selected' : ''}>Debt Payments</option>
+                <option value="investments" ${expense.subCategory === 'investments' ? 'selected' : ''}>Investments</option>
+                <option value="retirement" ${expense.subCategory === 'retirement' ? 'selected' : ''}>Retirement</option>
+                <option value="other" ${expense.subCategory === 'other' ? 'selected' : ''}>Other</option>
+            `;
+        } else if (field === 'sharingMethod') {
+            input = document.createElement('select');
+            input.className = 'form-select form-select-sm inline-edit';
+            input.innerHTML = `
+                <option value="percentage" ${expense.sharingMethod === 'percentage' ? 'selected' : ''}>% Weighted</option>
+                <option value="even" ${expense.sharingMethod === 'even' ? 'selected' : ''}>50/50 Split</option>
+                <option value="custom" ${expense.sharingMethod === 'custom' ? 'selected' : ''}>Custom Split</option>
+            `;
+        } else if (field === 'monthlyAmount') {
+            input = document.createElement('input');
+            input.type = 'number';
+            input.step = '0.01';
+            input.min = '0';
+            input.className = 'form-control form-control-sm inline-edit';
+            input.value = originalValue;
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control form-control-sm inline-edit';
+            input.value = originalValue || '';
+        }
+
+        // Replace element content with input
+        element.innerHTML = '';
+        element.appendChild(input);
+        element.style.padding = '0';
+        
+        // Focus the input
+        setTimeout(() => {
+            input.focus();
+            if (input.type === 'text' || input.type === 'number') {
+                input.select();
+            }
+        }, 10);
+
+        // Handle save
+        const saveEdit = () => {
+            const newValue = input.value.trim();
+            
+            // Validate
+            if (field === 'monthlyAmount') {
+                const numValue = parseFloat(newValue);
+                if (isNaN(numValue) || numValue < 0) {
+                    this.showToast('Please enter a valid amount', 'error');
+                    input.focus();
+                    return;
+                }
+                expense[field] = numValue;
+            } else if (field === 'name' && !newValue) {
+                this.showToast('Expense name cannot be empty', 'error');
+                input.focus();
+                return;
+            } else {
+                expense[field] = newValue;
+            }
+
+            // Special handling for sharing method changes
+            if (field === 'sharingMethod' && newValue === 'custom') {
+                // Initialize custom splits if switching to custom
+                if (!expense.customSplits) {
+                    expense.customSplits = {};
+                }
+                // Initialize all people with equal split amounts
+                const equalShare = expense.monthlyAmount / this.people.length;
+                this.people.forEach(person => {
+                    if (!expense.customSplits[person.id]) {
+                        expense.customSplits[person.id] = equalShare;
+                    }
+                });
+                
+                // Save and re-render, then show custom split editor
+                this.saveData();
+                this.render();
+                this.showToast('Expense updated - Set custom splits below', 'success');
+                
+                // Show custom split editor after a brief delay
+                setTimeout(() => {
+                    this.editCustomSplits(expenseId);
+                }, 100);
+                return;
+            }
+
+            // Save and re-render
+            this.saveData();
+            this.render();
+            this.showToast('Expense updated', 'success');
+        };
+
+        // Handle cancel
+        const cancelEdit = () => {
+            element.innerHTML = originalContent;
+            element.style.padding = '';
+        };
+
+        // Event listeners
+        input.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelEdit();
+            }
+        });
+
+        // For select elements, save on change or blur
+        if (input.tagName === 'SELECT') {
+            input.addEventListener('change', (e) => {
+                e.stopPropagation();
+                saveEdit();
+            });
+            input.addEventListener('blur', (e) => {
+                // Small delay to allow for other events
+                setTimeout(saveEdit, 100);
+            });
+        } else {
+            input.addEventListener('blur', (e) => {
+                // Small delay to allow for other events
+                setTimeout(saveEdit, 100);
+            });
+        }
+
+        // Prevent clicks on the input from bubbling up
+        input.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    /**
+     * Clear all expenses
+     */
+    confirmClearExpenses() {
+        if (this.expenses.length === 0) {
+            this.showToast('No expenses to clear', 'info');
+            return;
+        }
+
+        this.showConfirm(
+            'Clear All Expenses?',
+            `Are you sure you want to remove all ${this.expenses.length} expenses? This action cannot be undone.`,
+            () => {
+                this.expenses = [];
+                this.saveData();
+                this.render();
+                this.showToast('All expenses cleared', 'info');
+            }
+        );
+    }
+
+    /**
+     * Render expenses list
+     */
+    renderExpenses() {
+        const container = document.getElementById('expensesList');
+        
+        if (this.expenses.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-receipt"></i>
+                    <h3>No expenses yet</h3>
+                    <p>Add your first expense using the form above to start tracking your budget.</p>
+                </div>
+            `;
             return;
         }
 
         // Group expenses by category
-        const expensesByCategory = this.expenses.reduce((acc, expense) => {
-            if (!acc[expense.category]) {
-                acc[expense.category] = [];
+        const groupedExpenses = this.expenses.reduce((groups, expense) => {
+            const category = expense.category;
+            if (!groups[category]) {
+                groups[category] = [];
             }
-            acc[expense.category].push(expense);
-            return acc;
+            groups[category].push(expense);
+            return groups;
         }, {});
 
-        const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-        const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
-        const totalMonthlyExpenses = totalBiWeeklyExpenses * effectivePayPeriods / 12;
-        const totalYearlyExpenses = totalBiWeeklyExpenses * effectivePayPeriods;
+        // Calculate totals for each category
+        const categoryTotals = {};
+        Object.keys(groupedExpenses).forEach(category => {
+            categoryTotals[category] = groupedExpenses[category].reduce((sum, expense) => 
+                sum + expense.monthlyAmount, 0
+            );
+        });
 
-        let html = `
-            <div class="comprehensive-expense-summary">
-                <!-- Category Breakdown Table -->
-                <div class="category-breakdown-summary">
-                    <h4>Category Breakdown</h4>
-                    <table class="category-breakdown-table">
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th>Bi-weekly</th>
-                                <th>Monthly</th>
-                                <th>Yearly</th>
-                                <th>% of Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-        `;
+        // Sort categories by total amount (highest first)
+        const sortedCategories = Object.keys(groupedExpenses).sort((a, b) => 
+            categoryTotals[b] - categoryTotals[a]
+        );
 
-        // Add category rows
-        Object.keys(expensesByCategory).forEach(category => {
-            const categoryExpenses = expensesByCategory[category];
-            const categoryBiWeekly = categoryExpenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-            const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
-            const categoryMonthly = categoryBiWeekly * effectivePayPeriods / 12;
-            const categoryYearly = categoryBiWeekly * effectivePayPeriods;
-            const categoryPercentage = totalBiWeeklyExpenses > 0 ? (categoryBiWeekly / totalBiWeeklyExpenses * 100) : 0;
+        container.innerHTML = sortedCategories.map(category => {
+            const expenses = groupedExpenses[category];
+            const total = categoryTotals[category];
+            const categoryId = `category-${category}`;
             
-            // Check saved state for this category
-            const isCollapsed = this.categoryToggleStates[category] !== undefined ? 
-                this.categoryToggleStates[category] : true; // default collapsed
-            const toggleIcon = isCollapsed ? '▶' : '▼';
-            const collapsedClass = isCollapsed ? 'collapsed' : '';
-            
-            html += `
-                <tr class="category-header-row ${collapsedClass}" data-category="${category}">
-                    <td class="category-toggle">
-                        <span class="toggle-icon">${toggleIcon}</span>
-                        <strong>${this.capitalizeCategory(category)}</strong>
-                    </td>
-                    <td class="amount">${this.formatCurrency(categoryBiWeekly)}</td>
-                    <td class="amount">${this.formatCurrency(categoryMonthly)}</td>
-                    <td class="amount">${this.formatCurrency(categoryYearly)}</td>
-                    <td class="percentage">${categoryPercentage.toFixed(1)}%</td>
-                </tr>
+            return `
+                <div class="expense-category-group mb-3">
+                    <div class="expense-category-header" data-bs-toggle="collapse" 
+                         data-bs-target="#${categoryId}" aria-expanded="true" 
+                         aria-controls="${categoryId}">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <div class="expense-category-info">
+                                <div class="expense-category-title">
+                                    <i class="bi bi-chevron-down category-chevron me-2"></i>
+                                    <span class="category-badge category-${category} me-2">${this.capitalize(category)}</span>
+                                    <span class="category-count text-muted">(${expenses.length} item${expenses.length > 1 ? 's' : ''})</span>
+                                </div>
+                            </div>
+                            <div class="expense-category-total">
+                                <div class="category-total-amount">$${this.formatNumber(total)}</div>
+                                <div class="category-total-label text-muted small">per month</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="collapse show" id="${categoryId}">
+                        <div class="expense-category-content">
+                            ${expenses.map(expense => `
+                                <div class="expense-card p-3 fade-in">
+                                    <!-- Main expense info row -->
+                                    <div class="row align-items-start mb-3">
+                                        <div class="col-12 col-md-6">
+                                            <div class="expense-header">
+                                                <div class="expense-name editable" onclick="budgetTool.editExpense(${expense.id}, 'name')" title="Click to edit">${this.escapeHtml(expense.name)}</div>
+                                                ${expense.subCategory ? `<div class="expense-subcategory editable" onclick="budgetTool.editExpense(${expense.id}, 'subCategory')" title="Click to edit">${this.escapeHtml(expense.subCategory)}</div>` : '<div class="expense-subcategory editable text-muted" onclick="budgetTool.editExpense(' + expense.id + ', \'subCategory\')" title="Click to add">No subcategory</div>'}
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-md-6 text-md-end">
+                                            <div class="expense-amount editable" onclick="budgetTool.editExpense(${expense.id}, 'monthlyAmount')" title="Click to edit">$${this.formatNumber(expense.monthlyAmount)}</div>
+                                            <div class="d-flex justify-content-md-end align-items-center gap-2">
+                                                <div class="text-muted small">per month</div>
+                                                <button class="btn btn-outline-danger btn-sm" onclick="budgetTool.removeExpense(${expense.id})" title="Remove">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Expense details in grid layout -->
+                                    <div class="row g-3">
+                                        <div class="col-12 col-md-6 col-lg-4">
+                                            <div class="expense-detail-compact">
+                                                <div class="expense-detail-label">Sharing Method</div>
+                                                <div class="expense-detail-value">
+                                                    <span class="sharing-badge sharing-${expense.sharingMethod} editable" onclick="budgetTool.editExpense(${expense.id}, 'sharingMethod')" title="Click to edit">${this.getSharingMethodLabel(expense.sharingMethod)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Individual splits section - full width -->
+                                    ${this.people.length > 0 ? `
+                                    <div class="individual-splits-section mt-3 pt-3" style="border-top: 1px solid var(--bs-border-color);">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0 text-muted">
+                                                <i class="bi bi-people me-2"></i>Individual Splits
+                                            </h6>
+                                            ${expense.sharingMethod === 'custom' ? `
+                                                <button class="btn btn-outline-primary btn-sm" onclick="budgetTool.editCustomSplits(${expense.id})" title="Edit custom splits">
+                                                    <i class="bi bi-sliders me-1"></i>Edit Splits
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                        <div class="row g-2">
+                                            ${this.people.map(person => {
+                                                const personShare = this.calculatePersonShare(expense, person);
+                                                const sharePercentage = expense.monthlyAmount > 0 ? Math.round((personShare / expense.monthlyAmount) * 100) : 0;
+                                                const payPeriodAmount = this.convertToPayPeriod(personShare, person.payPeriods);
+                                                const payPeriodLabel = this.getPayPeriodLabel(person.payPeriods);
+                                                return `
+                                                    <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                                                        <div class="person-split-card p-2 rounded" style="background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color);">
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <div class="person-info">
+                                                                    <div class="person-name fw-medium" title="${this.escapeHtml(person.name)}">${this.escapeHtml(person.name)}</div>
+                                                                    <small class="text-muted">${sharePercentage}%</small>
+                                                                </div>
+                                                                <div class="person-amount text-end">
+                                                                    <div class="fw-bold">$${this.formatNumber(payPeriodAmount)}</div>
+                                                                    <small class="text-muted">per ${payPeriodLabel.toLowerCase()}</small>
+                                                                    <div class="small text-muted mt-1">$${this.formatNumber(personShare)}/month</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
             `;
+        }).join('');
 
-            // Add subcategory details if they exist
-            categoryExpenses.forEach(expense => {
-                if (expense.subCategory && expense.subCategory.trim() !== '') {
-                    const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
-                    const expenseMonthly = expense.biWeeklyAmount * effectivePayPeriods / 12;
-                    const expenseYearly = expense.biWeeklyAmount * effectivePayPeriods;
-                    const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
-                    
-                    // Check saved state for display
-                    const showSubcategory = this.categoryToggleStates[category] !== undefined ? 
-                        !this.categoryToggleStates[category] : false; // show if not collapsed
-                    const displayStyle = showSubcategory ? 'table-row' : 'none';
-                    
-                    html += `
-                        <tr class="subcategory-row" data-parent-category="${category}" style="display: ${displayStyle};">
-                            <td class="subcategory-indent">${expense.name} (${expense.subCategory})</td>
-                            <td class="amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
-                            <td class="amount">${this.formatCurrency(expenseMonthly)}</td>
-                            <td class="amount">${this.formatCurrency(expenseYearly)}</td>
-                            <td class="percentage">${expensePercentage.toFixed(1)}%</td>
-                        </tr>
-                    `;
+        // Add event listeners for collapse/expand animations
+        container.querySelectorAll('.expense-category-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                const chevron = header.querySelector('.category-chevron');
+                const isExpanded = header.getAttribute('aria-expanded') === 'true';
+                
+                // Toggle chevron rotation
+                if (isExpanded) {
+                    chevron.style.transform = 'rotate(0deg)';
                 } else {
-                    const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
-                    const expenseMonthly = expense.biWeeklyAmount * effectivePayPeriods / 12;
-                    const expenseYearly = expense.biWeeklyAmount * effectivePayPeriods;
-                    const expensePercentage = totalBiWeeklyExpenses > 0 ? (expense.biWeeklyAmount / totalBiWeeklyExpenses * 100) : 0;
-                    
-                    html += `
-                        <tr class="subcategory-row" data-parent-category="${category}" style="display: none;">
-                            <td class="subcategory-indent">└ ${expense.name}</td>
-                            <td class="amount">${this.formatCurrency(expense.biWeeklyAmount)}</td>
-                            <td class="amount">${this.formatCurrency(expenseMonthly)}</td>
-                            <td class="amount">${this.formatCurrency(expenseYearly)}</td>
-                            <td class="percentage">${expensePercentage.toFixed(1)}%</td>
-                        </tr>
-                    `;
+                    chevron.style.transform = 'rotate(-90deg)';
                 }
             });
         });
 
-        html += `
-                        </tbody>
-                        <tfoot>
-                            <tr class="totals-row">
-                                <td><strong>Total All Categories</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalBiWeeklyExpenses)}</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalMonthlyExpenses)}</strong></td>
-                                <td class="amount"><strong>${this.formatCurrency(totalYearlyExpenses)}</strong></td>
-                                <td class="percentage"><strong>100.0%</strong></td>
-                            </tr>
-                        </tfoot>
-                    </table>
+        // Handle the Bootstrap collapse events for smooth animations
+        container.querySelectorAll('.collapse').forEach(collapse => {
+            collapse.addEventListener('shown.bs.collapse', (e) => {
+                const header = e.target.previousElementSibling;
+                const chevron = header.querySelector('.category-chevron');
+                chevron.style.transform = 'rotate(0deg)';
+            });
+            
+            collapse.addEventListener('hidden.bs.collapse', (e) => {
+                const header = e.target.previousElementSibling;
+                const chevron = header.querySelector('.category-chevron');
+                chevron.style.transform = 'rotate(-90deg)';
+            });
+        });
+    }
+
+    // ==========================================================================
+    // SUMMARY TAB
+    // ==========================================================================
+
+    /**
+     * Render summary tab
+     */
+    renderSummary() {
+        const container = document.getElementById('summaryContent');
+        
+        if (!container) {
+            console.error('Summary container not found!');
+            return;
+        }
+        
+        console.log('Rendering summary, people:', this.people.length, 'expenses:', this.expenses.length);
+        
+        if (this.people.length === 0 || this.expenses.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-clipboard-data display-1 text-muted"></i>
+                    <h3 class="mt-3">Summary not available</h3>
+                    <p class="text-muted">Add at least one household member and one expense to view your budget summary.</p>
                 </div>
-            </div>
-        `;
-
-        container.innerHTML = html;
-        
-        // Setup category collapse/expand functionality
-        this.setupCategoryToggle();
-    }
-
-    setupCategoryToggle() {
-        // Add click event listeners to category header rows
-        const categoryHeaders = document.querySelectorAll('.category-header-row');
-        categoryHeaders.forEach(header => {
-            header.style.cursor = 'pointer';
-            const category = header.dataset.category;
-            
-            // Restore saved state
-            const isCollapsed = this.categoryToggleStates[category] !== undefined ? 
-                this.categoryToggleStates[category] : true; // default collapsed
-            
-            const toggleIcon = header.querySelector('.toggle-icon');
-            const subcategoryRows = document.querySelectorAll(`.subcategory-row[data-parent-category="${category}"]`);
-            
-            // Apply saved state
-            subcategoryRows.forEach(row => {
-                row.style.display = isCollapsed ? 'none' : 'table-row';
-            });
-            toggleIcon.textContent = isCollapsed ? '▶' : '▼';
-            header.classList.toggle('collapsed', isCollapsed);
-            
-            header.addEventListener('click', () => {
-                // Toggle visibility of subcategory rows
-                const newIsCollapsed = toggleIcon.textContent === '▶';
-                subcategoryRows.forEach(row => {
-                    row.style.display = newIsCollapsed ? 'table-row' : 'none';
-                });
-                
-                // Update toggle icon
-                toggleIcon.textContent = newIsCollapsed ? '▼' : '▶';
-                
-                // Add visual feedback for collapsed state
-                header.classList.toggle('collapsed', !newIsCollapsed);
-                
-                // Save state
-                this.categoryToggleStates[category] = !newIsCollapsed;
-                this.saveData();
-            });
-        });
-    }
-
-    setupExpenseCategoryToggle() {
-        // Add click event listeners to expense category header rows
-        const categoryHeaders = document.querySelectorAll('.expense-category-header');
-        categoryHeaders.forEach(header => {
-            header.style.cursor = 'pointer';
-            const category = header.dataset.category;
-            
-            // Restore saved state
-            const isCollapsed = this.expenseCategoryToggleStates[category] !== undefined ? 
-                this.expenseCategoryToggleStates[category] : false; // default expanded
-            
-            const toggleIcon = header.querySelector('.toggle-icon');
-            const expenseRows = document.querySelectorAll(`.expense-item-row[data-parent-category="${category}"]`);
-            
-            // Apply saved state
-            expenseRows.forEach(row => {
-                row.style.display = isCollapsed ? 'none' : 'table-row';
-            });
-            toggleIcon.textContent = isCollapsed ? '▶' : '▼';
-            header.classList.toggle('collapsed', isCollapsed);
-            
-            header.addEventListener('click', () => {
-                // Toggle visibility of expense rows
-                const newIsCollapsed = toggleIcon.textContent === '▶';
-                expenseRows.forEach(row => {
-                    row.style.display = newIsCollapsed ? 'table-row' : 'none';
-                });
-                
-                // Update toggle icon
-                toggleIcon.textContent = newIsCollapsed ? '▼' : '▶';
-                
-                // Add visual feedback for collapsed state
-                header.classList.toggle('collapsed', !newIsCollapsed);
-                
-                // Save state
-                this.expenseCategoryToggleStates[category] = !newIsCollapsed;
-                this.saveData();
-            });
-        });
-    }
-
-    renderExcessFunds() {
-        const container = document.getElementById('excessFunds');
-        
-        if (this.people.length === 0) {
-            container.innerHTML = '<div class="empty-state">Add people to see excess funds.</div>';
+            `;
             return;
         }
 
-        const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-
-        let html = `
-            <div class="excess-funds-container">
-                <table class="excess-funds-table">
-                    <thead>
-                        <tr>
-                            <th>Person</th>
-                            <th title="Yearly Pay ÷ Pay Periods">Pay Period Income</th>
-                            <th title="Person's allocated share of total household expenses">Pay Period Expenses</th>
-                            <th title="Pay Period Income - Pay Period Expenses">Pay Period Excess</th>
-                            <th title="Monthly Pay - (Pay Period Expenses × Pay Periods ÷ 12)">Monthly Excess</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+        // Get categories for column headers
+        const categories = [...new Set(this.expenses.map(e => e.category))].sort();
+        
+        let html = '<div class="row g-4">';
+        
+        // Who Pays What Table
+        html += `
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Who Pays What (Per Pay Period)</h5>
+                        <small class="text-muted">Amounts shown are per individual pay period to help with payment elections</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Person</th>
         `;
-
+        
+        // Add category columns
+        categories.forEach(category => {
+            html += `<th class="text-end">${this.capitalize(category)}</th>`;
+        });
+        html += `<th class="text-end fw-bold">Total</th>`;
+        html += `</tr></thead><tbody>`;
+        
+        let categoryTotals = {};
+        categories.forEach(cat => categoryTotals[cat] = 0);
+        let grandTotal = 0;
+        
+        // Add rows for each person
         this.people.forEach(person => {
-            const personExpenseShare = this.calculatePersonTotalExpenses(person);
-            const personPayPeriods = person.payPeriods || 26;
-            const personPayPeriodIncome = person.yearlyPay / personPayPeriods;
-            const payPeriodExcess = personPayPeriodIncome - personExpenseShare;
-            const monthlyExcess = person.monthlyPay - (personExpenseShare * personPayPeriods / 12);
+            html += `<tr><td class="fw-medium">${this.escapeHtml(person.name)}</td>`;
+            let personTotal = 0;
+            
+            categories.forEach(category => {
+                const categoryExpenses = this.expenses.filter(e => e.category === category);
+                let personCategoryTotal = 0;
+                
+                categoryExpenses.forEach(expense => {
+                    const monthlyShare = this.calculatePersonShare(expense, person);
+                    personCategoryTotal += monthlyShare;
+                });
+                
+                // Convert to pay period amount
+                const payPeriodCategoryTotal = this.convertToPayPeriod(personCategoryTotal, person.payPeriods);
+                
+                categoryTotals[category] += payPeriodCategoryTotal;
+                personTotal += payPeriodCategoryTotal;
+                
+                html += `<td class="text-end">$${this.formatNumber(payPeriodCategoryTotal)}</td>`;
+            });
+            
+            grandTotal += personTotal;
+            html += `<td class="text-end fw-bold">$${this.formatNumber(personTotal)}</td></tr>`;
+        });
+        
+        // Add totals row (sum of actual pay period amounts shown above)
+        html += `<tr class="table-secondary fw-bold">
+                    <td>Total</td>`;
+        categories.forEach(category => {
+            html += `<td class="text-end">$${this.formatNumber(categoryTotals[category])}</td>`;
+        });
+        html += `<td class="text-end">$${this.formatNumber(grandTotal)}</td></tr>`;
+        
+        html += `</tbody></table></div></div></div></div>`;
+        
+        // Excess Funds Table
+        html += `
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-piggy-bank me-2"></i>Excess Funds</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Person</th>
+                                        <th class="text-end">Pay Period Income</th>
+                                        <th class="text-end">Pay Period Expenses</th>
+                                        <th class="text-end">Pay Period Excess</th>
+                                        <th class="text-end">Monthly Excess</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+        `;
+        
+        let totalPayPeriodIncome = 0;
+        let totalPayPeriodExpenses = 0;
+        let totalPayPeriodExcess = 0;
+        let totalMonthlyExcess = 0;
+        
+        this.people.forEach(person => {
+            // Calculate person's total monthly expenses (their share of all expenses)
+            let personMonthlyExpenses = 0;
+            this.expenses.forEach(expense => {
+                personMonthlyExpenses += this.calculatePersonShare(expense, person);
+            });
+            
+            // Calculate monthly income from actual pay period data
+            const personMonthlyIncome = this.calculatePersonAnnualIncome(person) / 12;
+            
+            // Convert to pay period amounts
+            const payPeriodIncome = this.convertToPayPeriod(personMonthlyIncome, person.payPeriods);
+            const payPeriodExpenses = this.convertToPayPeriod(personMonthlyExpenses, person.payPeriods);
+            const payPeriodExcess = payPeriodIncome - payPeriodExpenses;
+            const monthlyExcess = personMonthlyIncome - personMonthlyExpenses;
+            
+            totalPayPeriodIncome += payPeriodIncome;
+            totalPayPeriodExpenses += payPeriodExpenses;
+            totalPayPeriodExcess += payPeriodExcess;
+            totalMonthlyExcess += monthlyExcess;
+            
+            const excessClass = payPeriodExcess >= 0 ? 'text-success' : 'text-danger';
+            const monthlyExcessClass = monthlyExcess >= 0 ? 'text-success' : 'text-danger';
             
             html += `
                 <tr>
-                    <td class="person-name">${person.name}</td>
-                    <td class="amount" title="${this.formatCurrency(person.yearlyPay)} ÷ ${personPayPeriods} = ${this.formatCurrency(personPayPeriodIncome)}">${this.formatCurrency(personPayPeriodIncome)}</td>
-                    <td class="amount" title="Person's share of total expenses: ${this.formatCurrency(personExpenseShare)}">${this.formatCurrency(personExpenseShare)}</td>
-                    <td class="amount ${payPeriodExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(personPayPeriodIncome)} - ${this.formatCurrency(personExpenseShare)} = ${this.formatCurrency(payPeriodExcess)}">
-                        ${this.formatCurrency(payPeriodExcess)}
-                    </td>
-                    <td class="amount ${monthlyExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(person.monthlyPay)} - ${this.formatCurrency(personExpenseShare * personPayPeriods / 12)} = ${this.formatCurrency(monthlyExcess)}">
-                        ${this.formatCurrency(monthlyExcess)}
-                    </td>
+                    <td class="fw-medium">${this.escapeHtml(person.name)}</td>
+                    <td class="text-end text-success">$${this.formatNumber(payPeriodIncome)}</td>
+                    <td class="text-end text-warning">$${this.formatNumber(payPeriodExpenses)}</td>
+                    <td class="text-end ${excessClass}">$${this.formatNumber(payPeriodExcess)}</td>
+                    <td class="text-end ${monthlyExcessClass}">$${this.formatNumber(monthlyExcess)}</td>
+                </tr>
+            `;
+        });
+        
+        // Add totals row
+        const totalExcessClass = totalPayPeriodExcess >= 0 ? 'text-success' : 'text-danger';
+        const totalMonthlyExcessClass = totalMonthlyExcess >= 0 ? 'text-success' : 'text-danger';
+        
+        html += `
+            <tr class="table-secondary fw-bold">
+                <td>Total</td>
+                <td class="text-end">$${this.formatNumber(totalPayPeriodIncome)}</td>
+                <td class="text-end">$${this.formatNumber(totalPayPeriodExpenses)}</td>
+                <td class="text-end ${totalExcessClass}">$${this.formatNumber(totalPayPeriodExcess)}</td>
+                <td class="text-end ${totalMonthlyExcessClass}">$${this.formatNumber(totalMonthlyExcess)}</td>
+            </tr>
+        `;
+        
+        html += `</tbody></table></div></div></div></div>`;
+        html += '</div>'; // Close main row
+        
+        console.log('Setting summary HTML, length:', html.length);
+        container.innerHTML = html;
+        console.log('Summary HTML set successfully');
+    }
+
+    // ==========================================================================
+    // ANALYTICS TAB
+    // ==========================================================================
+
+    /**
+     * Render analytics tab
+     */
+    // === ANALYTICS RENDERING ===
+    // Enhanced analytics rendering with all requested features
+
+    /**
+     * Render analytics tab with comprehensive features
+     */
+    renderAnalytics() {
+        const container = document.getElementById('analyticsContent');
+        
+        if (!container) {
+            console.error('Analytics container not found!');
+            return;
+        }
+        
+        if (this.people.length === 0 || this.expenses.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-graph-up display-1 text-muted"></i>
+                    <h3 class="mt-3">Analytics not available</h3>
+                    <p class="text-muted">Add at least one household member and one expense to view detailed analytics.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let analytics;
+        try {
+            analytics = this.calculateAnalytics();
+            console.log('Analytics calculated successfully:', analytics);
+        } catch (error) {
+            console.error('Error calculating analytics:', error);
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4>Error</h4>
+                    <p>Unable to calculate analytics: ${error.message}</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="row g-4">';
+
+        // Budget Health Score with comprehensive metrics
+        html += `
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-heart-pulse me-2"></i>Budget Health Score</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-4 text-center">
+                                <div class="display-3 fw-bold ${analytics.healthScore >= 80 ? 'text-success' : analytics.healthScore >= 60 ? 'text-warning' : 'text-danger'} mb-2">
+                                    ${analytics.healthScore}/100
+                                </div>
+                                <div class="progress mb-3" style="height: 15px;">
+                                    <div class="progress-bar ${analytics.healthScore >= 80 ? 'bg-success' : analytics.healthScore >= 60 ? 'bg-warning' : 'bg-danger'}" 
+                                         style="width: ${analytics.healthScore}%"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <p class="mb-2">${analytics.healthMessage}</p>
+                                <div class="row text-center">
+                                    <div class="col-6 col-md-3">
+                                        <small class="text-muted">Savings Rate</small>
+                                        <div class="fw-bold ${analytics.savingsRate >= 20 ? 'text-success' : analytics.savingsRate >= 10 ? 'text-warning' : 'text-danger'}">
+                                            ${analytics.savingsRate}%
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <small class="text-muted">Emergency Fund</small>
+                                        <div class="fw-bold ${analytics.emergencyFundCoverage >= 3 ? 'text-success' : analytics.emergencyFundCoverage >= 1 ? 'text-warning' : 'text-danger'}">
+                                            ${analytics.emergencyFundCoverage} months
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <small class="text-muted">Debt Payments</small>
+                                        <div class="fw-bold ${analytics.debtToIncomeRatio <= 30 ? 'text-success' : analytics.debtToIncomeRatio <= 50 ? 'text-warning' : 'text-danger'}">
+                                            ${analytics.debtToIncomeRatio}%
+                                        </div>
+                                        <small class="text-muted">($${this.formatNumber(analytics.totalDebt)})</small>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <small class="text-muted">Monthly Balance</small>
+                                        <div class="fw-bold ${(analytics.totalIncome - analytics.totalExpenses) >= 0 ? 'text-success' : 'text-danger'}">
+                                            $${this.formatNumber(analytics.totalIncome - analytics.totalExpenses)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Debt Information Box
+        html += `
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <i class="bi bi-info-circle-fill"></i>
+                        </div>
+                        <div class="col">
+                            <strong>Debt-to-Income Calculation:</strong> Only includes actual debt payments like loans, credit cards, mortgages, and car payments. 
+                            Regular expenses like utilities, groceries, and insurance are excluded. 
+                            <strong>Recommended:</strong> Keep below 36% for optimal financial health.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Budget Scenario Modeling with Interactive Sliders
+        html += `
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-sliders me-2"></i>Interactive Budget Scenario Modeling</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <h6 class="text-primary mb-3">
+                                    <i class="bi bi-currency-dollar me-2"></i>Income Change Impact
+                                </h6>
+                                
+                                <!-- Income Slider -->
+                                <div class="mb-4">
+                                    <label for="incomeSlider" class="form-label">
+                                        Income Change: <span id="incomeChangePercent" class="fw-bold">0%</span>
+                                    </label>
+                                    <input type="range" class="form-range" id="incomeSlider" 
+                                           min="-50" max="50" value="0" step="1">
+                                    <div class="d-flex justify-content-between text-muted small">
+                                        <span>-50%</span>
+                                        <span>0%</span>
+                                        <span>+50%</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Income Results Card -->
+                                <div class="card" id="incomeResultCard">
+                                    <div class="card-body text-center">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="border-end">
+                                                    <div class="h5 mb-1" id="newIncomeAmount">$${this.formatNumber(analytics.totalIncome)}</div>
+                                                    <small class="text-muted">New Income</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="h5 mb-1" id="newIncomeBalance">$${this.formatNumber(analytics.totalIncome - analytics.totalExpenses)}</div>
+                                                <small class="text-muted">Monthly Balance</small>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="h6 mb-1">Savings Rate: <span id="newIncomeSavingsRate">${analytics.savingsRate}%</span></div>
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar" id="newIncomeSavingsBar" 
+                                                     style="width: ${Math.min(100, analytics.savingsRate * 5)}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-6">
+                                <h6 class="text-warning mb-3">
+                                    <i class="bi bi-receipt me-2"></i>Expense Change Impact
+                                </h6>
+                                
+                                <!-- Expense Slider -->
+                                <div class="mb-4">
+                                    <label for="expenseSlider" class="form-label">
+                                        Expense Change: <span id="expenseChangePercent" class="fw-bold">0%</span>
+                                    </label>
+                                    <input type="range" class="form-range" id="expenseSlider" 
+                                           min="-50" max="50" value="0" step="1">
+                                    <div class="d-flex justify-content-between text-muted small">
+                                        <span>-50%</span>
+                                        <span>0%</span>
+                                        <span>+50%</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Expense Results Card -->
+                                <div class="card" id="expenseResultCard">
+                                    <div class="card-body text-center">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="border-end">
+                                                    <div class="h5 mb-1" id="newExpenseAmount">$${this.formatNumber(analytics.totalExpenses)}</div>
+                                                    <small class="text-muted">New Expenses</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="h5 mb-1" id="newExpenseBalance">$${this.formatNumber(analytics.totalIncome - analytics.totalExpenses)}</div>
+                                                <small class="text-muted">Monthly Balance</small>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="h6 mb-1">Savings Rate: <span id="newExpenseSavingsRate">${analytics.savingsRate}%</span></div>
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar" id="newExpenseSavingsBar" 
+                                                     style="width: ${Math.min(100, analytics.savingsRate * 5)}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Reset Button -->
+                        <div class="text-center mt-4">
+                            <button class="btn btn-outline-secondary" id="resetSlidersBtn">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Reset to Current Budget
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Savings Rate Card with Detailed Breakdown
+        html += `
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-piggy-bank me-2"></i>Savings Rate Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="display-4 fw-bold text-success">${analytics.savingsRate}%</div>
+                            <p class="text-muted">of income saved monthly</p>
+                            <div class="progress mb-3" style="height: 12px;">
+                                <div class="progress-bar bg-success" style="width: ${Math.min(100, analytics.savingsRate * 5)}%"></div>
+                            </div>
+                        </div>
+                        
+                        <h6>Savings Breakdown:</h6>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Total Monthly Savings:</span>
+                                <strong>$${this.formatNumber(analytics.totalSavings)}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted">
+                                <span>• From savings categories:</span>
+                                <span>$${this.formatNumber(this.calculateSavingsFromCategories())}</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted">
+                                <span>• From excess income:</span>
+                                <span>$${this.formatNumber(Math.max(0, analytics.totalIncome - analytics.totalExpenses))}</span>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <small>
+                                <strong>Recommendation:</strong> 
+                                ${analytics.savingsRate >= 20 ? 'Excellent! You\'re saving more than the recommended 20%.' :
+                                  analytics.savingsRate >= 10 ? 'Good progress! Try to reach 20% for optimal financial health.' :
+                                  'Consider increasing savings to at least 10% of income.'}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // All Categories and Subcategories List
+        html += `
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Category & Subcategory Breakdown</h5>
+                    </div>
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+        `;
+
+        // Group expenses by category and subcategory
+        const categoryMap = {};
+        this.expenses.forEach(expense => {
+            const category = expense.category || 'Other';
+            const subcategory = expense.subcategory || 'General';
+            
+            if (!categoryMap[category]) {
+                categoryMap[category] = { total: 0, subcategories: {} };
+            }
+            
+            if (!categoryMap[category].subcategories[subcategory]) {
+                categoryMap[category].subcategories[subcategory] = 0;
+            }
+            
+            const amount = expense.monthlyAmount || 0;
+            categoryMap[category].total += amount;
+            categoryMap[category].subcategories[subcategory] += amount;
+        });
+
+        // Sort categories by total amount
+        const sortedCategories = Object.entries(categoryMap)
+            .sort(([,a], [,b]) => b.total - a.total);
+
+        sortedCategories.forEach(([categoryName, categoryData]) => {
+            const categoryPercent = analytics.totalExpenses > 0 ? 
+                Math.round((categoryData.total / analytics.totalExpenses) * 100) : 0;
+            
+            html += `
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-1">${this.capitalize(categoryName)}</h6>
+                        <span class="badge bg-primary">$${this.formatNumber(categoryData.total)} (${categoryPercent}%)</span>
+                    </div>
+            `;
+
+            // Sort subcategories by amount
+            const sortedSubcategories = Object.entries(categoryData.subcategories)
+                .sort(([,a], [,b]) => b - a);
+
+            sortedSubcategories.forEach(([subcategoryName, amount]) => {
+                const subPercent = categoryData.total > 0 ? 
+                    Math.round((amount / categoryData.total) * 100) : 0;
+                
+                html += `
+                    <div class="d-flex justify-content-between text-muted ps-3">
+                        <span>• ${this.capitalize(subcategoryName)}</span>
+                        <span>$${this.formatNumber(amount)} (${subPercent}%)</span>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+        });
+
+        html += `
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Savings Growth Projection
+        html += `
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Savings Growth Projection</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Timeframe</th>
+                                        <th>Savings Amount</th>
+                                        <th>With 2% Return</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+        `;
+
+        analytics.savingsGrowthProjection.forEach(projection => {
+            html += `
+                <tr>
+                    <td>${projection.month} month${projection.month > 1 ? 's' : ''}</td>
+                    <td>$${this.formatNumber(projection.amount)}</td>
+                    <td class="text-success">$${this.formatNumber(projection.withInterest)}</td>
                 </tr>
             `;
         });
 
-        // Calculate totals - both pay period and monthly
-        const totalPayPeriodIncome = this.people.reduce((sum, person) => {
-            const personPayPeriods = person.payPeriods || 26;
-            return sum + (person.yearlyPay / personPayPeriods);
-        }, 0);
-        const totalPayPeriodExpenses = this.people.reduce((sum, person) => {
-            return sum + this.calculatePersonTotalExpenses(person);
-        }, 0);
-        const totalPayPeriodExcess = totalPayPeriodIncome - totalPayPeriodExpenses;
-        
-        const totalMonthlyIncome = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
-        const totalMonthlyExpenses = this.people.reduce((sum, person) => {
-            const personExpenseShare = this.calculatePersonTotalExpenses(person);
-            const personPayPeriods = person.payPeriods || 26;
-            return sum + (personExpenseShare * personPayPeriods / 12);
-        }, 0);
-        const totalMonthlyExcess = totalMonthlyIncome - totalMonthlyExpenses;
-
         html += `
-                    </tbody>
-                    <tfoot>
-                        <tr class="totals-row">
-                            <td><strong></strong></td>
-                            <td class="amount" title="Sum of all pay period incomes: ${this.formatCurrency(totalPayPeriodIncome)}"><strong>${this.formatCurrency(totalPayPeriodIncome)}</strong></td>
-                            <td class="amount" title="Sum of all pay period expenses: ${this.formatCurrency(totalPayPeriodExpenses)}"><strong>${this.formatCurrency(totalPayPeriodExpenses)}</strong></td>
-                            <td class="amount ${totalPayPeriodExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(totalPayPeriodIncome)} - ${this.formatCurrency(totalPayPeriodExpenses)} = ${this.formatCurrency(totalPayPeriodExcess)}">
-                                <strong>${this.formatCurrency(totalPayPeriodExcess)}</strong>
-                            </td>
-                            <td class="amount ${totalMonthlyExcess >= 0 ? 'positive' : 'negative'}" title="${this.formatCurrency(totalMonthlyIncome)} - ${this.formatCurrency(totalMonthlyExpenses)} = ${this.formatCurrency(totalMonthlyExcess)}">
-                                <strong>${this.formatCurrency(totalMonthlyExcess)}</strong>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <canvas id="savingsProjectionChart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
 
-        container.innerHTML = html;
-    }
-
-    renderPersonCategoryBreakdown() {
-        const container = document.getElementById('personCategoryBreakdown');
-        
-        if (this.people.length === 0 || this.expenses.length === 0) {
-            container.innerHTML = '<div class="empty-state">Add people and expenses to see category breakdown.</div>';
-            return;
-        }
-
-        // Get all categories
-        const categories = [...new Set(this.expenses.map(expense => expense.category))];
-        
-        // Calculate category totals for each person
-        const personCategoryTotals = {};
-        
-        this.people.forEach(person => {
-            personCategoryTotals[person.id] = {
-                person: person,
-                categories: {}
-            };
-            
-            categories.forEach(category => {
-                const categoryExpenses = this.expenses.filter(expense => expense.category === category);
-                const categoryTotal = categoryExpenses.reduce((sum, expense) => {
-                    return sum + this.calculatePersonExpenseShare(expense, person);
-                }, 0);
-                
-                personCategoryTotals[person.id].categories[category] = categoryTotal;
-            });
-        });
-
-        // Calculate column totals for each category
-        const categoryColumnTotals = {};
-        categories.forEach(category => {
-            categoryColumnTotals[category] = Object.values(personCategoryTotals).reduce((sum, personData) => {
-                return sum + personData.categories[category];
-            }, 0);
-        });
-        
-        // Calculate grand total (sum of all expenses)
-        const grandTotal = Object.values(categoryColumnTotals).reduce((sum, total) => sum + total, 0);
-
-        let html = `
-            <div class="category-breakdown-table">
-                <table class="person-category-table">
-                    <thead>
-                        <tr>
-                            <th>Person</th>
-                            ${categories.map(category => `<th>${category.charAt(0).toUpperCase() + category.slice(1)}</th>`).join('')}
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${Object.values(personCategoryTotals).map(personData => {
-                            const categoryAmounts = categories.map(category => personData.categories[category]);
-                            const personTotal = categoryAmounts.reduce((sum, amount) => sum + amount, 0);
-                            
-                            return `
-                                <tr>
-                                    <td class="person-name">${personData.person.name}</td>
-                                    ${categoryAmounts.map(amount => `<td class="amount">${this.formatCurrency(amount)}</td>`).join('')}
-                                    <td class="amount total-cell">${this.formatCurrency(personTotal)}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr class="totals-row">
-                            <td><strong></strong></td>
-                            ${categories.map(category => `<td class="amount"><strong>${this.formatCurrency(categoryColumnTotals[category])}</strong></td>`).join('')}
-                            <td class="amount total-cell"><strong>${this.formatCurrency(grandTotal)}</strong></td>
-                        </tr>
-                    </tfoot>
-                </table>
+        // Expense Distribution Chart
+        html += `
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Expense Distribution</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <canvas id="expenseDistributionChart" width="400" height="400"></canvas>
+                    </div>
+                </div>
             </div>
         `;
 
+        // Subcategory Breakdown Graph
+        html += `
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Subcategory Breakdown</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="subcategoryChart" width="800" height="400"></canvas>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        html += '</div>'; // Close main row
+
+        console.log('Setting analytics HTML, length:', html.length);
         container.innerHTML = html;
-    }
-
-    // Calculate how much each person should pay for a specific expense
-    calculatePersonExpenseShare(expense, person) {
-        if (this.people.length <= 1) {
-            // Convert expense to person's pay period frequency
-            return this.convertExpenseToPersonPayPeriod(expense.biWeeklyAmount, person);
-        }
-
-        if (expense.sharingMethod === 'even') {
-            const sharePerPerson = expense.biWeeklyAmount / this.people.length;
-            return this.convertExpenseToPersonPayPeriod(sharePerPerson, person);
-        } else if (expense.sharingMethod === 'percentage') {
-            const totalYearlyIncome = this.people.reduce((sum, p) => sum + p.yearlyPay, 0);
-            const personPercentage = person.yearlyPay / totalYearlyIncome;
-            const personBiWeeklyShare = expense.biWeeklyAmount * personPercentage;
-            return this.convertExpenseToPersonPayPeriod(personBiWeeklyShare, person);
-        } else if (expense.sharingMethod === 'custom') {
-            const personPercentage = (person.customSplitPercentage || 0) / 100;
-            const personBiWeeklyShare = expense.biWeeklyAmount * personPercentage;
-            return this.convertExpenseToPersonPayPeriod(personBiWeeklyShare, person);
-        }
         
-        return 0;
+        // Initialize all charts after DOM update
+        setTimeout(() => {
+            this.renderAnalyticsCharts(analytics);
+            this.initializeScenarioSliders(analytics);
+        }, 100);
+        
+        console.log('Analytics HTML set successfully');
     }
 
-    // Convert a bi-weekly expense amount to a person's pay period frequency
-    convertExpenseToPersonPayPeriod(biWeeklyAmount, person) {
-        const personPayPeriods = person.payPeriods || 26;
-        const effectivePayPeriods = this.getHouseholdEffectivePayPeriods();
-        // Convert bi-weekly amount to yearly using household effective pay periods, then to person's pay frequency
-        const yearlyAmount = biWeeklyAmount * effectivePayPeriods;
-        return yearlyAmount / personPayPeriods; // Convert to person's pay frequency
-    }
-
-    // Calculate total expenses for a person across all expenses
-    calculatePersonTotalExpenses(person) {
+    // Helper method to calculate savings from categories only
+    calculateSavingsFromCategories() {
         return this.expenses.reduce((sum, expense) => {
-            return sum + this.calculatePersonExpenseShare(expense, person);
+            const category = (expense.category || '').toLowerCase();
+            const subcategory = (expense.subcategory || '').toLowerCase();
+            
+            if (category.includes('savings') || category.includes('emergency') || 
+                subcategory.includes('savings')) {
+                return sum + (expense.monthlyAmount || 0);
+            }
+            return sum;
         }, 0);
     }
 
-    // Get expense breakdown by person for summary display
-    getExpenseBreakdownByPerson() {
-        const breakdown = {};
-        
-        this.people.forEach(person => {
-            breakdown[person.id] = {
-                person: person,
-                expenses: [],
-                totalBiWeekly: 0
-            };
-            
-            this.expenses.forEach(expense => {
-                const expenseShare = this.calculatePersonExpenseShare(expense, person);
-                breakdown[person.id].expenses.push({
-                    expense: expense,
-                    amount: expenseShare
-                });
-                breakdown[person.id].totalBiWeekly += expenseShare;
-            });
+    /**
+     * Render all analytics charts
+     */
+    renderAnalyticsCharts(analytics) {
+        // Destroy existing charts
+        Object.values(this.charts).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
         });
-        
-        return breakdown;
-    }
+        this.charts = {};
 
-    // Table sorting functionality
-    initializeTableSorting() {
-        // Sort expenses table
-        const expensesTable = document.getElementById('expensesTable');
-        if (expensesTable) {
-            const headers = expensesTable.querySelectorAll('th');
-            headers.forEach((header, index) => {
-                if (index < headers.length - 1) { // Don't make the Action column sortable
-                    header.style.cursor = 'pointer';
-                    header.classList.add('sortable');
-                    header.addEventListener('click', () => this.sortExpensesTable(index, header));
+        // Expense Distribution Pie Chart
+        const expenseDistCtx = document.getElementById('expenseDistributionChart');
+        if (expenseDistCtx && analytics.categoryData.labels.length > 0) {
+            this.charts.expenseDistribution = new Chart(expenseDistCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: analytics.categoryData.labels,
+                    datasets: [{
+                        data: analytics.categoryData.values,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+                            '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: $${this.formatNumber(value)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
 
-        // Sort category breakdown table
-        const categoryTable = document.querySelector('.person-category-table');
-        if (categoryTable) {
-            const headers = categoryTable.querySelectorAll('th');
-            headers.forEach((header, index) => {
-                header.style.cursor = 'pointer';
-                header.classList.add('sortable');
-                header.addEventListener('click', () => this.sortCategoryTable(index, header));
+        // Subcategory Bar Chart
+        const subcategoryCtx = document.getElementById('subcategoryChart');
+        if (subcategoryCtx && Object.keys(analytics.subcategoryBreakdown).length > 0) {
+            const subcategoryData = Object.entries(analytics.subcategoryBreakdown)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 15); // Show top 15 subcategories
+
+            this.charts.subcategory = new Chart(subcategoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: subcategoryData.map(([name]) => this.capitalize(name)),
+                    datasets: [{
+                        label: 'Monthly Amount',
+                        data: subcategoryData.map(([,amount]) => amount),
+                        backgroundColor: '#36A2EB',
+                        borderColor: '#1E88E5',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => '$' + this.formatNumber(value)
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return `${context.label}: $${this.formatNumber(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    }
+                }
             });
         }
-    }
 
-    sortExpensesTable(columnIndex, header) {
-        const isAscending = !header.classList.contains('sort-asc');
-        
-        // Remove sort classes from all headers
-        const allHeaders = document.querySelectorAll('#expensesTable th');
-        allHeaders.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
-        
-        // Add sort class to current header
-        header.classList.add(isAscending ? 'sort-asc' : 'sort-desc');
-        
-        // Sort the expenses array
-        this.expenses.sort((a, b) => {
-            let aValue, bValue;
-            
-            switch(columnIndex) {
-                case 0: // Expense name
-                    aValue = a.name.toLowerCase();
-                    bValue = b.name.toLowerCase();
-                    break;
-                case 1: // Monthly amount
-                    aValue = a.monthlyAmount;
-                    bValue = b.monthlyAmount;
-                    break;
-                case 2: // Category
-                    aValue = a.category.toLowerCase();
-                    bValue = b.category.toLowerCase();
-                    break;
-                case 3: // Sub-category
-                    aValue = (a.subCategory || '').toLowerCase();
-                    bValue = (b.subCategory || '').toLowerCase();
-                    break;
-                case 4: // Sharing method
-                    aValue = a.sharingMethod.toLowerCase();
-                    bValue = b.sharingMethod.toLowerCase();
-                    break;
-                default:
-                    return 0;
-            }
-            
-            if (typeof aValue === 'string') {
-                return isAscending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-            } else {
-                return isAscending ? aValue - bValue : bValue - aValue;
-            }
-        });
-        
-        this.renderExpenses();
-        this.renderBiWeeklySummary();
-    }
-
-    sortCategoryTable(columnIndex, header) {
-        const table = header.closest('table');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        
-        const isAscending = !header.classList.contains('sort-asc');
-        
-        // Remove sort classes from all headers
-        const allHeaders = table.querySelectorAll('th');
-        allHeaders.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
-        
-        // Add sort class to current header
-        header.classList.add(isAscending ? 'sort-asc' : 'sort-desc');
-        
-        // Sort the rows
-        rows.sort((a, b) => {
-            const aCell = a.cells[columnIndex];
-            const bCell = b.cells[columnIndex];
-            
-            let aValue, bValue;
-            
-            if (columnIndex === 0) {
-                // Person name - text comparison
-                aValue = aCell.textContent.toLowerCase();
-                bValue = bCell.textContent.toLowerCase();
-                return isAscending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-            } else {
-                // Amount columns - numeric comparison
-                aValue = this.parseCurrencyValue(aCell.textContent);
-                bValue = this.parseCurrencyValue(bCell.textContent);
-                return isAscending ? aValue - bValue : bValue - aValue;
-            }
-        });
-        
-        // Re-append sorted rows
-        rows.forEach(row => tbody.appendChild(row));
-    }
-
-    parseCurrencyValue(currencyString) {
-        // Remove currency symbols and commas, then parse as float
-        return parseFloat(currencyString.replace(/[$,]/g, '')) || 0;
-    }
-
-    getPayFrequencyLabel(payPeriods) {
-        const frequencies = {
-            52: 'Weekly',
-            26: 'Bi-weekly',
-            24: 'Semi-monthly',
-            12: 'Monthly',
-            13: '4-week cycles',
-            104: 'Twice weekly',
-            4: 'Quarterly',
-            6: 'Bi-monthly',
-            18: 'Every 20 days',
-            36: 'Every 10 days',
-            2: 'Semi-annually',
-            1: 'Annually'
-        };
-        return frequencies[payPeriods] || `${payPeriods}/year`;
-    }
-
-    updatePayPlaceholder() {
-        const payPeriods = parseInt(document.getElementById('personPayPeriods').value);
-        const payInput = document.getElementById('biWeeklyPay');
-        const frequencyLabel = this.getPayFrequencyLabel(payPeriods).toLowerCase();
-        
-        payInput.placeholder = `${this.getPayFrequencyLabel(payPeriods)} pay ($)`;
-    }
-
-    updateSliderBackground(slider) {
-        const value = slider.value;
-        const min = slider.min || 0;
-        const max = slider.max || 100;
-        
-        // Calculate percentage of slider filled
-        const percentage = ((value - min) / (max - min)) * 100;
-        
-        // Get theme-aware colors
-        const colors = this.getThemeColors();
-        const progressColor = colors.primary;
-        const trackColor = colors.bgMuted;
-        
-        // Update background gradient to show progress
-        slider.style.background = `linear-gradient(90deg, ${progressColor} 0%, ${progressColor} ${percentage}%, ${trackColor} ${percentage}%, ${trackColor} 100%)`;
-    }
-
-    updateScenarioSliderColors(slider, value) {
-        // Get theme-aware colors
-        const colors = this.getThemeColors();
-        
-        // Determine color based on value (positive/negative/neutral)
-        let progressColor, thumbColor;
-        
-        if (value > 0) {
-            // Positive values - green for income increase, red for expense increase
-            if (slider.id === 'incomeAdjustment') {
-                progressColor = colors.success; // Green for income increase (good)
-                thumbColor = colors.success;
-            } else {
-                progressColor = colors.danger; // Red for expense increase (bad)
-                thumbColor = colors.danger;
-            }
-        } else if (value < 0) {
-            // Negative values - red for income decrease, green for expense decrease
-            if (slider.id === 'incomeAdjustment') {
-                progressColor = colors.danger; // Red for income decrease (bad)
-                thumbColor = colors.danger;
-            } else {
-                progressColor = colors.success; // Green for expense decrease (good)
-                thumbColor = colors.success;
-            }
-        } else {
-            // Neutral (zero) - default primary
-            progressColor = colors.primary;
-            thumbColor = colors.primary;
+        // Savings Growth Projection Line Chart
+        const savingsProjectionCtx = document.getElementById('savingsProjectionChart');
+        if (savingsProjectionCtx && analytics.savingsGrowthProjection.length > 0) {
+            this.charts.savingsProjection = new Chart(savingsProjectionCtx, {
+                type: 'line',
+                data: {
+                    labels: analytics.savingsGrowthProjection.map(p => `${p.month}mo`),
+                    datasets: [
+                        {
+                            label: 'Without Interest',
+                            data: analytics.savingsGrowthProjection.map(p => p.amount),
+                            borderColor: '#36A2EB',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'With 2% Annual Return',
+                            data: analytics.savingsGrowthProjection.map(p => p.withInterest),
+                            borderColor: '#4BC0C0',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => '$' + this.formatNumber(value)
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return `${context.dataset.label}: $${this.formatNumber(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
-        
-        // Calculate percentage for background gradient
-        const min = parseFloat(slider.min) || 0;
-        const max = parseFloat(slider.max) || 100;
-        const percentage = ((value - min) / (max - min)) * 100;
-        
-        // Update background with color using theme-aware track color
-        slider.style.background = `linear-gradient(90deg, ${progressColor} 0%, ${progressColor} ${percentage}%, ${colors.bgMuted} ${percentage}%, ${colors.bgMuted} 100%)`;
-        
-        // Update thumb color
-        slider.style.setProperty('--thumb-color', thumbColor);
+
+        console.log('All analytics charts rendered successfully');
     }
 
-    updateScenarioDisplayColors(displayElement, value, type) {
-        // Get theme-aware colors
-        const colors = this.getThemeColors();
-        
-        // Determine color and background based on value and type
-        let color, backgroundColor;
-        
-        if (value > 0) {
-            // Positive values
-            if (type === 'income') {
-                color = colors.success; // Green for income increase (good)
-                backgroundColor = colors.success + '20'; // 20% opacity
-            } else {
-                color = colors.danger; // Red for expense increase (bad)
-                backgroundColor = colors.danger + '20'; // 20% opacity
-            }
-        } else if (value < 0) {
-            // Negative values
-            if (type === 'income') {
-                color = colors.danger; // Red for income decrease (bad)
-                backgroundColor = colors.danger + '20'; // 20% opacity
-            } else {
-                color = colors.success; // Green for expense decrease (good)
-                backgroundColor = colors.success + '20'; // 20% opacity
-            }
-        } else {
-            // Neutral (zero) - default blue
-            color = colors.primary;
-            backgroundColor = colors.primary + '20'; // 20% opacity
-        }
-        
-        // Apply colors
-        displayElement.style.color = color;
-        displayElement.style.backgroundColor = backgroundColor;
-    }
+    /**
+     * Initialize interactive scenario modeling sliders
+     */
+    initializeScenarioSliders(analytics) {
+        const incomeSlider = document.getElementById('incomeSlider');
+        const expenseSlider = document.getElementById('expenseSlider');
+        const resetBtn = document.getElementById('resetSlidersBtn');
 
-    // Helper function to capitalize category names
-    capitalizeCategory(category) {
-        return category.charAt(0).toUpperCase() + category.slice(1);
-    }
-
-    // Helper function to get category CSS class
-    getCategoryClass(category) {
-        const normalizedCategory = category.toLowerCase().trim();
-        return `category-${normalizedCategory}`;
-    }
-
-    // Helper function to get subcategory CSS class
-    getSubcategoryClass(subcategory) {
-        if (!subcategory || subcategory.trim() === '') return 'subcategory-default';
-        
-        const normalized = subcategory.toLowerCase().trim()
-            .replace(/[^a-z0-9]/g, '') // Remove special characters
-            .replace(/s$/, ''); // Remove trailing 's' for plurals
-        
-        // Check for common subcategory patterns
-        const subcategoryMappings = {
-            'subscription': 'subscription',
-            'insurance': 'insurance',
-            'utilities': 'utilities',
-            'utility': 'utilities',
-            'mortgage': 'mortgage',
-            'rent': 'rent',
-            'groceries': 'groceries',
-            'grocery': 'groceries',
-            'dining': 'dining',
-            'restaurant': 'dining',
-            'gas': 'gas',
-            'fuel': 'gas',
-            'maintenance': 'maintenance',
-            'repair': 'maintenance',
-            'streaming': 'streaming',
-            'media': 'streaming',
-            'gym': 'gym',
-            'fitness': 'gym',
-            'health': 'gym',
-            // New fun subcategories
-            'coffee': 'coffee',
-            'tea': 'coffee',
-            'shopping': 'shopping',
-            'clothes': 'shopping',
-            'clothing': 'shopping',
-            'book': 'books',
-            'books': 'books',
-            'education': 'education',
-            'course': 'education',
-            'learning': 'education',
-            'travel': 'travel',
-            'vacation': 'travel',
-            'trip': 'travel',
-            'phone': 'phone',
-            'mobile': 'phone',
-            'cellular': 'phone',
-            'internet': 'internet',
-            'wifi': 'internet',
-            'web': 'internet',
-            'pet': 'pet',
-            'dog': 'pet',
-            'cat': 'pet',
-            'vet': 'pet',
-            'game': 'gaming',
-            'gaming': 'gaming',
-            'xbox': 'gaming',
-            'playstation': 'gaming',
-            'music': 'music',
-            'spotify': 'music',
-            'apple': 'music',
-            'beauty': 'beauty',
-            'skincare': 'beauty',
-            'makeup': 'beauty',
-            'hair': 'beauty',
-            'taxi': 'transport',
-            'uber': 'transport',
-            'bus': 'transport',
-            'train': 'transport',
-            'parking': 'transport',
-            'medical': 'medical',
-            'doctor': 'medical',
-            'dentist': 'medical',
-            'pharmacy': 'medical',
-            'hobby': 'hobby',
-            'craft': 'hobby',
-            'art': 'hobby',
-            'sport': 'sports',
-            'sports': 'sports',
-            'ticket': 'entertainment',
-            'movie': 'entertainment',
-            'concert': 'entertainment',
-            'show': 'entertainment',
-            // Additional comprehensive subcategories
-            'hoa': 'hoa',
-            'homeowner': 'hoa',
-            'association': 'hoa',
-            'condo': 'hoa',
-            'saving': 'savings',
-            'savings': 'savings',
-            'investment': 'savings',
-            'retirement': 'savings',
-            '401k': 'savings',
-            'ira': 'savings',
-            'upkeep': 'upkeep',
-            'cleaning': 'upkeep',
-            'landscaping': 'upkeep',
-            'lawn': 'upkeep',
-            'misc': 'misc',
-            'miscellaneous': 'misc',
-            'other': 'misc',
-            'random': 'misc',
-            'electric': 'electric',
-            'electricity': 'electric',
-            'power': 'electric',
-            'water': 'water',
-            'sewer': 'water',
-            'trash': 'trash',
-            'garbage': 'trash',
-            'waste': 'trash',
-            'recycling': 'trash',
-            'loan': 'loan',
-            'debt': 'loan',
-            'credit': 'loan',
-            'car': 'automotive',
-            'auto': 'automotive',
-            'vehicle': 'automotive',
-            'registration': 'automotive',
-            'license': 'license',
-            'permit': 'license',
-            'tax': 'tax',
-            'taxes': 'tax',
-            'income': 'tax',
-            'property': 'tax',
-            'tool': 'tools',
-            'tools': 'tools',
-            'equipment': 'tools',
-            'hardware': 'tools',
-            'software': 'software',
-            'app': 'software',
-            'program': 'software',
-            'license': 'software',
-            'gift': 'gifts',
-            'gifts': 'gifts',
-            'present': 'gifts',
-            'birthday': 'gifts',
-            'holiday': 'gifts',
-            'christmas': 'gifts',
-            'donation': 'charity',
-            'charity': 'charity',
-            'tithe': 'charity',
-            'church': 'charity',
-            'volunteer': 'charity',
-            'childcare': 'childcare',
-            'daycare': 'childcare',
-            'babysitter': 'childcare',
-            'nanny': 'childcare',
-            'school': 'school',
-            'tuition': 'school',
-            'supplies': 'school',
-            'uniform': 'school',
-            'lunch': 'lunch',
-            'breakfast': 'lunch',
-            'snack': 'lunch',
-            'alcohol': 'alcohol',
-            'beer': 'alcohol',
-            'wine': 'alcohol',
-            'bar': 'alcohol',
-            'tobacco': 'tobacco',
-            'cigarette': 'tobacco',
-            'smoking': 'tobacco',
-            'fabric': 'fabric',
-            'sewing': 'fabric',
-            'yarn': 'fabric',
-            'material': 'fabric',
-            'garden': 'garden',
-            'plant': 'garden',
-            'seed': 'garden',
-            'flower': 'garden',
-            'landscaping': 'garden'
-        };
-        
-        // Find matching pattern
-        for (const [pattern, className] of Object.entries(subcategoryMappings)) {
-            if (normalized.includes(pattern)) {
-                return `subcategory-${className}`;
-            }
-        }
-        
-        return 'subcategory-default';
-    }
-
-    // Analytics and Chart Rendering
-    renderAnalytics() {
-        if (this.people.length === 0 || this.expenses.length === 0) {
-            this.clearAnalytics();
+        if (!incomeSlider || !expenseSlider) {
+            console.warn('Scenario sliders not found in DOM');
             return;
         }
 
-        this.renderExpensePieChart();
-        this.renderSavingsRate();
-        this.renderSubcategoryChart();
-        this.renderSubcategoryBars();
-        this.renderSavingsProjectionChart();
-        this.renderBudgetHealthScore();
-        this.renderScenarioModeling();
-        this.renderFinancialMilestones();
-    }
+        // Store original values
+        const originalIncome = analytics.totalIncome;
+        const originalExpenses = analytics.totalExpenses;
 
-    clearAnalytics() {
-        // Clear charts if no data
-        const charts = ['expenseBarChart', 'subcategoryBarChart', 'savingsProjectionChart'];
-        charts.forEach(chartId => {
-            const canvas = document.getElementById(chartId);
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#f8f9fa';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#6c757d';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('Add expenses to see charts', canvas.width/2, canvas.height/2);
-            }
+        // Income slider handler
+        incomeSlider.addEventListener('input', (e) => {
+            const changePercent = parseInt(e.target.value);
+            this.updateIncomeScenario(originalIncome, originalExpenses, changePercent);
         });
-        
-        document.getElementById('savingsRate').textContent = '0%';
-        document.getElementById('budgetBars').innerHTML = '<div class="empty-state">Add expenses to see budget overview</div>';
+
+        // Expense slider handler
+        expenseSlider.addEventListener('input', (e) => {
+            const changePercent = parseInt(e.target.value);
+            this.updateExpenseScenario(originalIncome, originalExpenses, changePercent);
+        });
+
+        // Reset button handler
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                incomeSlider.value = 0;
+                expenseSlider.value = 0;
+                this.updateIncomeScenario(originalIncome, originalExpenses, 0);
+                this.updateExpenseScenario(originalIncome, originalExpenses, 0);
+            });
+        }
+
+        console.log('Scenario sliders initialized successfully');
     }
 
-    renderExpensePieChart() {
-        const canvas = document.getElementById('expenseBarChart');
-        const ctx = canvas.getContext('2d');
+    /**
+     * Update income scenario display
+     */
+    updateIncomeScenario(originalIncome, originalExpenses, changePercent) {
+        const newIncome = originalIncome * (1 + changePercent / 100);
+        const newBalance = newIncome - originalExpenses;
         
-        // Group expenses by category using analytics period
+        // Calculate proper savings rate using scaled savings calculation
+        const newTotalSavings = this.calculateScaledSavings(originalIncome, newExpenses, originalExpenses);
+        const newSavingsRate = newIncome > 0 ? Math.round((newTotalSavings / newIncome) * 100) : 0;
+
+        // Update percentage display
+        const percentElement = document.getElementById('incomeChangePercent');
+        if (percentElement) {
+            percentElement.textContent = `${changePercent > 0 ? '+' : ''}${changePercent}%`;
+            // Color coding: green for positive, red for negative, blue for zero
+            percentElement.className = changePercent > 0 ? 'fw-bold text-success' : 
+                                     changePercent < 0 ? 'fw-bold text-danger' : 'fw-bold text-primary';
+        }
+
+        // Update income amount
+        const incomeElement = document.getElementById('newIncomeAmount');
+        if (incomeElement) {
+            incomeElement.textContent = `$${this.formatNumber(newIncome)}`;
+        }
+
+        // Update balance
+        const balanceElement = document.getElementById('newIncomeBalance');
+        if (balanceElement) {
+            balanceElement.textContent = `$${this.formatNumber(newBalance)}`;
+            balanceElement.className = newBalance >= 0 ? 'h5 mb-1 text-success' : 'h5 mb-1 text-danger';
+        }
+
+        // Update savings rate
+        const savingsRateElement = document.getElementById('newIncomeSavingsRate');
+        if (savingsRateElement) {
+            savingsRateElement.textContent = `${newSavingsRate}%`;
+        }
+
+        // Update savings rate progress bar
+        const savingsBarElement = document.getElementById('newIncomeSavingsBar');
+        if (savingsBarElement) {
+            const barWidth = Math.min(100, Math.max(0, newSavingsRate * 5));
+            savingsBarElement.style.width = `${barWidth}%`;
+            savingsBarElement.className = newSavingsRate >= 20 ? 'progress-bar bg-success' :
+                                         newSavingsRate >= 10 ? 'progress-bar bg-warning' : 
+                                         newSavingsRate >= 0 ? 'progress-bar bg-info' : 'progress-bar bg-danger';
+        }
+
+        // Update result card color
+        const resultCard = document.getElementById('incomeResultCard');
+        if (resultCard) {
+            resultCard.className = changePercent > 0 ? 'card border-success' :
+                                  changePercent < 0 ? 'card border-danger' : 'card border-primary';
+        }
+    }
+
+    /**
+     * Update expense scenario display
+     */
+    updateExpenseScenario(originalIncome, originalExpenses, changePercent) {
+        const newExpenses = originalExpenses * (1 + changePercent / 100);
+        const newBalance = originalIncome - newExpenses;
+        
+        // Calculate proper savings rate using scaled savings calculation
+        const newTotalSavings = this.calculateScaledSavings(originalIncome, newExpenses, originalExpenses);
+        const newSavingsRate = originalIncome > 0 ? Math.round((newTotalSavings / originalIncome) * 100) : 0;
+
+        // Update percentage display
+        const percentElement = document.getElementById('expenseChangePercent');
+        if (percentElement) {
+            percentElement.textContent = `${changePercent > 0 ? '+' : ''}${changePercent}%`;
+            // Color coding: red for positive (more expenses = bad), green for negative (less expenses = good), blue for zero
+            percentElement.className = changePercent > 0 ? 'fw-bold text-danger' : 
+                                     changePercent < 0 ? 'fw-bold text-success' : 'fw-bold text-primary';
+        }
+
+        // Update expense amount
+        const expenseElement = document.getElementById('newExpenseAmount');
+        if (expenseElement) {
+            expenseElement.textContent = `$${this.formatNumber(newExpenses)}`;
+        }
+
+        // Update balance
+        const balanceElement = document.getElementById('newExpenseBalance');
+        if (balanceElement) {
+            balanceElement.textContent = `$${this.formatNumber(newBalance)}`;
+            balanceElement.className = newBalance >= 0 ? 'h5 mb-1 text-success' : 'h5 mb-1 text-danger';
+        }
+
+        // Update savings rate
+        const savingsRateElement = document.getElementById('newExpenseSavingsRate');
+        if (savingsRateElement) {
+            savingsRateElement.textContent = `${newSavingsRate}%`;
+        }
+
+        // Update savings rate progress bar
+        const savingsBarElement = document.getElementById('newExpenseSavingsBar');
+        if (savingsBarElement) {
+            const barWidth = Math.min(100, Math.max(0, newSavingsRate * 5));
+            savingsBarElement.style.width = `${barWidth}%`;
+            savingsBarElement.className = newSavingsRate >= 20 ? 'progress-bar bg-success' :
+                                         newSavingsRate >= 10 ? 'progress-bar bg-warning' : 
+                                         newSavingsRate >= 0 ? 'progress-bar bg-info' : 'progress-bar bg-danger';
+        }
+
+        // Update result card color
+        const resultCard = document.getElementById('expenseResultCard');
+        if (resultCard) {
+            resultCard.className = changePercent > 0 ? 'card border-danger' :
+                                  changePercent < 0 ? 'card border-success' : 'card border-primary';
+        }
+    }
+
+    /**
+     * Calculate scaled savings for scenario modeling
+     * This properly accounts for savings categories being scaled with expenses
+     * and adds excess funds from income changes
+     */
+    calculateScaledSavings(newIncome, newExpenses, originalExpenses) {
+        // Get current savings from expense categories
+        const originalSavingsFromExpenses = this.expenses.reduce((sum, expense) => {
+            const category = expense.category.toLowerCase();
+            const subcategory = (expense.subcategory || '').toLowerCase();
+            
+            // Include if category is savings or emergency
+            if (category.includes('savings') || category.includes('emergency')) {
+                return sum + expense.monthlyAmount;
+            }
+            
+            // Include if subcategory contains savings
+            if (subcategory.includes('savings')) {
+                return sum + expense.monthlyAmount;
+            }
+            
+            return sum;
+        }, 0);
+        
+        // Scale the savings categories proportionally with total expense changes
+        const expenseScaleFactor = originalExpenses > 0 ? newExpenses / originalExpenses : 1;
+        const scaledSavingsFromExpenses = originalSavingsFromExpenses * expenseScaleFactor;
+        
+        // Add excess funds (surplus) - this is the key difference from simple balance calculation
+        const surplus = newIncome - newExpenses;
+        const excessFunds = Math.max(0, surplus);
+        
+        return scaledSavingsFromExpenses + excessFunds;
+    }
+
+    // ==========================================================================
+    // CALCULATION METHODS
+    // ==========================================================================
+
+    /**
+     * Calculate person's income breakdown
+     */
+    calculatePersonIncome(person) {
+        const payAmount = person.payPerPeriod || person.biWeeklyPay;
+        const annualIncome = this.calculatePersonAnnualIncome(person);
+        
+        return {
+            payPeriod: payAmount,           // Actual amount per their pay period
+            biWeekly: annualIncome / 26,    // Convert to bi-weekly for comparison
+            monthly: annualIncome / 12,     // Convert to monthly
+            yearly: annualIncome            // Annual income
+        };
+    }
+
+    /**
+     * Calculate monthly amount from bi-weekly
+     */
+    calculateMonthlyFromBiWeekly(biWeeklyAmount) {
+        return (biWeeklyAmount * 26) / 12;
+    }
+
+    /**
+     * Calculate bi-weekly amount from monthly
+     */
+    calculateBiWeeklyFromMonthly(monthlyAmount) {
+        return (monthlyAmount * 12) / 26;
+    }
+
+    /**
+     * Calculate person's actual annual income based on their pay period
+     */
+    calculatePersonAnnualIncome(person) {
+        // Use payPerPeriod if available (new format), otherwise fall back to biWeeklyPay (old format)
+        const payAmount = person.payPerPeriod || person.biWeeklyPay;
+        return payAmount * person.payPeriods;
+    }
+
+    /**
+     * Calculate person's share of an expense
+     */
+    calculatePersonShare(expense, person) {
+        switch (expense.sharingMethod) {
+            case 'even':
+                return expense.monthlyAmount / this.people.length;
+            
+            case 'percentage':
+                const totalAnnualIncome = this.people.reduce((sum, p) => {
+                    return sum + this.calculatePersonAnnualIncome(p);
+                }, 0);
+                const personAnnualIncome = this.calculatePersonAnnualIncome(person);
+                return totalAnnualIncome > 0 ? (personAnnualIncome / totalAnnualIncome) * expense.monthlyAmount : 0;
+            
+            case 'custom':
+                // Use global custom percentages instead of per-expense custom splits
+                const customPercentage = this.settings.customPercentages[person.id] || 0;
+                return (customPercentage / 100) * expense.monthlyAmount;
+            
+            default:
+                return 0;
+        }
+    }
+
+    /**
+     * Calculate summary data
+     */
+    calculateSummary() {
+        const totalIncome = this.people.reduce((sum, person) => {
+            return sum + (this.calculatePersonAnnualIncome(person) / 12); // Convert annual to monthly for summary
+        }, 0);
+
+        const totalExpenses = this.expenses.reduce((sum, expense) => {
+            return sum + expense.monthlyAmount;
+        }, 0);
+
+        // Calculate total savings amount (including actual savings expenses and surplus)
+        const totalSavings = this.calculateTotalSavings(totalIncome, totalExpenses);
+        
+        const surplus = totalIncome - totalExpenses;
+        const savingsRate = totalIncome > 0 ? Math.round((totalSavings / totalIncome) * 100) : 0;
+
+        // Individual breakdowns
+        const individualBreakdowns = this.people.map(person => {
+            const income = this.calculateMonthlyFromBiWeekly(person.biWeeklyPay);
+            const expenses = this.expenses.reduce((sum, expense) => {
+                return sum + this.calculatePersonShare(expense, person);
+            }, 0);
+
+            return {
+                name: person.name,
+                income,
+                expenses,
+                balance: income - expenses
+            };
+        });
+
+        // Category breakdown
         const categoryTotals = {};
         this.expenses.forEach(expense => {
-            const category = this.capitalizeCategory(expense.category);
-            categoryTotals[category] = (categoryTotals[category] || 0) + this.getAnalyticsAmount(expense.biWeeklyAmount);
+            categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.monthlyAmount;
         });
 
-        // Sort categories alphabetically to ensure consistent color assignment
-        const sortedCategories = Object.keys(categoryTotals).sort();
-        const sortedCategoryValues = sortedCategories.map(cat => categoryTotals[cat]);
+        const categoryBreakdown = Object.entries(categoryTotals)
+            .map(([name, amount]) => ({
+                name,
+                amount,
+                percentage: totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0
+            }))
+            .sort((a, b) => b.amount - a.amount);
 
-        const colors = [
-            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
-            '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
-        ];
+        return {
+            totalIncome,
+            totalExpenses,
+            surplus,
+            savingsRate,
+            totalSavings,
+            individualBreakdowns,
+            categoryBreakdown
+        };
+    }
 
-        const data = {
-            labels: Object.keys(categoryTotals),
-            datasets: [{
-                data: Object.values(categoryTotals),
-                backgroundColor: colors.slice(0, Object.keys(categoryTotals).length),
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
+    // Calculate total savings including savings categories, emergency, subcategories with "savings", and excess funds
+    calculateTotalSavings(totalIncome, totalExpenses) {
+        // Get savings from expense categories
+        const savingsFromExpenses = this.expenses.reduce((sum, expense) => {
+            const category = expense.category.toLowerCase();
+            const subcategory = (expense.subcategory || '').toLowerCase();
+            
+            // Include if category is savings or emergency
+            if (category.includes('savings') || category.includes('emergency')) {
+                return sum + expense.monthlyAmount;
+            }
+            
+            // Include if subcategory contains savings
+            if (subcategory.includes('savings')) {
+                return sum + expense.monthlyAmount;
+            }
+            
+            return sum;
+        }, 0);
+        
+        // Add excess funds (surplus)
+        const surplus = totalIncome - totalExpenses;
+        const excessFunds = Math.max(0, surplus);
+        
+        return savingsFromExpenses + excessFunds;
+    }
+
+    // Calculate total debt payments (only actual debt obligations)
+    calculateTotalDebt() {
+        return this.expenses.reduce((sum, expense) => {
+            const category = (expense.category || '').toLowerCase();
+            const subcategory = (expense.subcategory || '').toLowerCase();
+            const name = (expense.name || '').toLowerCase();
+            
+            // Include if category contains debt-related terms
+            if (category.includes('debt') || 
+                category.includes('loan') || 
+                category.includes('credit') || 
+                category.includes('mortgage') ||
+                category.includes('car payment') ||
+                category.includes('student loan')) {
+                return sum + (expense.monthlyAmount || 0);
+            }
+            
+            // Include if subcategory contains debt-related terms
+            if (subcategory.includes('debt') || 
+                subcategory.includes('loan') || 
+                subcategory.includes('credit') || 
+                subcategory.includes('mortgage') ||
+                subcategory.includes('payment')) {
+                return sum + (expense.monthlyAmount || 0);
+            }
+            
+            // Include if expense name contains debt-related terms
+            if (name.includes('loan') || 
+                name.includes('credit card') || 
+                name.includes('mortgage') ||
+                name.includes('car payment') ||
+                name.includes('student loan') ||
+                name.includes('debt') ||
+                name.includes('financing')) {
+                return sum + (expense.monthlyAmount || 0);
+            }
+            
+            return sum;
+        }, 0);
+    }
+
+    /**
+     * Calculate analytics data
+     */
+    calculateAnalytics() {
+        const summary = this.calculateSummary();
+        
+        // Ensure we have valid numbers
+        const totalIncome = summary.totalIncome || 0;
+        const totalExpenses = summary.totalExpenses || 0;
+        const totalSavings = summary.totalSavings || 0;
+        
+        // Health score calculation with proper bounds checking
+        let healthScore = 0;
+        let healthMessage = '';
+
+        if (summary.savingsRate >= 20) {
+            healthScore = Math.min(100, 80 + (summary.savingsRate - 20) * 2);
+            healthMessage = 'Excellent financial health! You\'re saving at an optimal rate.';
+        } else if (summary.savingsRate >= 10) {
+            healthScore = 60 + (summary.savingsRate - 10) * 2;
+            healthMessage = 'Good financial health with room for improvement.';
+        } else if (summary.savingsRate >= 0) {
+            healthScore = summary.savingsRate * 6;
+            healthMessage = 'Your finances need attention. Consider reducing expenses or increasing income.';
+        } else {
+            healthScore = 0;
+            healthMessage = 'Critical: Your expenses exceed your income. Immediate action required.';
+        }
+
+        // Emergency fund calculations with safe defaults
+        const monthlyExpenses = totalExpenses || 1; // Avoid division by zero
+        const emergencyFundTargetAmount = monthlyExpenses * (this.settings.emergencyFundTargetMonths || 3);
+        const currentEmergencyFund = this.settings.emergencyFundTarget || 0;
+        const emergencyFundProgress = emergencyFundTargetAmount > 0 ? 
+            (currentEmergencyFund / emergencyFundTargetAmount) * 100 : 0;
+        const emergencyFundCoverage = monthlyExpenses > 0 ? 
+            Math.round((currentEmergencyFund / monthlyExpenses) * 10) / 10 : 0;
+
+        // Debt calculations - only include actual debt payments
+        const totalDebt = this.calculateTotalDebt();
+        const debtToIncomeRatio = totalIncome > 0 ? 
+            Math.round((totalDebt / totalIncome) * 100) : 0;
+
+        // Category data for charts with safe fallbacks
+        const categoryData = {
+            labels: (summary.categoryBreakdown || []).map(cat => this.capitalize(cat.name || 'Other')),
+            values: (summary.categoryBreakdown || []).map(cat => cat.amount || 0)
         };
 
-        if (this.expenseBarChart) {
-            this.expenseBarChart.destroy();
-        }
-
-        this.expenseBarChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: sortedCategories,
-                datasets: [{
-                    label: `${this.getAnalyticsLabel()} Amount`,
-                    data: sortedCategoryValues,
-                    backgroundColor: colors.slice(0, sortedCategories.length).map(color => color + '80'), // Add transparency
-                    borderColor: colors.slice(0, sortedCategories.length),
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `${this.getAnalyticsLabel()} Expense Distribution`
-                    },
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return '$' + context.parsed.y.toLocaleString();
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '$' + value.toLocaleString();
-                            }
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 0
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    renderSavingsRate() {
-        const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
-        const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        
-        // Calculate explicit savings (savings + emergency categories)
-        const explicitSavings = this.expenses
-            .filter(expense => expense.category === 'savings' || expense.category === 'emergency')
-            .reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        
-        // Calculate excess funds (can be negative if expenses exceed income)
-        const excessFunds = totalIncome - totalExpenses;
-        
-        // Total savings = explicit savings + excess funds
-        const totalSavings = explicitSavings + excessFunds;
-        const savingsRate = totalIncome > 0 ? (totalSavings / totalIncome * 100) : 0;
-        
-        document.getElementById('savingsRate').textContent = savingsRate.toFixed(1) + '%';
-        
-        // Update tooltip with actual values
-        const circle = document.querySelector('.metric-circle');
-        const savingsExpenses = this.expenses.filter(expense => expense.category === 'savings').reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        const emergencyExpenses = this.expenses.filter(expense => expense.category === 'emergency').reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        
-        const tooltipText = `Savings Rate Calculation:
-        
-Formula: (Savings + Emergency + Excess) ÷ Income × 100%
-
-Breakdown:
-• Savings expenses: ${this.formatCurrency(savingsExpenses)}
-• Emergency expenses: ${this.formatCurrency(emergencyExpenses)}
-• Excess funds: ${this.formatCurrency(excessFunds)}${excessFunds < 0 ? ' (deficit)' : ''}
-• Total savings: ${this.formatCurrency(totalSavings)}
-• Total income: ${this.formatCurrency(totalIncome)}
-
-Result: ${this.formatCurrency(totalSavings)} ÷ ${this.formatCurrency(totalIncome)} = ${savingsRate.toFixed(1)}%${savingsRate < 0 ? ' (deficit spending)' : ''}`;
-        
-        circle.setAttribute('title', tooltipText);
-        
-        // Update circle color based on savings rate
-        if (savingsRate < 0) {
-            circle.style.background = 'linear-gradient(135deg, #dc3545 0%, #a71e2a 100%)'; // Dark red for deficit
-        } else if (savingsRate >= 20) {
-            circle.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-        } else if (savingsRate >= 10) {
-            circle.style.background = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
-        } else {
-            circle.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
-        }
-    }
-
-    renderSubcategoryChart() {
-        const canvas = document.getElementById('subcategoryBarChart');
-        const ctx = canvas.getContext('2d');
-        
-        // Group expenses by subcategory (only those with subcategories)
-        const subcategoryTotals = {};
+        // Subcategory breakdown with safe aggregation
+        const subcategoryBreakdown = {};
         this.expenses.forEach(expense => {
-            if (expense.subCategory && expense.subCategory.trim() !== '') {
-                const subcat = expense.subCategory.trim();
-                subcategoryTotals[subcat] = (subcategoryTotals[subcat] || 0) + this.getAnalyticsAmount(expense.biWeeklyAmount);
-            }
+            const subcat = expense.subcategory || 'Other';
+            subcategoryBreakdown[subcat] = (subcategoryBreakdown[subcat] || 0) + (expense.monthlyAmount || 0);
         });
 
-        // If no subcategories, show empty state
-        if (Object.keys(subcategoryTotals).length === 0) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#f8f9fa';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#6c757d';
-            ctx.font = '12px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Add subcategories', canvas.width/2, canvas.height/2 - 10);
-            ctx.fillText('to see breakdown', canvas.width/2, canvas.height/2 + 10);
-            return;
-        }
-
-        const colors = [
-            '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', 
-            '#EF4444', '#EC4899', '#84CC16', '#6366F1'
-        ];
-
-        const data = {
-            labels: Object.keys(subcategoryTotals),
-            datasets: [{
-                data: Object.values(subcategoryTotals),
-                backgroundColor: colors.slice(0, Object.keys(subcategoryTotals).length),
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
+        return {
+            healthScore: Math.round(healthScore) || 0,
+            healthMessage: healthMessage || 'No data available',
+            savingsRate: summary.savingsRate || 0,
+            emergencyFundTarget: emergencyFundTargetAmount || 0,
+            emergencyFundProgress: Math.round(emergencyFundProgress) || 0,
+            emergencyFundCoverage: emergencyFundCoverage || 0,
+            totalDebt: totalDebt || 0,
+            debtToIncomeRatio: debtToIncomeRatio || 0,
+            totalIncome: totalIncome || 0,
+            totalExpenses: totalExpenses || 0,
+            totalSavings: totalSavings || 0,
+            categoryData: categoryData,
+            subcategoryBreakdown: subcategoryBreakdown || {},
+            savingsGrowthProjection: this.calculateSavingsProjection(totalSavings),
+            incomeChangeScenarios: this.calculateIncomeScenarios(totalIncome, totalExpenses),
+            expenseChangeScenarios: this.calculateExpenseScenarios(totalIncome, totalExpenses)
         };
+    }
 
-        if (this.subcategoryBarChart) {
-            this.subcategoryBarChart.destroy();
-        }
+    // Helper method for savings growth projection
+    calculateSavingsProjection(monthlySavings) {
+        const months = [1, 3, 6, 12, 24, 36];
+        return months.map(month => ({
+            month,
+            amount: (monthlySavings || 0) * month,
+            withInterest: ((monthlySavings || 0) * month) * (1 + 0.02) // Assuming 2% annual return
+        }));
+    }
 
-        this.subcategoryBarChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: Object.keys(subcategoryTotals),
-                datasets: [{
-                    label: `${this.getAnalyticsLabel()} Amount`,
-                    data: Object.values(subcategoryTotals),
-                    backgroundColor: colors.slice(0, Object.keys(subcategoryTotals).length).map(color => color + '80'), // Add transparency
-                    borderColor: colors.slice(0, Object.keys(subcategoryTotals).length),
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return '$' + context.parsed.y.toLocaleString();
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '$' + value.toLocaleString();
-                            }
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 0
-                        }
-                    }
-                }
-            }
+    // Helper method for income change scenarios
+    calculateIncomeScenarios(currentIncome, currentExpenses) {
+        const scenarios = [-20, -10, -5, 0, 5, 10, 20];
+        return scenarios.map(changePercent => {
+            const newIncome = (currentIncome || 0) * (1 + changePercent / 100);
+            const newBalance = newIncome - (currentExpenses || 0);
+            const newSavingsRate = newIncome > 0 ? Math.round((newBalance / newIncome) * 100) : 0;
+            return {
+                changePercent,
+                newIncome: Math.round(newIncome),
+                newBalance: Math.round(newBalance),
+                newSavingsRate,
+                color: newBalance >= 0 ? (newBalance > currentIncome * 0.1 ? 'success' : 'warning') : 'danger'
+            };
         });
     }
 
-    renderSavingsProjectionChart() {
-        const canvas = document.getElementById('savingsProjectionChart');
-        const ctx = canvas.getContext('2d');
-        
-        // Destroy existing chart if it exists
-        if (this.savingsProjectionChart) {
-            this.savingsProjectionChart.destroy();
-        }
-
-        // Get current analytics period
-        const isYearly = this.analyticsPeriod === 'yearly';
-        
-        // Calculate savings amounts based on current period
-        const savingsExpenses = this.expenses.filter(expense => expense.category === 'savings');
-        const emergencyExpenses = this.expenses.filter(expense => expense.category === 'emergency');
-        
-        const periodSavings = savingsExpenses.reduce((sum, expense) => {
-            return sum + this.getAnalyticsAmount(expense.biWeeklyAmount);
-        }, 0);
-        
-        const periodEmergency = emergencyExpenses.reduce((sum, expense) => {
-            return sum + this.getAnalyticsAmount(expense.biWeeklyAmount);
-        }, 0);
-
-        // Determine projection parameters based on period
-        let projectionPeriods, periodLabel, timeUnit;
-        
-        if (isYearly) {
-            // Yearly view: 5-year projection
-            projectionPeriods = 5;
-            periodLabel = 'year';
-            timeUnit = 'Year';
-        } else if (this.analyticsPeriod === 'monthly') {
-            // Monthly view: 1-year projection (12 months)
-            projectionPeriods = 12;
-            periodLabel = 'month';
-            timeUnit = 'Month';
-        } else {
-            // Bi-weekly view: 6-month projection (26 bi-weekly periods = ~6 months)
-            projectionPeriods = 13; // 0 to 13 gives us ~6 months of bi-weekly periods
-            periodLabel = 'bi-weekly period';
-            timeUnit = 'Bi-weekly';
-        }
-        
-        // Generate projection data
-        const labels = [];
-        const savingsData = [];
-        const emergencyData = [];
-        const totalSavingsData = [];
-        
-        let savingsAccumulated = 0;
-        let emergencyAccumulated = 0;
-        
-        for (let i = 0; i <= projectionPeriods; i++) {
-            const date = new Date();
-            
-            if (isYearly) {
-                // 5-year projection with year labels
-                date.setFullYear(date.getFullYear() + i);
-                labels.push(i === 0 ? 'Now' : date.getFullYear().toString());
-            } else if (this.analyticsPeriod === 'monthly') {
-                // 1-year projection with month labels
-                date.setMonth(date.getMonth() + i);
-                labels.push(i === 0 ? 'Now' : date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
-            } else {
-                // 6-month projection with bi-weekly labels
-                const biWeeklyDate = new Date();
-                biWeeklyDate.setDate(biWeeklyDate.getDate() + (i * 14)); // Add 14 days for each bi-weekly period
-                if (i === 0) {
-                    labels.push('Now');
-                } else if (i % 2 === 0) {
-                    // Show label every 2 bi-weekly periods (monthly)
-                    labels.push(biWeeklyDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                } else {
-                    labels.push(''); // Empty label for cleaner display
-                }
-            }
-            
-            // Calculate accumulated savings for this time period
-            if (isYearly) {
-                // For yearly: multiply by number of years
-                savingsAccumulated = periodSavings * i;
-                emergencyAccumulated = periodEmergency * i;
-            } else if (this.analyticsPeriod === 'monthly') {
-                // For monthly: multiply by number of months
-                savingsAccumulated = periodSavings * i;
-                emergencyAccumulated = periodEmergency * i;
-            } else {
-                // For bi-weekly: multiply by number of bi-weekly periods
-                savingsAccumulated = periodSavings * i;
-                emergencyAccumulated = periodEmergency * i;
-            }
-            
-            savingsData.push(savingsAccumulated);
-            emergencyData.push(emergencyAccumulated);
-            totalSavingsData.push(savingsAccumulated + emergencyAccumulated);
-        }
-
-        this.savingsProjectionChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    this.createChartDataset(`Savings Growth (per ${periodLabel})`, savingsData, 1, {
-                        borderWidth: 3,
-                        fill: false
-                    }),
-                    this.createChartDataset(`Emergency Fund Growth (per ${periodLabel})`, emergencyData, 2, {
-                        borderWidth: 3,
-                        fill: false
-                    }),
-                    this.createChartDataset(`Total Savings Growth (per ${periodLabel})`, totalSavingsData, 0, {
-                        borderWidth: 3,
-                        fill: true
-                    })
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            color: this.getThemeColors().textPrimary
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: `${projectionPeriods}-${timeUnit} Savings Projection (${this.formatCurrency(periodSavings + periodEmergency)}/${periodLabel})`,
-                        color: this.getThemeColors().textPrimary
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: this.getThemeColors().textSecondary,
-                            callback: function(value) {
-                                return '$' + value.toLocaleString();
-                            }
-                        },
-                        grid: {
-                            color: this.getThemeColors().bgMuted
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            color: this.getThemeColors().textSecondary
-                        },
-                        grid: {
-                            display: false
-                        }
-                    }
-                },
-                elements: {
-                    point: {
-                        hoverBackgroundColor: this.getThemeColors().bgCard,
-                        hoverBorderWidth: 2
-                    }
-                }
-            }
+    // Helper method for expense change scenarios
+    calculateExpenseScenarios(currentIncome, currentExpenses) {
+        const scenarios = [-20, -10, -5, 0, 5, 10, 20];
+        return scenarios.map(changePercent => {
+            const newExpenses = (currentExpenses || 0) * (1 + changePercent / 100);
+            const newBalance = (currentIncome || 0) - newExpenses;
+            const newSavingsRate = currentIncome > 0 ? Math.round((newBalance / currentIncome) * 100) : 0;
+            return {
+                changePercent,
+                newExpenses: Math.round(newExpenses),
+                newBalance: Math.round(newBalance),
+                newSavingsRate,
+                color: newBalance >= 0 ? (newBalance > currentIncome * 0.1 ? 'success' : 'warning') : 'danger'
+            };
         });
     }
 
-    renderSubcategoryBars() {
-        const container = document.getElementById('subcategoryBars');
-        
-        // Group expenses by subcategory with category info
-        const subcategoryData = [];
-        this.expenses.forEach(expense => {
-            if (expense.subCategory && expense.subCategory.trim() !== '') {
-                const existing = subcategoryData.find(item => 
-                    item.subcategory.toLowerCase() === expense.subCategory.toLowerCase()
-                );
-                
-                if (existing) {
-                    existing.amount += this.getAnalyticsAmount(expense.biWeeklyAmount);
-                } else {
-                    subcategoryData.push({
-                        category: this.capitalizeCategory(expense.category),
-                        subcategory: expense.subCategory,
-                        amount: this.getAnalyticsAmount(expense.biWeeklyAmount)
-                    });
-                }
-            }
-        });
+    // ==========================================================================
+    // THEME MANAGEMENT
+    // ==========================================================================
 
-        if (subcategoryData.length === 0) {
-            container.innerHTML = '<div class="empty-state">Add expenses with subcategories to see breakdown</div>';
-            // Apply smallest size for empty state
-            this.applySubcategorySizing(0);
-            return;
-        }
+    /**
+     * Initialize theme
+     */
+    initializeTheme() {
+        const savedTheme = localStorage.getItem('budgetTheme') || 
+            (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        
+        this.setTheme(savedTheme);
 
-        // Sort by amount (highest first) - show all subcategories
-        subcategoryData.sort((a, b) => b.amount - a.amount);
-        const allSubcategories = subcategoryData; // Show all instead of limiting to top 6
-        
-        // Apply dynamic sizing based on number of subcategories
-        this.applySubcategorySizing(allSubcategories.length);
-        
-        const totalSubcategoryAmount = subcategoryData.reduce((sum, item) => sum + item.amount, 0);
-
-        let html = '<div class="top-subcategories-list">';
-        allSubcategories.forEach((item, index) => {
-            const percentOfTotal = totalSubcategoryAmount > 0 ? (item.amount / totalSubcategoryAmount * 100) : 0;
-            
-            // Color coding - cycle through colors for all items
-            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#A29BFE', '#6C5CE7', '#FD79A8', '#E17055', '#00B894'];
-            const color = colors[index % colors.length];
-            
-            html += `
-                <div class="top-subcategory-item">
-                    <div class="subcategory-rank" style="background-color: ${color};">${index + 1}</div>
-                    <div class="subcategory-info">
-                        <div class="subcategory-name">${item.subcategory}</div>
-                        <div class="subcategory-category">${item.category}</div>
-                    </div>
-                    <div class="subcategory-amount">${this.formatCurrency(item.amount)}</div>
-                    <div class="subcategory-percent">${percentOfTotal.toFixed(1)}%</div>
-                </div>
-            `;
-        });
-        html += '</div>';
-
-        container.innerHTML = html;
-    }
-
-    applySubcategorySizing(subcategoryCount) {
-        const subcategoryBars = document.getElementById('subcategoryBars');
-        
-        // Remove all existing height classes
-        const barSizeClasses = [
-            'small-list',
-            'medium-list',
-            'large-list', 
-            'extra-large-list'
-        ];
-        
-        barSizeClasses.forEach(cls => subcategoryBars.classList.remove(cls));
-        
-        // Apply appropriate height based on subcategory count
-        // Card width stays standard, only height adjusts
-        if (subcategoryCount <= 3) {
-            subcategoryBars.classList.add('small-list');
-        } else if (subcategoryCount <= 6) {
-            subcategoryBars.classList.add('medium-list');
-        } else if (subcategoryCount <= 12) {
-            subcategoryBars.classList.add('large-list');
-        } else {
-            subcategoryBars.classList.add('extra-large-list');
-        }
-        
-        // Refresh Muuri layout to accommodate size changes
-        if (window.grid) {
-            window.grid.refreshItems().layout();
-        }
-    }
-
-
-
-    renderBudgetHealthScore() {
-        const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
-        const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        
-        // Calculate explicit savings (savings + emergency categories)
-        const explicitSavings = this.expenses
-            .filter(expense => expense.category === 'savings' || expense.category === 'emergency')
-            .reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        
-        // Calculate excess funds (unallocated income)
-        const excessFunds = Math.max(0, totalIncome - totalExpenses);
-        
-        // Total savings = explicit savings + excess funds
-        const totalSavings = explicitSavings + excessFunds;
-        const savingsRate = totalIncome > 0 ? (totalSavings / totalIncome * 100) : 0;
-        
-        // Calculate health score (0-100)
-        let score = 0;
-        const indicators = [];
-        
-        // Savings rate contributes 40% of score
-        if (savingsRate >= 20) {
-            score += 40;
-            indicators.push({ text: 'Excellent savings rate (≥20%)', type: 'good' });
-        } else if (savingsRate >= 10) {
-            score += 25;
-            indicators.push({ text: 'Good savings rate (≥10%)', type: 'warning' });
-        } else if (savingsRate >= 0) {
-            score += 10;
-            indicators.push({ text: 'Low savings rate (<10%)', type: 'danger' });
-        } else {
-            indicators.push({ text: 'Negative savings rate', type: 'danger' });
-        }
-        
-        // Income stability (people count) contributes 20% of score
-        if (this.people.length >= 2) {
-            score += 20;
-            indicators.push({ text: 'Multiple income sources', type: 'good' });
-        } else {
-            score += 10;
-            indicators.push({ text: 'Single income source', type: 'warning' });
-        }
-        
-        // Expense categorization contributes 20% of score
-        const categorizedExpenses = this.expenses.filter(exp => exp.category && exp.category !== '').length;
-        const categorizationRate = this.expenses.length > 0 ? (categorizedExpenses / this.expenses.length) : 0;
-        if (categorizationRate >= 0.8) {
-            score += 20;
-            indicators.push({ text: 'Well categorized expenses', type: 'good' });
-        } else if (categorizationRate >= 0.5) {
-            score += 15;
-            indicators.push({ text: 'Partially categorized expenses', type: 'warning' });
-        } else {
-            score += 5;
-            indicators.push({ text: 'Poor expense categorization', type: 'danger' });
-        }
-        
-        // Budget balance contributes 20% of score
-        if (totalIncome > totalExpenses) {
-            score += 20;
-            indicators.push({ text: 'Income exceeds expenses', type: 'good' });
-        } else {
-            indicators.push({ text: 'Expenses exceed income', type: 'danger' });
-        }
-
-        // Update UI
-        const scoreElement = document.getElementById('healthScore');
-        const indicatorsElement = document.getElementById('healthIndicators');
-        const circleElement = document.querySelector('.health-score-circle');
-        
-        scoreElement.textContent = Math.round(score);
-        
-        // Create detailed tooltip with actual values
-        let savingsPoints = 0;
-        let savingsText = '';
-        if (savingsRate >= 20) {
-            savingsPoints = 40;
-            savingsText = `Excellent (≥20%): ${savingsRate.toFixed(1)}%`;
-        } else if (savingsRate >= 10) {
-            savingsPoints = 25;
-            savingsText = `Good (≥10%): ${savingsRate.toFixed(1)}%`;
-        } else if (savingsRate >= 0) {
-            savingsPoints = 10;
-            savingsText = `Low (<10%): ${savingsRate.toFixed(1)}%`;
-        } else {
-            savingsPoints = 0;
-            savingsText = `Negative: ${savingsRate.toFixed(1)}%`;
-        }
-        
-        const incomePoints = this.people.length >= 2 ? 20 : 10;
-        const incomeText = this.people.length >= 2 ? `Multiple sources (${this.people.length})` : `Single source (${this.people.length})`;
-        
-        const categorizationPoints = categorizationRate >= 0.8 ? 20 : (categorizationRate >= 0.5 ? 15 : 5);
-        const categorizationText = `${(categorizationRate * 100).toFixed(1)}% categorized (${categorizedExpenses}/${this.expenses.length})`;
-        
-        const balancePoints = totalIncome > totalExpenses ? 20 : 0;
-        const balanceText = totalIncome > totalExpenses ? `Surplus: ${this.formatCurrency(totalIncome - totalExpenses)}` : `Deficit: ${this.formatCurrency(totalExpenses - totalIncome)}`;
-        
-        const tooltipText = `Budget Health Score Breakdown:
-
-SCORING COMPONENTS (Total: ${Math.round(score)}/100)
-
-1. Savings Rate (40 pts max): ${savingsPoints} pts
-   ${savingsText}
-
-2. Income Stability (20 pts max): ${incomePoints} pts
-   ${incomeText}
-
-3. Expense Organization (20 pts max): ${categorizationPoints} pts
-   ${categorizationText}
-
-4. Budget Balance (20 pts max): ${balancePoints} pts
-   ${balanceText}
-
-Current Financial Health: ${score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Improvement'}`;
-        
-        circleElement.setAttribute('title', tooltipText);
-        
-        // Update circle color based on score
-        if (score >= 75) {
-            circleElement.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-        } else if (score >= 50) {
-            circleElement.style.background = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
-        } else {
-            circleElement.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
-        }
-        
-        // Update indicators
-        let indicatorsHTML = '';
-        indicators.forEach(indicator => {
-            indicatorsHTML += `
-                <div class="health-indicator">
-                    <div class="indicator-icon indicator-${indicator.type}"></div>
-                    <span>${indicator.text}</span>
-                </div>
-            `;
-        });
-        indicatorsElement.innerHTML = indicatorsHTML;
-    }
-
-    renderScenarioModeling() {
-        const incomeSlider = document.getElementById('incomeAdjustment');
-        const expenseSlider = document.getElementById('expenseAdjustment');
-        const incomeDisplay = document.getElementById('incomeChangeDisplay');
-        const expenseDisplay = document.getElementById('expenseChangeDisplay');
-        
-        // Update scenario when sliders change
-        const updateScenario = () => {
-            const incomeChange = parseInt(incomeSlider.value);
-            const expenseChange = parseInt(expenseSlider.value);
-            
-            incomeDisplay.textContent = `${incomeChange >= 0 ? '+' : ''}${incomeChange}%`;
-            expenseDisplay.textContent = `${expenseChange >= 0 ? '+' : ''}${expenseChange}%`;
-            
-            // Update display label colors
-            this.updateScenarioDisplayColors(incomeDisplay, incomeChange, 'income');
-            this.updateScenarioDisplayColors(expenseDisplay, expenseChange, 'expense');
-            
-            // Update slider backgrounds with progress
-            this.updateSliderBackground(incomeSlider);
-            this.updateSliderBackground(expenseSlider);
-            
-            // Update slider colors based on values
-            this.updateScenarioSliderColors(incomeSlider, incomeChange);
-            this.updateScenarioSliderColors(expenseSlider, expenseChange);
-            
-            // Calculate new values
-            const baseIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
-            const baseExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-            
-            const newIncome = baseIncome * (1 + incomeChange / 100);
-            const newExpenses = baseExpenses * (1 + expenseChange / 100);
-            
-            // Calculate explicit savings in new scenario (savings + emergency categories)
-            const baseSavingsExpenses = this.expenses
-                .filter(expense => expense.category === 'savings' || expense.category === 'emergency')
-                .reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-            const newSavingsExpenses = baseSavingsExpenses * (1 + expenseChange / 100);
-            
-            // Calculate new excess funds
-            const newExcessFunds = Math.max(0, newIncome - newExpenses);
-            
-            // Total savings = explicit savings + excess funds
-            const totalNewSavings = newSavingsExpenses + newExcessFunds;
-            const newSavingsRate = newIncome > 0 ? (totalNewSavings / newIncome * 100) : 0;
-            
-            const monthlySurplus = this.analyticsPeriod === 'monthly' ? (newIncome - newExpenses) : 
-                                 this.analyticsPeriod === 'yearly' ? (newIncome - newExpenses) / 12 :
-                                 (newIncome - newExpenses) * this.getHouseholdEffectivePayPeriods() / 12;
-            
-            // Update label text based on whether sliders are at zero
-            const savingsRateLabel = document.getElementById('savingsRateLabel');
-            if (incomeChange === 0 && expenseChange === 0) {
-                savingsRateLabel.textContent = 'Current Savings Rate:';
-            } else {
-                savingsRateLabel.textContent = 'New Savings Rate:';
-            }
-            
-            document.getElementById('newSavingsRate').textContent = `${Math.max(0, newSavingsRate).toFixed(1)}%`;
-            document.getElementById('monthlySurplus').textContent = this.formatCurrency(monthlySurplus);
-            
-            // Update color based on new savings rate
-            const savingsElement = document.getElementById('newSavingsRate');
-            if (newSavingsRate >= 20) {
-                savingsElement.style.color = '#28a745';
-            } else if (newSavingsRate >= 10) {
-                savingsElement.style.color = '#ffc107';
-            } else {
-                savingsElement.style.color = '#dc3545';
-            }
-        };
-        
-        // Remove existing listeners to avoid duplicates
-        incomeSlider.removeEventListener('input', updateScenario);
-        expenseSlider.removeEventListener('input', updateScenario);
-        
-        // Add event listeners
-        incomeSlider.addEventListener('input', updateScenario);
-        expenseSlider.addEventListener('input', updateScenario);
-        
-        // Initial calculation
-        updateScenario();
-    }
-
-    renderFinancialMilestones() {
-        const container = document.getElementById('milestonesList');
-        const totalIncome = this.people.reduce((sum, person) => sum + this.getPersonAnalyticsAmount(person), 0);
-        const totalExpenses = this.expenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        const monthlySurplus = this.analyticsPeriod === 'monthly' ? (totalIncome - totalExpenses) : 
-                              this.analyticsPeriod === 'yearly' ? (totalIncome - totalExpenses) / 12 :
-                              (totalIncome - totalExpenses) * this.getHouseholdEffectivePayPeriods() / 12;
-        
-        // Get emergency fund target months from slider
-        const emergencyFundMonthsSlider = document.getElementById('emergencyFundMonths');
-        
-        // Set the saved value to the slider if it hasn't been set yet
-        if (!emergencyFundMonthsSlider.value || emergencyFundMonthsSlider.value == 6) {
-            emergencyFundMonthsSlider.value = this.emergencyFundTargetMonths;
-        }
-        
-        const emergencyFundMonths = parseInt(emergencyFundMonthsSlider.value) || this.emergencyFundTargetMonths || 6;
-        
-        // Calculate emergency fund goal based on selected months
-        // Only include essential expenses (exclude savings and emergency categories)
-        const essentialExpenses = this.expenses.filter(expense => 
-            expense.category && 
-            !expense.category.toLowerCase().includes('savings') && 
-            !expense.category.toLowerCase().includes('emergency')
-        );
-        const totalEssentialExpenses = essentialExpenses.reduce((sum, expense) => sum + this.getAnalyticsAmount(expense.biWeeklyAmount), 0);
-        
-        const monthlyEssentialExpenses = this.analyticsPeriod === 'monthly' ? totalEssentialExpenses : 
-                                        this.analyticsPeriod === 'yearly' ? totalEssentialExpenses / 12 :
-                                        totalEssentialExpenses * this.getHouseholdEffectivePayPeriods() / 12;
-        const emergencyFundGoal = monthlyEssentialExpenses * emergencyFundMonths;
-        
-        // Calculate monthly emergency savings from expenses with "Emergency" category
-        const emergencyExpenses = this.expenses.filter(expense => 
-            expense.category && expense.category.toLowerCase().includes('emergency')
-        );
-        const monthlyEmergencySavings = emergencyExpenses.reduce((sum, expense) => {
-            const monthlyAmount = this.analyticsPeriod === 'monthly' ? this.getAnalyticsAmount(expense.biWeeklyAmount) : 
-                                 this.analyticsPeriod === 'yearly' ? this.getAnalyticsAmount(expense.biWeeklyAmount) / 12 :
-                                 this.getAnalyticsAmount(expense.biWeeklyAmount) * this.getHouseholdEffectivePayPeriods() / 12;
-            return sum + monthlyAmount;
-        }, 0);
-
-        // Get current emergency fund from stored value or use default
-        const currentEmergencyFund = this.currentEmergencyFund || 0;
-        const emergencyFundProgress = emergencyFundGoal > 0 ? (currentEmergencyFund / emergencyFundGoal) * 100 : 0;
-        const remainingNeeded = Math.max(0, emergencyFundGoal - currentEmergencyFund);
-        
-        let monthsToEmergencyFund;
-        
-        if (remainingNeeded === 0) {
-            monthsToEmergencyFund = 'Complete!';
-        } else if (monthlyEmergencySavings <= 0) {
-            monthsToEmergencyFund = 'Set up savings';
-        } else {
-            monthsToEmergencyFund = Math.ceil(remainingNeeded / monthlyEmergencySavings);
-        }
-        
-        let html = `
-            <div class="milestone-card emergency-fund-milestone">
-                <div class="milestone-header">
-                    <div class="milestone-icon">🛡️</div>
-                    <div class="milestone-title">
-                        <h5>Emergency Fund</h5>
-                        <p class="milestone-subtitle">${emergencyFundMonths} months of essential expenses</p>
-                    </div>
-                </div>
-                
-                <div class="milestone-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Current</span>
-                        <span class="stat-value editable-emergency-amount" data-current-amount="${currentEmergencyFund}">${this.formatCurrency(currentEmergencyFund)}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label" title="Based on essential expenses only (excludes savings and emergency fund contributions)">Target</span>
-                        <span class="stat-value">${this.formatCurrency(emergencyFundGoal)}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Monthly Savings</span>
-                        <span class="stat-value">${this.formatCurrency(monthlyEmergencySavings)}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Yearly Savings</span>
-                        <span class="stat-value">${this.formatCurrency(monthlyEmergencySavings * 12)}</span>
-                    </div>
-                </div>
-                
-                <div class="milestone-progress-section">
-                    <div class="progress-header">
-                        <span class="progress-label">Progress</span>
-                        <span class="progress-percentage ${emergencyFundProgress > 100 ? 'over-target' : ''}">${emergencyFundProgress.toFixed(1)}%</span>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar-track">
-                            <div class="progress-bar-fill ${emergencyFundProgress > 100 ? 'over-target' : ''}" style="width: ${Math.min(100, emergencyFundProgress)}%"></div>
-                        </div>
-                    </div>
-                    <div class="progress-footer">
-                        <span class="time-remaining">
-                            ${typeof monthsToEmergencyFund === 'number' ? 
-                                `${monthsToEmergencyFund} months remaining` : 
-                                monthsToEmergencyFund === 'Complete!' ? 
-                                    '✅ Goal achieved!' : 
-                                    '⚠️ ' + monthsToEmergencyFund
-                            }
-                        </span>
-                        ${remainingNeeded > 0 ? `<span class="amount-needed">${this.formatCurrency(remainingNeeded)} needed</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Add a debt payoff milestone if they're spending more than earning
-        if (monthlySurplus < 0) {
-            html += `
-                <div class="milestone-card deficit-milestone">
-                    <div class="milestone-header">
-                        <div class="milestone-icon">⚠️</div>
-                        <div class="milestone-title">
-                            <h5>Budget Balance</h5>
-                            <p class="milestone-subtitle">Spending exceeds income</p>
-                        </div>
-                    </div>
-                    
-                    <div class="milestone-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Monthly Deficit</span>
-                            <span class="stat-value deficit">${this.formatCurrency(Math.abs(monthlySurplus))}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="milestone-progress-section">
-                        <div class="progress-header">
-                            <span class="progress-label">Action Required</span>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-track">
-                                <div class="progress-bar-fill deficit-bar" style="width: 100%"></div>
-                            </div>
-                        </div>
-                        <div class="progress-footer">
-                            <span class="time-remaining">Reduce expenses or increase income</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        container.innerHTML = html;
-        
-        // Setup inline editing for emergency fund amount
-        this.setupEmergencyFundEditing();
-        
-        // Update the months display
-        const emergencyMonthsDisplay = document.getElementById('emergencyMonthsDisplay');
-        emergencyMonthsDisplay.textContent = `${emergencyFundMonths} month${emergencyFundMonths === 1 ? '' : 's'}`;
-        
-        // Add event listeners to update when inputs change
-        if (!emergencyFundMonthsSlider.hasAttribute('data-listener-added')) {
-            emergencyFundMonthsSlider.addEventListener('input', () => {
-                this.emergencyFundTargetMonths = parseInt(emergencyFundMonthsSlider.value) || 6;
-                this.saveData();
-                this.renderFinancialMilestones();
-                // Update slider background after re-render
-                const updatedSlider = document.getElementById('emergencyFundMonths');
-                if (updatedSlider) {
-                    this.updateSliderBackground(updatedSlider);
+        // Listen for system theme changes
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                if (!localStorage.getItem('budgetTheme')) {
+                    this.setTheme(e.matches ? 'dark' : 'light');
                 }
             });
-            emergencyFundMonthsSlider.setAttribute('data-listener-added', 'true');
-            
-            // Initialize slider background
-            this.updateSliderBackground(emergencyFundMonthsSlider);
         }
     }
 
-    capitalizeCategory(category) {
-        return category.charAt(0).toUpperCase() + category.slice(1);
-    }
-
-    getPersonColor(index) {
-        const colors = [
-            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', 
-            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-            'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-            'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-            'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
-        ];
-        return colors[index % colors.length];
-    }
-
-    // Custom Alert System
-    showAlert(message, title = 'Alert', type = 'info') {
-        return new Promise((resolve) => {
-            const modal = document.getElementById('customAlert');
-            const alertTitle = document.getElementById('alertTitle');
-            const alertMessage = document.getElementById('alertMessage');
-            const alertIcon = document.getElementById('alertIcon');
-            const alertHeader = modal.querySelector('.alert-header');
-            const okButton = document.getElementById('alertOkButton');
-            const cancelButton = document.getElementById('alertCancelButton');
-            const alertContent = modal.querySelector('.alert-content');
-
-            // Set content
-            alertTitle.textContent = title;
-            alertMessage.textContent = message;
-
-            // Set icon and header style based on type
-            alertHeader.className = 'alert-header';
-            switch (type) {
-                case 'warning':
-                    alertIcon.textContent = '⚠️';
-                    alertHeader.classList.add('warning');
-                    break;
-                case 'error':
-                    alertIcon.textContent = '❌';
-                    alertHeader.classList.add('error');
-                    break;
-                case 'success':
-                    alertIcon.textContent = '✅';
-                    alertHeader.classList.add('success');
-                    break;
-                default:
-                    alertIcon.textContent = 'ℹ️';
-                    break;
-            }
-
-            // Show only OK button for alerts
-            okButton.style.display = 'inline-block';
-            cancelButton.style.display = 'none';
-
-            // Show modal
-            modal.style.display = 'block';
-
-            // Handle OK button
-            const handleOk = () => {
-                modal.style.display = 'none';
-                cleanup();
-                resolve(true);
-            };
-
-            // Handle click outside to close
-            const handleClickOutside = (e) => {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                    cleanup();
-                    resolve(true);
-                }
-            };
-
-            // Handle Escape key
-            const handleEscape = (e) => {
-                if (e.key === 'Escape') {
-                    modal.style.display = 'none';
-                    cleanup();
-                    resolve(true);
-                }
-            };
-
-            const cleanup = () => {
-                okButton.removeEventListener('click', handleOk);
-                modal.removeEventListener('click', handleClickOutside);
-                document.removeEventListener('keydown', handleEscape);
-            };
-
-            okButton.addEventListener('click', handleOk);
-            modal.addEventListener('click', handleClickOutside);
-            document.addEventListener('keydown', handleEscape);
-        });
-    }
-
-    showConfirm(message, title = 'Confirm') {
-        return new Promise((resolve) => {
-            const modal = document.getElementById('customAlert');
-            const alertTitle = document.getElementById('alertTitle');
-            const alertMessage = document.getElementById('alertMessage');
-            const alertIcon = document.getElementById('alertIcon');
-            const alertHeader = modal.querySelector('.alert-header');
-            const okButton = document.getElementById('alertOkButton');
-            const cancelButton = document.getElementById('alertCancelButton');
-
-            // Set content
-            alertTitle.textContent = title;
-            alertMessage.innerHTML = message.replace(/\n/g, '<br>');
-            alertIcon.textContent = '❓';
-            alertHeader.className = 'alert-header warning';
-
-            // Show both buttons for confirmation
-            okButton.textContent = 'Yes';
-            okButton.style.display = 'inline-block';
-            cancelButton.textContent = 'No';
-            cancelButton.style.display = 'inline-block';
-
-            // Show modal
-            modal.style.display = 'block';
-
-            // Handle buttons
-            const handleOk = () => {
-                modal.style.display = 'none';
-                cleanup();
-                resolve(true);
-            };
-
-            const handleCancel = () => {
-                modal.style.display = 'none';
-                cleanup();
-                resolve(false);
-            };
-
-            // Handle click outside to close (acts like cancel)
-            const handleClickOutside = (e) => {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                    cleanup();
-                    resolve(false);
-                }
-            };
-
-            // Handle Escape key (acts like cancel)
-            const handleEscape = (e) => {
-                if (e.key === 'Escape') {
-                    modal.style.display = 'none';
-                    cleanup();
-                    resolve(false);
-                }
-            };
-
-            const cleanup = () => {
-                okButton.removeEventListener('click', handleOk);
-                cancelButton.removeEventListener('click', handleCancel);
-                modal.removeEventListener('click', handleClickOutside);
-                document.removeEventListener('keydown', handleEscape);
-                okButton.textContent = 'OK';
-            };
-
-            okButton.addEventListener('click', handleOk);
-            cancelButton.addEventListener('click', handleCancel);
-            modal.addEventListener('click', handleClickOutside);
-            document.addEventListener('keydown', handleEscape);
-        });
-    }
-
-    // PDF Export functionality
-    async exportToPDF() {
-        try {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            // Title
-            doc.setFontSize(20);
-            doc.setTextColor(102, 126, 234);
-            doc.text('Budget Report', 20, 20);
-            
-            // Date
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-            
-            let yPosition = 45;
-            
-            // People Section
-            if (this.people.length > 0) {
-                doc.setFontSize(16);
-                doc.setTextColor(0, 0, 0);
-                doc.text('People & Income', 20, yPosition);
-                yPosition += 10;
-                
-                // Table headers
-                doc.setFontSize(10);
-                doc.setTextColor(60, 60, 60);
-                doc.text('Name', 25, yPosition);
-                doc.text('Bi-weekly', 80, yPosition);
-                doc.text('Monthly', 120, yPosition);
-                doc.text('Yearly', 160, yPosition);
-                yPosition += 5;
-                
-                // Draw line under headers
-                doc.line(20, yPosition, 190, yPosition);
-                yPosition += 8;
-                
-                // People data
-                doc.setTextColor(0, 0, 0);
-                this.people.forEach(person => {
-                    doc.text(person.name, 25, yPosition);
-                    doc.text(this.formatCurrency(person.biWeeklyPay), 80, yPosition);
-                    doc.text(this.formatCurrency(person.monthlyPay), 120, yPosition);
-                    doc.text(this.formatCurrency(person.yearlyPay), 160, yPosition);
-                    yPosition += 8;
-                });
-                
-                // Totals
-                const totalBiWeekly = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
-                const totalMonthly = this.people.reduce((sum, person) => sum + person.monthlyPay, 0);
-                const totalYearly = this.people.reduce((sum, person) => sum + person.yearlyPay, 0);
-                
-                yPosition += 5;
-                doc.line(20, yPosition, 190, yPosition);
-                yPosition += 8;
-                
-                doc.setFont(undefined, 'bold');
-                doc.text('Total Household Income:', 25, yPosition);
-                doc.text(this.formatCurrency(totalBiWeekly), 80, yPosition);
-                doc.text(this.formatCurrency(totalMonthly), 120, yPosition);
-                doc.text(this.formatCurrency(totalYearly), 160, yPosition);
-                doc.setFont(undefined, 'normal');
-                
-                yPosition += 20;
-            }
-            
-            // Expenses Section
-            if (this.expenses.length > 0) {
-                // Check if we need a new page
-                if (yPosition > 200) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                
-                doc.setFontSize(16);
-                doc.setTextColor(0, 0, 0);
-                doc.text('Expenses', 20, yPosition);
-                yPosition += 10;
-                
-                // Group by category
-                const expensesByCategory = this.expenses.reduce((acc, expense) => {
-                    if (!acc[expense.category]) {
-                        acc[expense.category] = [];
-                    }
-                    acc[expense.category].push(expense);
-                    return acc;
-                }, {});
-                
-                Object.keys(expensesByCategory).forEach(category => {
-                    const categoryExpenses = expensesByCategory[category];
-                    const categoryTotal = categoryExpenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-                    
-                    // Category header
-                    doc.setFontSize(12);
-                    doc.setTextColor(102, 126, 234);
-                    doc.text(category.charAt(0).toUpperCase() + category.slice(1), 20, yPosition);
-                    doc.setTextColor(0, 0, 0);
-                    doc.text(`Total: ${this.formatCurrency(categoryTotal)} bi-weekly`, 120, yPosition);
-                    yPosition += 8;
-                    
-                    // Category expenses
-                    doc.setFontSize(10);
-                    categoryExpenses.forEach(expense => {
-                        if (yPosition > 270) {
-                            doc.addPage();
-                            yPosition = 20;
-                        }
-                        
-                        doc.text(`  • ${expense.name}`, 25, yPosition);
-                        doc.text(this.formatCurrency(expense.monthlyAmount), 120, yPosition);
-                        doc.text(`(${this.formatCurrency(expense.biWeeklyAmount)} bi-weekly)`, 160, yPosition);
-                        yPosition += 6;
-                    });
-                    
-                    yPosition += 5;
-                });
-                
-                // Total expenses
-                const totalBiWeeklyExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-                const totalMonthlyExpenses = totalBiWeeklyExpenses * 26 / 12; // Use standard 26 bi-weekly periods
-                const totalYearlyExpenses = totalBiWeeklyExpenses * 26;
-                
-                yPosition += 10;
-                doc.line(20, yPosition, 190, yPosition);
-                yPosition += 8;
-                
-                doc.setFontSize(12);
-                doc.setFont(undefined, 'bold');
-                doc.text('Total Expenses:', 20, yPosition);
-                yPosition += 8;
-                doc.setFontSize(10);
-                doc.text(`Bi-weekly: ${this.formatCurrency(totalBiWeeklyExpenses)}`, 25, yPosition);
-                yPosition += 6;
-                doc.text(`Monthly: ${this.formatCurrency(totalMonthlyExpenses)}`, 25, yPosition);
-                yPosition += 6;
-                doc.text(`Yearly: ${this.formatCurrency(totalYearlyExpenses)}`, 25, yPosition);
-                doc.setFont(undefined, 'normal');
-            }
-            
-            // Summary section
-            if (this.people.length > 0 && this.expenses.length > 0) {
-                yPosition += 20;
-                
-                // Check if we need a new page
-                if (yPosition > 220) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                
-                doc.setFontSize(16);
-                doc.setTextColor(0, 0, 0);
-                doc.text('Budget Summary', 20, yPosition);
-                yPosition += 15;
-                
-                const totalIncome = this.people.reduce((sum, person) => sum + person.biWeeklyPay, 0);
-                const totalExpenses = this.expenses.reduce((sum, expense) => sum + expense.biWeeklyAmount, 0);
-                const surplus = totalIncome - totalExpenses;
-                const savingsRate = totalIncome > 0 ? ((surplus / totalIncome) * 100) : 0;
-                
-                doc.setFontSize(12);
-                doc.text(`Total Bi-weekly Income: ${this.formatCurrency(totalIncome)}`, 25, yPosition);
-                yPosition += 8;
-                doc.text(`Total Bi-weekly Expenses: ${this.formatCurrency(totalExpenses)}`, 25, yPosition);
-                yPosition += 8;
-                
-                doc.setTextColor(surplus >= 0 ? 40 : 220, surplus >= 0 ? 167 : 53, surplus >= 0 ? 69 : 69);
-                doc.text(`${surplus >= 0 ? 'Surplus' : 'Deficit'}: ${this.formatCurrency(Math.abs(surplus))}`, 25, yPosition);
-                yPosition += 8;
-                
-                doc.setTextColor(0, 0, 0);
-                doc.text(`Savings Rate: ${Math.max(0, savingsRate).toFixed(1)}%`, 25, yPosition);
-            }
-            
-            // Save the PDF
-            const fileName = `budget_report_${new Date().toISOString().split('T')[0]}.pdf`;
-            doc.save(fileName);
-            
-            await this.showAlert('PDF exported successfully!', 'Export Complete', 'success');
-            
-        } catch (error) {
-            console.error('PDF export error:', error);
-            await this.showAlert('Failed to export PDF. Please try again.', 'Export Error', 'error');
-        }
-    }
-
-    async shareBudget() {
-        try {
-            // Validate that we have data to share
-            if (this.people.length === 0 && this.expenses.length === 0) {
-                await this.showAlert(
-                    'No budget data to share. Please add people and expenses first.',
-                    'Nothing to Share',
-                    'info'
-                );
-                return;
-            }
-
-            // Category mapping for shorter encoding
-            const categoryMap = {
-                'bills': '1', 'savings': '2', 'emergency': '3', 'food': '4',
-                'transport': '5', 'entertainment': '6', 'other': '7'
-            };
-            
-            // Sharing method mapping
-            const sharingMap = { 'percentage': 'p', 'even': 'e' };
-
-            // Create ultra-compressed shareable data
-            const shareData = {
-                p: this.people.map(person => {
-                    const data = [person.name, person.biWeeklyPay];
-                    // Only include payPeriods if it's not the default (26)
-                    if (person.payPeriods && person.payPeriods !== 26) {
-                        data.push(person.payPeriods);
-                    }
-                    return data;
-                }),
-                e: this.expenses.map(expense => {
-                    const data = [
-                        expense.name,
-                        expense.monthlyAmount,
-                        categoryMap[expense.category] || '7', // Default to 'other'
-                        sharingMap[expense.sharingMethod] || 'p'
-                    ];
-                    // Only include subCategory if it exists and isn't empty
-                    if (expense.subCategory && expense.subCategory.trim() !== '') {
-                        data.push(expense.subCategory);
-                    }
-                    return data;
-                }),
-                // Only include global sharing method if it's not default
-                ...(this.globalSharingMethod !== 'percentage' && { g: sharingMap[this.globalSharingMethod] }),
-                // Only include analytics period if it's not default
-                ...(this.analyticsPeriod !== 'biweekly' && { a: this.analyticsPeriod[0] }), // 'b', 'm', 'y'
-                // Include emergency fund data if set
-                ...(this.currentEmergencyFund > 0 && { ef: this.currentEmergencyFund }),
-                ...(this.emergencyFundTargetMonths !== 6 && { em: this.emergencyFundTargetMonths })
-            };
-
-            // Compress and encode the data
-            const jsonString = JSON.stringify(shareData);
-            const encodedData = btoa(jsonString);
-            
-            // Create shareable URL - handle file:// protocol
-            let baseUrl;
-            if (window.location.protocol === 'file:') {
-                baseUrl = window.location.href.split('?')[0];
-            } else {
-                baseUrl = window.location.origin + window.location.pathname;
-            }
-            const shareUrl = `${baseUrl}?b=${encodedData}`;
-
-            // Log compression stats for debugging
-            const originalSize = JSON.stringify({
-                people: this.people,
-                expenses: this.expenses,
-                globalSharingMethod: this.globalSharingMethod,
-                analyticsPeriod: this.analyticsPeriod
-            }).length;
-            console.log(`Compression: ${originalSize} → ${jsonString.length} chars (${Math.round((1 - jsonString.length/originalSize) * 100)}% reduction)`);
-
-            // Check if Web Share API is supported
-            if (navigator.share) {
-                await navigator.share({
-                    title: 'Household Budget',
-                    text: 'Check out this budget plan!',
-                    url: shareUrl
-                });
-                await this.showAlert('Budget shared successfully!', 'Share Complete', 'success');
-            } else {
-                // Fallback to clipboard
-                await navigator.clipboard.writeText(shareUrl);
-                await this.showAlert(
-                    'Budget link copied to clipboard! Share this URL to let others view your budget setup.',
-                    'Link Copied',
-                    'success'
-                );
-            }
-        } catch (error) {
-            console.error('Share error:', error);
-            if (error.name === 'AbortError') {
-                // User cancelled sharing, don't show error
-                return;
-            }
-            
-            await this.showAlert(
-                'Unable to generate share link. Please check your browser permissions.',
-                'Share Failed',
-                'error'
-            );
-        }
-    }
-
-    // Load budget data from URL parameters
-    loadSharedBudget() {
-        const urlParams = new URLSearchParams(window.location.search);
-        // Support both old and new parameter names for backward compatibility
-        const budgetParam = urlParams.get('b') || urlParams.get('budget');
+    /**
+     * Set theme
+     */
+    setTheme(theme) {
+        this.settings.theme = theme;
+        document.documentElement.setAttribute('data-bs-theme', theme);
         
-        if (budgetParam) {
-            try {
-                // Decode the shared data
-                const jsonString = atob(budgetParam);
-                const shareData = JSON.parse(jsonString);
-                
-                console.log('Loading shared budget data:', shareData);
-                
-                // Category mapping for decoding
-                const categoryMap = {
-                    '1': 'bills', '2': 'savings', '3': 'emergency', '4': 'food',
-                    '5': 'transport', '6': 'entertainment', '7': 'other'
-                };
-                
-                // Sharing method mapping for decoding
-                const sharingMap = { 'p': 'percentage', 'e': 'even' };
-                const periodMap = { 'b': 'biweekly', 'm': 'monthly', 'y': 'yearly' };
-                
-                // Check if this is the new compressed format (arrays) or old format (objects)
-                const isNewFormat = Array.isArray(shareData.p?.[0]);
-                
-                if (isNewFormat) {
-                    // New compressed format
-                    this.people = shareData.p.map((p, index) => ({
-                        id: Date.now() + index + 1000,
-                        name: p[0],
-                        biWeeklyPay: p[1],
-                        payPeriods: p[2] || 26, // Default to 26 if not specified
-                        monthlyPay: this.calculateMonthlyFromBiWeekly(p[1], p[2] || 26),
-                        yearlyPay: p[1] * (p[2] || 26)
-                    }));
-                    
-                    this.expenses = shareData.e.map((e, index) => ({
-                        id: Date.now() + index + 2000,
-                        name: e[0],
-                        monthlyAmount: e[1],
-                        biWeeklyAmount: this.calculateBiWeeklyFromMonthly(e[1]),
-                        category: categoryMap[e[2]] || 'other',
-                        subCategory: e[4] || '', // Optional 5th element
-                        sharingMethod: sharingMap[e[3]] || 'percentage'
-                    }));
-                    
-                    // Restore settings with defaults
-                    this.globalSharingMethod = sharingMap[shareData.g] || 'percentage';
-                    this.analyticsPeriod = periodMap[shareData.a] || 'biweekly';
-                    
-                    // Restore emergency fund data
-                    this.currentEmergencyFund = shareData.ef || 0;
-                    this.emergencyFundTargetMonths = shareData.em || 6;
+        const themeIcon = document.getElementById('themeIcon');
+        if (themeIcon) {
+            themeIcon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        }
+
+        localStorage.setItem('budgetTheme', theme);
+    }
+
+    /**
+     * Toggle theme
+     */
+    toggleTheme() {
+        const newTheme = this.settings.theme === 'dark' ? 'light' : 'dark';
+        this.setTheme(newTheme);
+    }
+
+    // ==========================================================================
+    // UTILITY METHODS
+    // ==========================================================================
+
+    /**
+     * Format number for display
+     */
+    formatNumber(number) {
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        }).format(number);
+    }
+
+    /**
+     * Capitalize string
+     */
+    capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    /**
+     * Escape HTML
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
+     * Convert monthly amount to pay period amount
+     */
+    convertToPayPeriod(monthlyAmount, payPeriods) {
+        // payPeriods is the number of pay periods per year
+        // 52 = weekly, 26 = bi-weekly, 24 = semi-monthly, 12 = monthly
+        return (monthlyAmount * 12) / payPeriods;
+    }
+
+    /**
+     * Get pay period label from number of periods
+     */
+    getPayPeriodLabel(payPeriods) {
+        const labels = {
+            52: 'Weekly',
+            26: 'Bi-weekly', 
+            24: 'Semi-monthly',
+            12: 'Monthly'
+        };
+        return labels[payPeriods] || 'Bi-weekly';
+    }
+
+    /**
+     * Get sharing method label
+     */
+    // Initialize custom percentages for all people
+    initializeCustomPercentages() {
+        if (!this.settings.customPercentages) {
+            this.settings.customPercentages = {};
+        }
+        
+        // Set equal percentages for all people if not already set
+        const equalPercentage = Math.round(100 / this.people.length * 100) / 100;
+        let totalAssigned = 0;
+        
+        this.people.forEach((person, index) => {
+            if (!this.settings.customPercentages[person.id]) {
+                if (index === this.people.length - 1) {
+                    // Last person gets the remainder to ensure exactly 100%
+                    this.settings.customPercentages[person.id] = 100 - totalAssigned;
                 } else {
-                    // Old format compatibility
-                    this.people = shareData.p.map((p, index) => ({
-                        id: Date.now() + index + 1000,
-                        name: p.n,
-                        biWeeklyPay: p.bp,
-                        payPeriods: p.pp,
-                        monthlyPay: this.calculateMonthlyFromBiWeekly(p.bp, p.pp),
-                        yearlyPay: p.bp * p.pp
-                    }));
-                    
-                    this.expenses = shareData.e.map((e, index) => ({
-                        id: Date.now() + index + 2000,
-                        name: e.n,
-                        monthlyAmount: e.ma,
-                        biWeeklyAmount: this.calculateBiWeeklyFromMonthly(e.ma),
-                        category: e.c,
-                        subCategory: e.sc,
-                        sharingMethod: e.sm
-                    }));
-                    
-                    this.globalSharingMethod = shareData.gsm || 'percentage';
-                    this.analyticsPeriod = shareData.ap || 'biweekly';
-                    
-                    // Emergency fund data (old format may not have these)
-                    this.currentEmergencyFund = shareData.ef || 0;
-                    this.emergencyFundTargetMonths = shareData.em || 6;
+                    this.settings.customPercentages[person.id] = equalPercentage;
+                    totalAssigned += equalPercentage;
+                }
+            }
+        });
+    }
+
+    // Render custom split sliders
+    renderCustomSplitSliders() {
+        const container = document.getElementById('customSlidersContainer');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        this.people.forEach(person => {
+            const percentage = this.settings.customPercentages[person.id] || 0;
+            
+            const sliderDiv = document.createElement('div');
+            sliderDiv.className = 'mb-4';
+            sliderDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">
+                        ${person.name} <span class="text-muted">(${percentage.toFixed(1)}%)</span>
+                    </label>
+                </div>
+                <div class="row g-1 mb-2">
+                    <div class="col">
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100" data-percentage="25" data-person-id="${person.id}">25%</button>
+                    </div>
+                    <div class="col">
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100" data-percentage="50" data-person-id="${person.id}">50%</button>
+                    </div>
+                    <div class="col">
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100" data-percentage="75" data-person-id="${person.id}">75%</button>
+                    </div>
+                </div>
+                <input type="range" class="form-range" id="customSlider_${person.id}" 
+                       min="0" max="100" step="1" value="${percentage.toFixed(1)}"
+                       data-person-id="${person.id}" style="margin-bottom: 8px;">
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: ${percentage}%" 
+                         aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            `;
+            
+            container.appendChild(sliderDiv);
+            
+            // Add event listeners for quick percentage buttons
+            sliderDiv.querySelectorAll('button[data-percentage]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const targetPercentage = parseFloat(e.target.getAttribute('data-percentage'));
+                    this.updateCustomPercentage(person.id, targetPercentage);
+                });
+            });
+            
+            // Add event listener for immediate, smooth slider response
+            const slider = sliderDiv.querySelector('input[type="range"]');
+            
+            // Handle every slider movement immediately
+            slider.addEventListener('input', (e) => {
+                const newValue = parseFloat(e.target.value);
+                // Use lightweight update during dragging
+                this.updateCustomPercentageLightweight(person.id, newValue, true);
+            });
+            
+            // Handle final value when user stops dragging
+            slider.addEventListener('change', (e) => {
+                const newValue = parseFloat(e.target.value);
+                // Full update when dragging ends
+                this.updateCustomPercentageLightweight(person.id, newValue, false);
+            });
+        });
+    }
+
+    // Update slider values without recreating them
+    updateSliderValues() {
+        this.people.forEach(person => {
+            const personDiv = document.querySelector(`[data-person-id="${person.id}"]`)?.closest('.mb-4');
+            const percentage = this.settings.customPercentages[person.id] || 0;
+            
+            if (personDiv) {
+                // Update label
+                const label = personDiv.querySelector('.form-label');
+                if (label) {
+                    label.innerHTML = `${person.name} <span class="text-muted">(${percentage.toFixed(1)}%)</span>`;
                 }
                 
-                // Save to localStorage
-                localStorage.setItem('budgetGlobalSharingMethod', this.globalSharingMethod);
-                localStorage.setItem('budgetAnalyticsPeriod', this.analyticsPeriod);
+                // Update slider
+                const slider = personDiv.querySelector('input[type="range"]');
+                if (slider) {
+                    slider.value = percentage.toFixed(1);
+                }
                 
-                console.log('Restored people:', this.people);
-                console.log('Restored expenses:', this.expenses);
-                
-                // Show confirmation
-                this.showAlert(
-                    'Budget loaded successfully! You can now modify it as needed.',
-                    'Shared Budget Loaded',
-                    'success'
-                );
-                
-                // Clean up URL after a short delay to allow data to load
-                setTimeout(() => {
-                    if (window.location.protocol === 'file:') {
-                        // For file:// protocol, just remove the query params
-                        const newUrl = window.location.href.split('?')[0];
-                        window.history.replaceState({}, document.title, newUrl);
-                    } else {
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    }
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error loading shared budget:', error);
-                this.showAlert(
-                    'Unable to load shared budget. The link may be corrupted or invalid.',
-                    'Load Error',
-                    'error'
-                );
+                // Update progress bar
+                const progressBar = personDiv.querySelector('.progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = `${percentage}%`;
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                }
+            }
+        });
+    }
+
+    // Immediate visual update during slider movement (no rebalancing yet)
+    updateCustomPercentageImmediate(personId, newPercentage) {
+        // Just update the visual elements for this person immediately
+        const personDiv = document.querySelector(`input[data-person-id="${personId}"]`)?.closest('.mb-4');
+        
+        if (personDiv) {
+            // Update label
+            const label = personDiv.querySelector('.form-label');
+            if (label) {
+                const person = this.people.find(p => p.id === personId);
+                if (person) {
+                    label.innerHTML = `${person.name} <span class="text-muted">(${newPercentage.toFixed(1)}%)</span>`;
+                }
+            }
+            
+            // Update progress bar
+            const progressBar = personDiv.querySelector('.progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${newPercentage}%`;
+                progressBar.setAttribute('aria-valuenow', newPercentage);
             }
         }
+    }
+
+    // Update custom percentage and rebalance others
+    // Lightweight update that avoids render() calls during dragging
+    updateCustomPercentageLightweight(personId, newPercentage, isDragging) {
+        const oldPercentage = this.settings.customPercentages[personId] || 0;
+        
+        // Don't process if the value hasn't actually changed
+        if (Math.abs(newPercentage - oldPercentage) < 0.01) return;
+        
+        // Update this person's percentage
+        this.settings.customPercentages[personId] = newPercentage;
+        
+        // Get other people to redistribute the difference
+        const otherPeople = this.people.filter(p => p.id !== personId);
+        
+        if (otherPeople.length === 0) {
+            // Only one person, just set to 100%
+            this.settings.customPercentages[personId] = 100;
+        } else {
+            // Calculate what's left for others
+            const remainingPercentage = 100 - newPercentage;
+            
+            if (remainingPercentage <= 0) {
+                // If at or over 100%, set others to 0
+                otherPeople.forEach(person => {
+                    this.settings.customPercentages[person.id] = 0;
+                });
+            } else {
+                // Get current total of other people
+                const currentOtherTotal = otherPeople.reduce((sum, person) => {
+                    return sum + (this.settings.customPercentages[person.id] || 0);
+                }, 0);
+                
+                if (currentOtherTotal > 0) {
+                    // Distribute proportionally based on current values
+                    otherPeople.forEach(person => {
+                        const currentPercentage = this.settings.customPercentages[person.id] || 0;
+                        const proportion = currentPercentage / currentOtherTotal;
+                        this.settings.customPercentages[person.id] = remainingPercentage * proportion;
+                    });
+                } else {
+                    // If others are all 0, distribute equally
+                    const equalShare = remainingPercentage / otherPeople.length;
+                    otherPeople.forEach(person => {
+                        this.settings.customPercentages[person.id] = equalShare;
+                    });
+                }
+            }
+        }
+        
+        // Update visual elements for current person
+        this.updateCurrentPersonVisual(personId);
+        
+        // Update visual elements for other people
+        this.updateOtherSlidersVisualOnly(personId);
+        
+        // Only do full save/render when not actively dragging
+        if (!isDragging) {
+            this.saveData();
+            this.render();
+        }
+    }
+
+    // Update visual elements for the current person being dragged
+    updateCurrentPersonVisual(personId) {
+        const personDiv = document.querySelector(`[data-person-id="${personId}"]`)?.closest('.mb-4');
+        const percentage = this.settings.customPercentages[personId] || 0;
+        
+        if (personDiv) {
+            const person = this.people.find(p => p.id === personId);
+            if (!person) return;
+            
+            // Update label
+            const label = personDiv.querySelector('.form-label');
+            if (label) {
+                label.innerHTML = `${person.name} <span class="text-muted">(${percentage.toFixed(1)}%)</span>`;
+            }
+            
+            // Update progress bar (don't update slider value as user is dragging it)
+            const progressBar = personDiv.querySelector('.progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${percentage}%`;
+                progressBar.setAttribute('aria-valuenow', percentage);
+            }
+        }
+    }
+
+    // Update visual elements only (no render calls)
+    updateOtherSlidersVisualOnly(excludePersonId) {
+        this.people.forEach(person => {
+            if (person.id === excludePersonId) return; // Skip the person being dragged
+            
+            const personDiv = document.querySelector(`[data-person-id="${person.id}"]`)?.closest('.mb-4');
+            const percentage = this.settings.customPercentages[person.id] || 0;
+            
+            if (personDiv) {
+                // Update label
+                const label = personDiv.querySelector('.form-label');
+                if (label) {
+                    label.innerHTML = `${person.name} <span class="text-muted">(${percentage.toFixed(1)}%)</span>`;
+                }
+                
+                // Update slider value (this is safe because we exclude the one being dragged)
+                const slider = personDiv.querySelector('input[type="range"]');
+                if (slider) {
+                    slider.value = percentage.toFixed(1);
+                }
+                
+                // Update progress bar
+                const progressBar = personDiv.querySelector('.progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = `${percentage}%`;
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                }
+            }
+        });
+    }
+
+    updateCustomPercentage(personId, newPercentage) {
+        const oldPercentage = this.settings.customPercentages[personId] || 0;
+        
+        // Don't process if the value hasn't actually changed
+        if (Math.abs(newPercentage - oldPercentage) < 0.01) return;
+        
+        // Get other people to redistribute the difference
+        const otherPeople = this.people.filter(p => p.id !== personId);
+        
+        if (otherPeople.length === 0) {
+            // Only one person, just set to 100%
+            this.settings.customPercentages[personId] = 100;
+        } else {
+            // Calculate what's left for others
+            const remainingPercentage = 100 - newPercentage;
+            
+            if (remainingPercentage < 0) {
+                // If trying to go over 100%, cap at 100% and set others to 0
+                this.settings.customPercentages[personId] = 100;
+                otherPeople.forEach(person => {
+                    this.settings.customPercentages[person.id] = 0;
+                });
+            } else if (remainingPercentage === 0) {
+                // If at 100%, set others to 0
+                this.settings.customPercentages[personId] = 100;
+                otherPeople.forEach(person => {
+                    this.settings.customPercentages[person.id] = 0;
+                });
+            } else {
+                // Normal case: distribute remaining percentage proportionally
+                this.settings.customPercentages[personId] = newPercentage;
+                
+                // Get current total of other people
+                const currentOtherTotal = otherPeople.reduce((sum, person) => {
+                    return sum + (this.settings.customPercentages[person.id] || 0);
+                }, 0);
+                
+                if (currentOtherTotal > 0) {
+                    // Distribute proportionally based on current values
+                    otherPeople.forEach(person => {
+                        const currentPercentage = this.settings.customPercentages[person.id] || 0;
+                        const proportion = currentPercentage / currentOtherTotal;
+                        this.settings.customPercentages[person.id] = remainingPercentage * proportion;
+                    });
+                } else {
+                    // If others are all 0, distribute equally
+                    const equalShare = remainingPercentage / otherPeople.length;
+                    otherPeople.forEach(person => {
+                        this.settings.customPercentages[person.id] = equalShare;
+                    });
+                }
+            }
+        }
+        
+        // Update only OTHER sliders (not the one being dragged to avoid interference)
+        this.updateOtherSliders(personId);
+        
+        // Update displays
+        this.saveData();
+        this.render();
+    }
+
+    // Update slider values for everyone EXCEPT the person being dragged
+    updateOtherSliders(excludePersonId) {
+        this.people.forEach(person => {
+            if (person.id === excludePersonId) return; // Skip the person being dragged
+            
+            const personDiv = document.querySelector(`[data-person-id="${person.id}"]`)?.closest('.mb-4');
+            const percentage = this.settings.customPercentages[person.id] || 0;
+            
+            if (personDiv) {
+                // Update label
+                const label = personDiv.querySelector('.form-label');
+                if (label) {
+                    label.innerHTML = `${person.name} <span class="text-muted">(${percentage.toFixed(1)}%)</span>`;
+                }
+                
+                // Update slider value
+                const slider = personDiv.querySelector('input[type="range"]');
+                if (slider) {
+                    slider.value = percentage.toFixed(1);
+                }
+                
+                // Update progress bar
+                const progressBar = personDiv.querySelector('.progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = `${percentage}%`;
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                }
+            }
+        });
+    }
+
+    getSharingMethodLabel(method) {
+        const labels = {
+            percentage: '📊 Weighted by Income',
+            even: '⚖️ Split Evenly',
+            custom: '🎛️ Custom Split'
+        };
+        return labels[method] || method;
+    }
+
+    /**
+     * Debounce function
+     */
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    /**
+     * Cancel all editing states
+     */
+    cancelEditing() {
+        this.editingPerson = null;
+        this.editingExpense = null;
+        this.render();
+    }
+
+    // ==========================================================================
+    // UI FEEDBACK METHODS
+    // ==========================================================================
+
+    /**
+     * Show toast notification
+     */
+    showToast(message, type = 'info', duration = 3000) {
+        const toast = document.getElementById('notificationToast');
+        const toastTitle = document.getElementById('toastTitle');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastIcon = document.getElementById('toastIcon');
+
+        // Set content
+        toastMessage.textContent = message;
+
+        // Set type and icon
+        const types = {
+            success: { title: 'Success', icon: 'bi bi-check-circle text-success' },
+            error: { title: 'Error', icon: 'bi bi-exclamation-circle text-danger' },
+            warning: { title: 'Warning', icon: 'bi bi-exclamation-triangle text-warning' },
+            info: { title: 'Info', icon: 'bi bi-info-circle text-primary' }
+        };
+
+        const toastType = types[type] || types.info;
+        toastTitle.textContent = toastType.title;
+        toastIcon.className = toastType.icon;
+
+        // Show toast
+        const bsToast = new bootstrap.Toast(toast, { delay: duration });
+        bsToast.show();
+    }
+
+    /**
+     * Show confirmation modal
+     */
+    showConfirm(title, message, onConfirm, onCancel = null) {
+        const modal = document.getElementById('confirmModal');
+        const modalTitle = document.getElementById('confirmModalTitle');
+        const modalBody = document.getElementById('confirmModalBody');
+        const confirmBtn = document.getElementById('confirmModalAction');
+
+        modalTitle.textContent = title;
+        modalBody.textContent = message;
+
+        // Set up one-time event listener for confirm
+        const handleConfirm = () => {
+            onConfirm();
+            confirmBtn.removeEventListener('click', handleConfirm);
+            modal.removeEventListener('hidden.bs.modal', handleCancel);
+        };
+
+        // Set up one-time event listener for cancel/dismiss
+        const handleCancel = () => {
+            if (onCancel) {
+                onCancel();
+            }
+            confirmBtn.removeEventListener('click', handleConfirm);
+            modal.removeEventListener('hidden.bs.modal', handleCancel);
+        };
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        modal.addEventListener('hidden.bs.modal', handleCancel, { once: true });
+
+        // Show modal
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    }
+
+    // ==========================================================================
+    // EXPORT & SHARING
+    // ==========================================================================
+
+    /**
+     * Share budget
+     */
+    shareBudget() {
+        const budgetData = {
+            people: this.people,
+            expenses: this.expenses,
+            settings: this.settings
+        };
+
+        const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(JSON.stringify(budgetData))}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: 'Family Budget Tool - Shared Budget',
+                text: 'Check out my budget breakdown!',
+                url: shareUrl
+            }).then(() => {
+                this.showToast('Budget shared successfully!', 'success');
+            }).catch(() => {
+                this.copyToClipboard(shareUrl);
+            });
+        } else {
+            this.copyToClipboard(shareUrl);
+        }
+    }
+
+    /**
+     * Copy text to clipboard
+     */
+    async copyToClipboard(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('Budget link copied to clipboard!', 'success');
+        } catch (error) {
+            this.showToast('Could not copy to clipboard', 'error');
+        }
+    }
+
+    /**
+     * Export to PDF
+     */
+    exportToPDF() {
+        this.showToast('PDF export feature coming soon!', 'info');
+    }
+
+    /**
+     * Clear all data
+     */
+    confirmClearAll() {
+        const totalItems = this.people.length + this.expenses.length;
+        
+        if (totalItems === 0) {
+            this.showToast('No data to clear', 'info');
+            return;
+        }
+
+        this.showConfirm(
+            'Clear All Data?',
+            `Are you sure you want to remove all data? This will delete ${this.people.length} people and ${this.expenses.length} expenses. This action cannot be undone.`,
+            () => {
+                this.people = [];
+                this.expenses = [];
+                this.settings.emergencyFundTarget = 0;
+                this.saveData();
+                this.render();
+                this.showToast('All data cleared', 'info');
+            }
+        );
     }
 }
 
-// Initialize the budget tool when the page loads
-const budgetTool = new BudgetTool();
+// ==========================================================================
+// INITIALIZATION
+// ==========================================================================
 
-// Initialize Muuri grid for dynamic analytics layout
-let analyticsGrid;
+// Initialize the budget tool when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Check for shared data in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedData = urlParams.get('data');
+    
+    if (sharedData) {
+        try {
+            const parsedData = JSON.parse(decodeURIComponent(sharedData));
+            // Store shared data temporarily
+            localStorage.setItem('sharedBudgetData', JSON.stringify(parsedData));
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (error) {
+            console.error('Error parsing shared data:', error);
+        }
+    }
 
-// Wait for Muuri library to be loaded and DOM to be ready
-document.addEventListener('DOMContentLoaded', function() {
-    initializeAnalyticsGrid();
+    // Initialize the budget tool
+    window.budgetTool = new ResponsiveBudgetTool();
+
+    // Handle shared data if present
+    const sharedBudgetData = localStorage.getItem('sharedBudgetData');
+    if (sharedBudgetData) {
+        try {
+            const data = JSON.parse(sharedBudgetData);
+            budgetTool.showConfirm(
+                'Load Shared Budget?',
+                'A shared budget was detected. Would you like to load it? This will replace your current budget data.',
+                () => {
+                    budgetTool.people = data.people || [];
+                    budgetTool.expenses = data.expenses || [];
+                    budgetTool.settings = { ...budgetTool.settings, ...data.settings };
+                    budgetTool.saveData();
+                    budgetTool.render();
+                    budgetTool.showToast('Shared budget loaded successfully!', 'success');
+                }
+            );
+        } catch (error) {
+            console.error('Error loading shared data:', error);
+        } finally {
+            localStorage.removeItem('sharedBudgetData');
+        }
+    }
 });
 
-function initializeAnalyticsGrid() {
-    // Check if Muuri is available and grid element exists
-    if (typeof Muuri === 'undefined' || !document.getElementById('analyticsGrid')) {
-        console.warn('Muuri library not loaded or analytics grid not found');
-        return;
+// Handle page visibility change to save data
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && window.budgetTool) {
+        window.budgetTool.saveData();
     }
+});
 
-    try {
-        analyticsGrid = new Muuri('#analyticsGrid', {
-            items: '.grid-item',
-            dragEnabled: true,
-            dragHandle: '.card-drag-handle',
-            dragStartPredicate: {
-                distance: 0,
-                delay: 0
-            },
-            dragSortHeuristics: {
-                sortInterval: 50,
-                minDragDistance: 10,
-                minBounceBackAngle: 1
-            },
-            dragContainer: document.body,
-            dragReleaseDuration: 300,
-            dragReleaseEasing: 'ease-out',
-            dragCssProps: {
-                touchAction: 'none',
-                userSelect: 'none',
-                userDrag: 'none',
-                tapHighlightColor: 'rgba(0, 0, 0, 0)',
-                touchCallout: 'none',
-                contentZooming: 'none'
-            },
-            dragPlaceholder: {
-                enabled: true,
-                duration: 300,
-                createElement: function (item) {
-                    const element = item.getElement();
-                    const placeholder = element.cloneNode(true);
-                    placeholder.classList.add('muuri-placeholder');
-                    placeholder.style.opacity = '0.5';
-                    placeholder.style.transform = 'scale(0.95)';
-                    return placeholder;
-                }
-            },
-            layout: {
-                fillGaps: true,
-                horizontal: false,
-                alignRight: false,
-                alignBottom: false,
-                rounding: true
-            },
-            layoutDuration: 300,
-            layoutEasing: 'ease-out',
-            sortData: {
-                order: function (item, element) {
-                    return parseInt(element.getAttribute('data-order') || '999');
-                }
-            }
-        });
-
-        // Apply default order on initialization
-        analyticsGrid.sort('order');
-
-        // Save layout when items are moved
-        analyticsGrid.on('move', function () {
-            saveAnalyticsLayout();
-        });
-
-        // Handle drag start for smooth transitions
-        analyticsGrid.on('dragStart', function (item) {
-            const element = item.getElement();
-            // Store original dimensions to prevent flash
-            const rect = element.getBoundingClientRect();
-            element.setAttribute('data-original-width', rect.width);
-            element.setAttribute('data-original-height', rect.height);
-        });
-
-        // Handle drag release for smooth sizing
-        analyticsGrid.on('dragReleaseStart', function (item) {
-            const element = item.getElement();
-            const card = element.querySelector('.analytics-card');
-            
-            // Ensure card maintains proper size during release
-            if (card) {
-                card.style.width = '100%';
-                card.style.height = 'auto';
-            }
-        });
-
-        // Clean up after release is complete
-        analyticsGrid.on('dragReleaseEnd', function (item) {
-            const element = item.getElement();
-            const card = element.querySelector('.analytics-card');
-            
-            // Remove any temporary styles
-            if (card) {
-                card.style.width = '';
-                card.style.height = '';
-            }
-            
-            // Clean up data attributes
-            element.removeAttribute('data-original-width');
-            element.removeAttribute('data-original-height');
-        });
-
-        // Load saved layout if it exists
-        loadAnalyticsLayout();
-
-        // Add reset layout button
-        addLayoutControls();
-
-    } catch (error) {
-        console.error('Error initializing analytics grid:', error);
+// Handle before unload to save data
+window.addEventListener('beforeunload', () => {
+    if (window.budgetTool) {
+        window.budgetTool.saveData();
     }
-}
-
-function saveAnalyticsLayout() {
-    if (!analyticsGrid) return;
-    
-    const items = analyticsGrid.getItems();
-    const layout = items.map((item, index) => ({
-        cardType: item.getElement().querySelector('.analytics-card').getAttribute('data-card-type'),
-        order: index
-    }));
-    
-    localStorage.setItem('analyticsLayout', JSON.stringify(layout));
-}
-
-function loadAnalyticsLayout() {
-    if (!analyticsGrid) return;
-    
-    const savedLayout = localStorage.getItem('analyticsLayout');
-    
-    // If no saved layout exists, use default order
-    if (!savedLayout) {
-        analyticsGrid.sort('order');
-        return;
-    }
-    
-    try {
-        const layout = JSON.parse(savedLayout);
-        const items = analyticsGrid.getItems();
-        
-        // Sort items according to saved layout
-        const sortedItems = layout.map(layoutItem => {
-            return items.find(item => {
-                const cardType = item.getElement().querySelector('.analytics-card').getAttribute('data-card-type');
-                return cardType === layoutItem.cardType;
-            });
-        }).filter(Boolean);
-        
-        // Only apply saved layout if we found all items, otherwise use default
-        if (sortedItems.length === items.length) {
-            analyticsGrid.sort(sortedItems);
-        } else {
-            // Fallback to default order if saved layout is incomplete
-            console.log('Saved layout incomplete, using default order');
-            analyticsGrid.sort('order');
-        }
-    } catch (error) {
-        console.error('Error loading analytics layout, using default order:', error);
-        analyticsGrid.sort('order');
-    }
-}
-
-function resetAnalyticsLayout() {
-    if (!analyticsGrid) return;
-    
-    // Remove saved layout
-    localStorage.removeItem('analyticsLayout');
-    
-    // Reset to default order using data-order attributes
-    analyticsGrid.sort('order');
-    budgetTool.showAlert('Analytics layout has been reset to default', 'Layout Reset', 'success');
-}
-
-function addLayoutControls() {
-    // Add layout control buttons to the analytics section
-    const analyticsSection = document.querySelector('.analytics-section');
-    if (!analyticsSection) return;
-    
-    // Check if controls already exist
-    if (analyticsSection.querySelector('.layout-controls')) return;
-    
-    const controlsDiv = document.createElement('div');
-    controlsDiv.className = 'layout-controls';
-    controlsDiv.innerHTML = `
-        <div class="layout-controls-wrapper">
-            <span class="layout-help-text">💡 Drag cards by their ⋮⋮ handle to rearrange</span>
-            <button id="resetLayout" class="btn btn-secondary btn-small">🔄 Reset Layout</button>
-        </div>
-    `;
-    
-    // Insert before the analytics grid
-    const analyticsGrid = document.getElementById('analyticsGrid');
-    if (analyticsGrid) {
-        analyticsGrid.parentNode.insertBefore(controlsDiv, analyticsGrid);
-        
-        // Add event listener for reset button
-        document.getElementById('resetLayout').addEventListener('click', resetAnalyticsLayout);
-    }
-}
+});

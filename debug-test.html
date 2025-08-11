@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Custom Sliders</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Debug Custom Sliders Test</h2>
+        
+        <div class="mb-3">
+            <label class="form-label">Sharing Method</label>
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="sharingMethod" id="percentage" value="percentage" checked>
+                <label class="btn btn-outline-primary" for="percentage">Percentage</label>
+                
+                <input type="radio" class="btn-check" name="sharingMethod" id="custom" value="custom">
+                <label class="btn btn-outline-primary" for="custom">Custom</label>
+            </div>
+        </div>
+        
+        <div id="customSplitSection" class="mb-4" style="display: none;">
+            <label class="form-label">Custom Contribution Percentages</label>
+            <div id="customSlidersContainer">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+            <small class="text-muted">Adjust sliders to set each person's contribution percentage. Total will always equal 100%.</small>
+        </div>
+        
+        <div id="debug"></div>
+    </div>
+
+    <script>
+        // Mock data for testing
+        const mockPeople = [
+            { id: 1, name: "John" },
+            { id: 2, name: "Jane" }
+        ];
+        
+        const mockSettings = {
+            customPercentages: {}
+        };
+
+        function initializeCustomPercentages() {
+            console.log("Initializing custom percentages...");
+            if (!mockSettings.customPercentages) {
+                mockSettings.customPercentages = {};
+            }
+            
+            const equalPercentage = Math.round(100 / mockPeople.length * 100) / 100;
+            let totalAssigned = 0;
+            
+            mockPeople.forEach((person, index) => {
+                if (!mockSettings.customPercentages[person.id]) {
+                    if (index === mockPeople.length - 1) {
+                        mockSettings.customPercentages[person.id] = 100 - totalAssigned;
+                    } else {
+                        mockSettings.customPercentages[person.id] = equalPercentage;
+                        totalAssigned += equalPercentage;
+                    }
+                }
+            });
+            
+            console.log("Custom percentages:", mockSettings.customPercentages);
+        }
+
+        function renderCustomSplitSliders() {
+            console.log("Rendering custom split sliders...");
+            const container = document.getElementById('customSlidersContainer');
+            if (!container) {
+                console.error("Container not found!");
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            mockPeople.forEach(person => {
+                const percentage = mockSettings.customPercentages[person.id] || 0;
+                console.log(`Creating slider for ${person.name}: ${percentage}%`);
+                
+                const sliderDiv = document.createElement('div');
+                sliderDiv.className = 'mb-3';
+                sliderDiv.innerHTML = `
+                    <label for="customSlider_${person.id}" class="form-label">
+                        ${person.name} <span class="text-muted">(${percentage.toFixed(1)}%)</span>
+                    </label>
+                    <input type="range" class="form-range" id="customSlider_${person.id}" 
+                           min="0" max="100" step="0.1" value="${percentage}"
+                           data-person-id="${person.id}">
+                `;
+                
+                container.appendChild(sliderDiv);
+            });
+            
+            console.log("Sliders rendered!");
+        }
+
+        // Event listeners
+        document.querySelectorAll('input[name="sharingMethod"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                console.log("Sharing method changed to:", e.target.value);
+                
+                const customSplitSection = document.getElementById('customSplitSection');
+                if (e.target.value === 'custom') {
+                    console.log("Showing custom section...");
+                    customSplitSection.style.display = 'block';
+                    initializeCustomPercentages();
+                    renderCustomSplitSliders();
+                } else {
+                    console.log("Hiding custom section...");
+                    customSplitSection.style.display = 'none';
+                }
+            });
+        });
+
+        // Debug info
+        const debugDiv = document.getElementById('debug');
+        debugDiv.innerHTML = `
+            <h4>Debug Info:</h4>
+            <p>People: ${JSON.stringify(mockPeople)}</p>
+            <p>Custom Split Section: ${document.getElementById('customSplitSection') ? 'Found' : 'Not Found'}</p>
+            <p>Custom Sliders Container: ${document.getElementById('customSlidersContainer') ? 'Found' : 'Not Found'}</p>
+        `;
+    </script>
+</body>
+</html>

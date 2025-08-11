@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/muuri@0.9.5/dist/muuri.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Budget Tool</h1>
+            <p>Manage your household budget with multiple people and pay periods</p>
+            <div class="header-actions">
+                <button id="themeToggle" class="btn btn-secondary theme-toggle">
+                    <span class="theme-icon">🌙</span>
+                    <span class="theme-text">Dark Mode</span>
+                </button>
+                <button id="shareBudget" class="btn btn-secondary">🔗 Share Budget</button>
+                <button id="exportPdf" class="btn btn-secondary">📄 Export PDF</button>
+                <button id="clearAllData" class="btn btn-danger">🗑️ Clear All Data</button>
+            </div>
+        </header>
+
+        <!-- People & Budget Layout -->
+        <div class="people-budget-layout">
+            <!-- People Management Section -->
+            <section class="section people-section">
+                <h2>People & Income</h2>
+                
+                <!-- Add Person Card -->
+                <div class="card">
+                    <div class="people-form">
+                        <input type="text" id="personName" placeholder="John">
+                        <input type="number" id="biWeeklyPay" placeholder="Bi-weekly pay ($)" step="0.01">
+                        <select id="personPayPeriods">
+                            <option value="26" selected>26 (bi-weekly)</option>
+                            <option value="24">24 (semi-monthly)</option>
+                            <option value="12">12 (monthly)</option>
+                            <option value="52">52 (weekly)</option>
+                        </select>
+                        <button id="addPerson" class="btn btn-primary">Add</button>
+                    </div>
+                </div>
+
+                <!-- People List Card -->
+                <div class="card">
+                    <div class="people-header">
+                        <h3>Household Members</h3>
+                    </div>
+                    <div id="peopleList" class="people-list"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Budget Settings Section -->
+        <section class="section budget-settings-section">
+            <h2>Budget Settings</h2>
+            
+            <!-- Apply to Budget Card -->
+            <div class="card">
+                <p class="sharing-explanation">Choose how expenses are split between household members:</p>
+                <div class="global-sharing-control">
+                    <div class="sharing-toggle-buttons">
+                        <button id="setPercentageSharing" class="btn btn-toggle active" data-method="percentage">📊 % Weighted</button>
+                        <button id="setEvenSharing" class="btn btn-toggle" data-method="even">⚖️ 50/50</button>
+                        <button id="setCustomSharing" class="btn btn-toggle" data-method="custom">🎛️ Custom</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Sections -->
+        <div class="summary-grid">
+            <!-- Who Pays What -->
+            <section class="section">
+                <h2>Who Pays What</h2>
+                <div class="card">
+                    <div id="personCategoryBreakdown"></div>
+                </div>
+            </section>
+
+            <!-- Excess Funds -->
+            <section class="section">
+                <h2>Excess Funds</h2>
+                <div class="card">
+                    <div id="excessFunds"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Expenses Section -->
+        <section class="section">
+            <h2>Expenses</h2>
+
+            <!-- Add Expense Card -->
+            <div class="card">
+                <div class="expense-form">
+                    <input type="text" id="expenseName" placeholder="Expense name">
+                    <input type="number" id="monthlyAmount" placeholder="Monthly amount ($)" step="0.01">
+                    <select id="category">
+                        <option value="bills">Bills</option>
+                        <option value="savings">Savings</option>
+                        <option value="emergency">Emergency</option>
+                        <option value="food">Food</option>
+                        <option value="transport">Transport</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <input type="text" id="subCategory" placeholder="Sub-category (optional)">
+                    <select id="sharingMethod">
+                        <option value="percentage">📊 % Weighted</option>
+                        <option value="even">⚖️ 50/50</option>
+                        <option value="custom">🎛️ Custom</option>
+                    </select>
+                    <button id="addExpense" class="btn btn-primary">Add Expense</button>
+                </div>
+            </div>
+
+            <!-- Expenses List Card -->
+            <div class="card">
+                <div class="expenses-header">
+                    <h3>Current Expenses</h3>
+                    <div class="expenses-actions">
+                        <button id="refreshExpenseTable" class="btn btn-secondary btn-small">🔄 Refresh</button>
+                        <button id="clearAllExpenses" class="btn btn-danger btn-small">Clear All Expenses</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="expensesTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Monthly</th>
+                                <th>Category</th>
+                                <th>Sub</th>
+                                <th>Split</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comprehensive Expense Breakdown Section -->
+        <section class="section">
+            <h2>Comprehensive Expense Breakdown</h2>
+            <div class="card">
+                <div id="biWeeklySummary"></div>
+            </div>
+        </section>
+
+        <!-- Budget Analytics Section -->
+        <section class="section analytics-section">
+            <h2>Budget Analytics</h2>
+            <div class="analytics-period-toggle">
+                <label>Analytics Period:</label>
+                <div class="period-toggle-buttons">
+                    <button id="setBiWeeklyPeriod" class="btn btn-toggle active" data-period="biweekly">Bi-weekly</button>
+                    <button id="setMonthlyPeriod" class="btn btn-toggle" data-period="monthly">Monthly</button>
+                    <button id="setYearlyPeriod" class="btn btn-toggle" data-period="yearly">Yearly</button>
+                </div>
+            </div>
+            <div class="analytics-grid" id="analyticsGrid">
+                <div class="grid-item grid-item-health-score" data-order="1">
+                    <div class="analytics-card height-standard" data-card-type="health-score">
+                        <div class="card-drag-handle">⋮⋮</div>
+                        <h4>Budget Health Score</h4>
+                        <div class="health-score-wrapper">
+                            <div class="health-score-circle">
+                                <div class="health-score-value" id="healthScore">85</div>
+                                <div class="health-score-label">Health Score</div>
+                            </div>
+                            <div class="health-indicators" id="healthIndicators"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-item grid-item-small" data-order="2">
+                    <div class="analytics-card height-standard" data-card-type="savings-rate">
+                        <div class="card-drag-handle">⋮⋮</div>
+                        <h4>Savings Rate</h4>
+                        <div class="savings-metric">
+                            <div class="metric-circle">
+                                <div class="metric-value" id="savingsRate">0%</div>
+                                <div class="metric-label">Savings Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-item" data-order="3">
+                    <div class="analytics-card height-tall" data-card-type="milestones">
+                        <div class="card-drag-handle">⋮⋮</div>
+                        <h4>Emergency Fund Planning</h4>
+                        <div class="milestones-controls">
+                            <div class="emergency-fund-flow">
+                                <div class="milestone-input-group">
+                                    <label for="emergencyFundMonths">Target Coverage: <span id="emergencyMonthsDisplay">6 months</span></label>
+                                    <input type="range" id="emergencyFundMonths" min="3" max="12" value="6" step="1">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="milestones-list" id="milestonesList">
+                            <!-- Dynamic content will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-item" data-order="4">
+                    <div class="analytics-card height-standard" data-card-type="subcategories">
+                        <div class="card-drag-handle">⋮⋮</div>
+                        <h4>All Subcategories</h4>
+                        <div class="subcategory-bars" id="subcategoryBars"></div>
+                    </div>
+                </div>
+                
+                <div class="grid-item grid-item-wide" data-order="5">
+                    <div class="analytics-card height-standard" data-card-type="expense-distribution">
+                        <div class="card-drag-handle">⋮⋮</div>
+                        <h4>Expense Distribution</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="expenseBarChart" width="300" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-item" data-order="6">
+                    <div class="analytics-card height-tall" data-card-type="scenario-modeling">
+                        <div class="card-drag-handle">⋮⋮</div>
+                        <h4>Budget Scenario Modeling</h4>
+                        <div class="scenario-controls">
+                            <div class="scenario-slider">
+                                <label for="incomeAdjustment">Income Change: <span id="incomeChangeDisplay">0%</span></label>
+                                <input type="range" id="incomeAdjustment" min="-50" max="50" value="0" step="1">
+                            </div>
+                            <div class="scenario-slider">
+                                <label for="expenseAdjustment">Expense Change: <span id="expenseChangeDisplay">0%</span></label>
+                                <input type="range" id="expenseAdjustment" min="-50" max="50" value="0" step="1">
+                            </div>
+                            <div class="scenario-results" id="scenarioResults">
+                                <div class="scenario-metric">
+                                    <span class="scenario-label" id="savingsRateLabel">New Savings Rate:</span>
+                                    <span class="scenario-value" id="newSavingsRate">20.5%</span>
+                                </div>
+                                <div class="scenario-metric">
+                                    <span class="scenario-label">Monthly Surplus:</span>
+                                    <span class="scenario-value" id="monthlySurplus">$850</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-item grid-item-wide" data-order="7">
+                    <div class="analytics-card height-standard" data-card-type="savings-projection">
+                        <div class="card-drag-handle">⋮⋮</div>
+                        <h4>Savings Growth Projection</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="savingsProjectionChart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-item grid-item-wide" data-order="8">
+                    <div class="analytics-card height-tall" data-card-type="subcategory-breakdown">
+                        <div class="card-drag-handle">⋮⋮</div>
+                        <h4>Subcategory Breakdown</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="subcategoryBarChart" width="400" height="160"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="customAlert" class="modal alert-modal">
+        <div class="modal-content alert-content">
+            <div class="alert-header">
+                <div class="alert-icon" id="alertIcon">ℹ️</div>
+                <h3 id="alertTitle">Alert</h3>
+            </div>
+            <div class="alert-body">
+                <p id="alertMessage">This is an alert message.</p>
+            </div>
+            <div class="alert-footer">
+                <button id="alertOkButton" class="btn btn-primary">OK</button>
+                <button id="alertCancelButton" class="btn btn-secondary" style="display: none;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
