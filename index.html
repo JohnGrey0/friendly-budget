@@ -1,302 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Tool</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Family Budget Tool</title>
+
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Chart.js for analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/muuri@0.9.5/dist/muuri.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
-    <div class="container">
-        <header>
-            <h1>Budget Tool</h1>
-            <p>Manage your household budget with multiple people and pay periods</p>
-            <div class="header-actions">
-                <button id="themeToggle" class="btn btn-secondary theme-toggle">
-                    <span class="theme-icon">🌙</span>
-                    <span class="theme-text">Dark Mode</span>
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-calculator me-2"></i>
+                Budget
+            </a>
+
+            <!-- Theme Toggle & Actions (visible on all screen sizes) -->
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-light btn-sm" id="themeToggle" title="Toggle Theme">
+                    <i class="bi bi-moon-fill" id="themeIcon"></i>
                 </button>
-                <button id="shareBudget" class="btn btn-secondary">🔗 Share Budget</button>
-                <button id="exportPdf" class="btn btn-secondary">📄 Export PDF</button>
-                <button id="clearAllData" class="btn btn-danger">🗑️ Clear All Data</button>
+
+                <!-- Dropdown for additional actions -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#" id="shareBtn"><i class="bi bi-share me-2"></i>Share
+                                Budget</a></li>
+                        <li><a class="dropdown-item" href="#" id="exportBtn"><i class="bi bi-file-pdf me-2"></i>Export
+                                PDF</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item text-danger" href="#" id="clearAllBtn"><i
+                                    class="bi bi-trash me-2"></i>Clear All Data</a></li>
+                    </ul>
+                </div>
             </div>
-        </header>
-
-        <!-- People & Budget Layout -->
-        <div class="people-budget-layout">
-            <!-- People Management Section -->
-            <section class="section people-section">
-                <h2>People & Income</h2>
-                
-                <!-- Add Person Card -->
-                <div class="card">
-                    <div class="people-form">
-                        <input type="text" id="personName" placeholder="John">
-                        <input type="number" id="biWeeklyPay" placeholder="Bi-weekly pay ($)" step="0.01">
-                        <select id="personPayPeriods">
-                            <option value="26" selected>26 (bi-weekly)</option>
-                            <option value="24">24 (semi-monthly)</option>
-                            <option value="12">12 (monthly)</option>
-                            <option value="52">52 (weekly)</option>
-                        </select>
-                        <button id="addPerson" class="btn btn-primary">Add</button>
-                    </div>
-                </div>
-
-                <!-- People List Card -->
-                <div class="card">
-                    <div class="people-header">
-                        <h3>Household Members</h3>
-                    </div>
-                    <div id="peopleList" class="people-list"></div>
-                </div>
-            </section>
         </div>
+    </nav>
 
-        <!-- Budget Settings Section -->
-        <section class="section budget-settings-section">
-            <h2>Budget Settings</h2>
-            
-            <!-- Apply to Budget Card -->
-            <div class="card">
-                <p class="sharing-explanation">Choose how expenses are split between household members:</p>
-                <div class="global-sharing-control">
-                    <div class="sharing-toggle-buttons">
-                        <button id="setPercentageSharing" class="btn btn-toggle active" data-method="percentage">📊 % Weighted</button>
-                        <button id="setEvenSharing" class="btn btn-toggle" data-method="even">⚖️ 50/50</button>
-                        <button id="setCustomSharing" class="btn btn-toggle" data-method="custom">🎛️ Custom</button>
+    <!-- Main Content Container -->
+    <main class="main-content">
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col-12 col-xl-10 col-xxl-8">
+                    <!-- Tab Navigation -->
+                    <ul class="nav nav-pills nav-fill sticky-top bg-body-tertiary p-2 rounded-3 shadow-sm mb-3"
+                        id="mainTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="people-tab" data-bs-toggle="pill"
+                                data-bs-target="#people-panel" type="button" role="tab">
+                                <i class="bi bi-people-fill d-block d-sm-inline me-sm-2"></i>
+                                <span class="d-none d-sm-inline">People & Settings</span>
+                                <span class="d-sm-none small">People</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="expenses-tab" data-bs-toggle="pill"
+                                data-bs-target="#expenses-panel" type="button" role="tab">
+                                <i class="bi bi-receipt d-block d-sm-inline me-sm-2"></i>
+                                <span class="d-none d-sm-inline">Expenses</span>
+                                <span class="d-sm-none small">Expenses</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="summary-tab" data-bs-toggle="pill"
+                                data-bs-target="#summary-panel" type="button" role="tab">
+                                <i class="bi bi-clipboard-data d-block d-sm-inline me-sm-2"></i>
+                                <span class="d-none d-sm-inline">Summary</span>
+                                <span class="d-sm-none small">Summary</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="analytics-tab" data-bs-toggle="pill"
+                                data-bs-target="#analytics-panel" type="button" role="tab">
+                                <i class="bi bi-graph-up d-block d-sm-inline me-sm-2"></i>
+                                <span class="d-none d-sm-inline">Analytics</span>
+                                <span class="d-sm-none small">Analytics</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="mainTabContent">
+
+                        <!-- PEOPLE & SETTINGS TAB -->
+                        <div class="tab-pane fade show active" id="people-panel" role="tabpanel">
+                            <div class="row g-4">
+                                <!-- Add Person Form -->
+                                <div class="col-12 col-lg-6 col-xl-5">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-primary text-white">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-person-plus me-2"></i>Add Household Member
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <form id="addPersonForm">
+                                                <div class="mb-3">
+                                                    <label for="personName" class="form-label">Name *</label>
+                                                    <input type="text" class="form-control" id="personName"
+                                                        placeholder="Enter name" required>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-12 col-sm-6 mb-3">
+                                                        <label for="biWeeklyPay" class="form-label" id="payAmountLabel">Pay Amount Per Period *</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text">$</span>
+                                                            <input type="number" class="form-control" id="biWeeklyPay"
+                                                                placeholder="0.00" step="0.01" min="0" required>
+                                                        </div>
+                                                        <small class="text-muted" id="payAmountHelp">Enter your pay amount for the selected schedule</small>
+                                                    </div>
+
+                                                    <div class="col-12 col-sm-6 mb-3">
+                                                        <label for="payPeriods" class="form-label">Pay Schedule</label>
+                                                        <select class="form-select" id="payPeriods" onchange="budgetTool.updatePayLabel()">
+                                                            <option value="26" selected>Bi-weekly (26/year)</option>
+                                                            <option value="24">Semi-monthly (24/year)</option>
+                                                            <option value="12">Monthly (12/year)</option>
+                                                            <option value="52">Weekly (52/year)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <button type="submit" class="btn btn-primary w-100">
+                                                    <i class="bi bi-plus-circle me-2"></i>Add Person
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Global Settings -->
+                                <div class="col-12 col-lg-6 col-xl-5">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-success text-white">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-gear me-2"></i>Global Settings
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-4">
+                                                <label class="form-label">Default Sharing Method</label>
+                                                <div class="btn-group w-100" role="group" id="globalSharingMethod">
+                                                    <input type="radio" class="btn-check" name="sharingMethod"
+                                                        id="percentage" value="percentage" checked>
+                                                    <label class="btn btn-outline-primary" for="percentage">
+                                                        <i class="bi bi-percent"></i>
+                                                        <span class="d-none d-sm-inline ms-1">Weighted</span>
+                                                    </label>
+
+                                                    <input type="radio" class="btn-check" name="sharingMethod" id="even"
+                                                        value="even">
+                                                    <label class="btn btn-outline-primary" for="even">
+                                                        <i class="bi bi-distribute-horizontal"></i>
+                                                        <span class="d-none d-sm-inline ms-1">50/50</span>
+                                                    </label>
+
+                                                    <input type="radio" class="btn-check" name="sharingMethod"
+                                                        id="custom" value="custom">
+                                                    <label class="btn btn-outline-primary" for="custom">
+                                                        <i class="bi bi-sliders"></i>
+                                                        <span class="d-none d-sm-inline ms-1">Custom</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <!-- Custom Split Percentages (shown when custom sharing is selected) -->
+                                            <div id="customSplitSection" class="mb-4" style="display: none;">
+                                                <label class="form-label">Custom Contribution Percentages</label>
+                                                <div id="customSlidersContainer">
+                                                    <!-- Dynamic content will be inserted here -->
+                                                </div>
+                                                <small class="text-muted">Adjust sliders to set each person's contribution percentage. Total will always equal 100%.</small>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="emergencyFund" class="form-label">
+                                                    Current Emergency Fund
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control" id="emergencyFund"
+                                                        placeholder="0.00" step="0.01" min="0" value="0">
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="emergencyMonths" class="form-label">
+                                                    Emergency Fund Target: <span id="emergencyMonthsDisplay">6
+                                                        months</span>
+                                                </label>
+                                                <input type="range" class="form-range" id="emergencyMonths" min="3"
+                                                    max="12" value="6" step="1">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Spacer for better centering on extra large screens -->
+                                <div class="col-xl-2 d-none d-xl-block"></div>
+                            </div>
+
+                            <!-- People List -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-people me-2"></i>Household Members
+                                            </h5>
+                                            <span class="badge bg-primary" id="peopleCount">0</span>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <div id="peopleList" class="people-container">
+                                                <!-- Dynamic content will be inserted here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- EXPENSES TAB -->
+                        <div class="tab-pane fade" id="expenses-panel" role="tabpanel">
+                            <div class="row g-4">
+                                <!-- Add Expense Form -->
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header bg-warning text-dark">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-plus-circle me-2"></i>Add New Expense
+                                            </h5>
+                                        </div>
+                                                <div class="card-body">
+                                                    <form id="addExpenseForm">
+                                                        <div class="row g-3">
+                                                            <div class="col-12 col-md-6 col-lg-3">
+                                                                <label for="expenseName" class="form-label">Expense Name
+                                                                    *</label>
+                                                                <input type="text" class="form-control" id="expenseName"
+                                                                    placeholder="e.g., Rent, Groceries" required>
+                                                            </div>
+
+                                                            <div class="col-12 col-md-6 col-lg-2">
+                                                                <label for="monthlyAmount" class="form-label">Monthly
+                                                                    Amount *</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text">$</span>
+                                                                    <input type="number" class="form-control"
+                                                                        id="monthlyAmount" placeholder="0.00"
+                                                                        step="0.01" min="0" required>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="col-12 col-md-6 col-lg-2">
+                                                                <label for="category"
+                                                                    class="form-label">Category</label>
+                                                                <select class="form-select" id="category">
+                                                                    <option value="bills">Bills</option>
+                                                                    <option value="emergency">Emergency</option>
+                                                                    <option value="savings">Savings</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="col-12 col-md-6 col-lg-2">
+                                                                <label for="subCategory"
+                                                                    class="form-label">Subcategory</label>
+                                                                <select class="form-select" id="subCategory">
+                                                                    <option value="">Select subcategory</option>
+                                                                    <option value="food">Food</option>
+                                                                    <option value="transport">Transport</option>
+                                                                    <option value="entertainment">Entertainment</option>
+                                                                    <option value="utilities">Utilities</option>
+                                                                    <option value="insurance">Insurance</option>
+                                                                    <option value="healthcare">Healthcare</option>
+                                                                    <option value="education">Education</option>
+                                                                    <option value="housing">Housing</option>
+                                                                    <option value="clothing">Clothing</option>
+                                                                    <option value="personal-care">Personal Care</option>
+                                                                    <option value="subscriptions">Subscriptions</option>
+                                                                    <option value="debt-payments">Debt Payments</option>
+                                                                    <option value="investments">Investments</option>
+                                                                    <option value="retirement">Retirement</option>
+                                                                    <option value="other">Other</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="col-12 col-md-6 col-lg-2">
+                                                                <label for="expenseSharingMethod"
+                                                                    class="form-label">Sharing</label>
+                                                                <select class="form-select" id="expenseSharingMethod">
+                                                                    <option value="percentage">% Weighted</option>
+                                                                    <option value="even">50/50 Split</option>
+                                                                    <option value="custom">Custom Split</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="col-12 col-lg-1 d-flex align-items-end">
+                                                                <button type="submit" class="btn btn-warning w-100">
+                                                                    <i class="bi bi-plus"></i>
+                                                                    <span class="d-none d-lg-inline ms-1">Add</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Expenses List -->
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div
+                                                    class="card-header d-flex justify-content-between align-items-center">
+                                                    <h5 class="card-title mb-0">
+                                                        <i class="bi bi-receipt me-2"></i>All Expenses
+                                                    </h5>
+                                                    <div class="d-flex gap-2 align-items-center">
+                                                        <span class="badge bg-warning" id="expenseCount">0</span>
+                                                        <button class="btn btn-outline-danger btn-sm"
+                                                            id="clearExpensesBtn">
+                                                            <i class="bi bi-trash"></i>
+                                                            <span class="d-none d-sm-inline ms-1">Clear All</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body p-0">
+                                                    <div id="expensesList" class="expenses-container">
+                                                        <!-- Dynamic content will be inserted here -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                        </div>
+                        <!-- SUMMARY TAB -->
+                        <div class="tab-pane fade" id="summary-panel" role="tabpanel">
+                            <div id="summaryContent">
+                                <!-- Dynamic content will be inserted here -->
+                            </div>
+                        </div>
+
+                        <!-- ANALYTICS TAB -->
+                        <div class="tab-pane fade" id="analytics-panel" role="tabpanel">
+                            <div id="analyticsContent">
+                                <!-- Dynamic content will be inserted here -->
+                            </div>
+                        </div>
                     </div>
-                </div>
+    </main>
+
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notificationToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-info-circle text-primary me-2" id="toastIcon"></i>
+                <strong class="me-auto" id="toastTitle">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
             </div>
-        </section>
-
-        <!-- Summary Sections -->
-        <div class="summary-grid">
-            <!-- Who Pays What -->
-            <section class="section">
-                <h2>Who Pays What</h2>
-                <div class="card">
-                    <div id="personCategoryBreakdown"></div>
-                </div>
-            </section>
-
-            <!-- Excess Funds -->
-            <section class="section">
-                <h2>Excess Funds</h2>
-                <div class="card">
-                    <div id="excessFunds"></div>
-                </div>
-            </section>
+            <div class="toast-body" id="toastMessage">
+                Message content goes here
+            </div>
         </div>
-
-        <!-- Expenses Section -->
-        <section class="section">
-            <h2>Expenses</h2>
-
-            <!-- Add Expense Card -->
-            <div class="card">
-                <div class="expense-form">
-                    <input type="text" id="expenseName" placeholder="Expense name">
-                    <input type="number" id="monthlyAmount" placeholder="Monthly amount ($)" step="0.01">
-                    <select id="category">
-                        <option value="bills">Bills</option>
-                        <option value="savings">Savings</option>
-                        <option value="emergency">Emergency</option>
-                        <option value="food">Food</option>
-                        <option value="transport">Transport</option>
-                        <option value="entertainment">Entertainment</option>
-                        <option value="other">Other</option>
-                    </select>
-                    <input type="text" id="subCategory" placeholder="Sub-category (optional)">
-                    <select id="sharingMethod">
-                        <option value="percentage">📊 % Weighted</option>
-                        <option value="even">⚖️ 50/50</option>
-                        <option value="custom">🎛️ Custom</option>
-                    </select>
-                    <button id="addExpense" class="btn btn-primary">Add Expense</button>
-                </div>
-            </div>
-
-            <!-- Expenses List Card -->
-            <div class="card">
-                <div class="expenses-header">
-                    <h3>Current Expenses</h3>
-                    <div class="expenses-actions">
-                        <button id="refreshExpenseTable" class="btn btn-secondary btn-small">🔄 Refresh</button>
-                        <button id="clearAllExpenses" class="btn btn-danger btn-small">Clear All Expenses</button>
-                    </div>
-                </div>
-                <div class="table-container">
-                    <table id="expensesTable">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Monthly</th>
-                                <th>Category</th>
-                                <th>Sub</th>
-                                <th>Split</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- Comprehensive Expense Breakdown Section -->
-        <section class="section">
-            <h2>Comprehensive Expense Breakdown</h2>
-            <div class="card">
-                <div id="biWeeklySummary"></div>
-            </div>
-        </section>
-
-        <!-- Budget Analytics Section -->
-        <section class="section analytics-section">
-            <h2>Budget Analytics</h2>
-            <div class="analytics-period-toggle">
-                <label>Analytics Period:</label>
-                <div class="period-toggle-buttons">
-                    <button id="setBiWeeklyPeriod" class="btn btn-toggle active" data-period="biweekly">Bi-weekly</button>
-                    <button id="setMonthlyPeriod" class="btn btn-toggle" data-period="monthly">Monthly</button>
-                    <button id="setYearlyPeriod" class="btn btn-toggle" data-period="yearly">Yearly</button>
-                </div>
-            </div>
-            <div class="analytics-grid" id="analyticsGrid">
-                <div class="grid-item grid-item-health-score" data-order="1">
-                    <div class="analytics-card height-standard" data-card-type="health-score">
-                        <div class="card-drag-handle">⋮⋮</div>
-                        <h4>Budget Health Score</h4>
-                        <div class="health-score-wrapper">
-                            <div class="health-score-circle">
-                                <div class="health-score-value" id="healthScore">85</div>
-                                <div class="health-score-label">Health Score</div>
-                            </div>
-                            <div class="health-indicators" id="healthIndicators"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid-item grid-item-small" data-order="2">
-                    <div class="analytics-card height-standard" data-card-type="savings-rate">
-                        <div class="card-drag-handle">⋮⋮</div>
-                        <h4>Savings Rate</h4>
-                        <div class="savings-metric">
-                            <div class="metric-circle">
-                                <div class="metric-value" id="savingsRate">0%</div>
-                                <div class="metric-label">Savings Rate</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid-item" data-order="3">
-                    <div class="analytics-card height-tall" data-card-type="milestones">
-                        <div class="card-drag-handle">⋮⋮</div>
-                        <h4>Emergency Fund Planning</h4>
-                        <div class="milestones-controls">
-                            <div class="emergency-fund-flow">
-                                <div class="milestone-input-group">
-                                    <label for="emergencyFundMonths">Target Coverage: <span id="emergencyMonthsDisplay">6 months</span></label>
-                                    <input type="range" id="emergencyFundMonths" min="3" max="12" value="6" step="1">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="milestones-list" id="milestonesList">
-                            <!-- Dynamic content will be inserted here -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid-item" data-order="4">
-                    <div class="analytics-card height-standard" data-card-type="subcategories">
-                        <div class="card-drag-handle">⋮⋮</div>
-                        <h4>All Subcategories</h4>
-                        <div class="subcategory-bars" id="subcategoryBars"></div>
-                    </div>
-                </div>
-                
-                <div class="grid-item grid-item-wide" data-order="5">
-                    <div class="analytics-card height-standard" data-card-type="expense-distribution">
-                        <div class="card-drag-handle">⋮⋮</div>
-                        <h4>Expense Distribution</h4>
-                        <div class="chart-wrapper">
-                            <canvas id="expenseBarChart" width="300" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid-item" data-order="6">
-                    <div class="analytics-card height-tall" data-card-type="scenario-modeling">
-                        <div class="card-drag-handle">⋮⋮</div>
-                        <h4>Budget Scenario Modeling</h4>
-                        <div class="scenario-controls">
-                            <div class="scenario-slider">
-                                <label for="incomeAdjustment">Income Change: <span id="incomeChangeDisplay">0%</span></label>
-                                <input type="range" id="incomeAdjustment" min="-50" max="50" value="0" step="1">
-                            </div>
-                            <div class="scenario-slider">
-                                <label for="expenseAdjustment">Expense Change: <span id="expenseChangeDisplay">0%</span></label>
-                                <input type="range" id="expenseAdjustment" min="-50" max="50" value="0" step="1">
-                            </div>
-                            <div class="scenario-results" id="scenarioResults">
-                                <div class="scenario-metric">
-                                    <span class="scenario-label" id="savingsRateLabel">New Savings Rate:</span>
-                                    <span class="scenario-value" id="newSavingsRate">20.5%</span>
-                                </div>
-                                <div class="scenario-metric">
-                                    <span class="scenario-label">Monthly Surplus:</span>
-                                    <span class="scenario-value" id="monthlySurplus">$850</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid-item grid-item-wide" data-order="7">
-                    <div class="analytics-card height-standard" data-card-type="savings-projection">
-                        <div class="card-drag-handle">⋮⋮</div>
-                        <h4>Savings Growth Projection</h4>
-                        <div class="chart-wrapper">
-                            <canvas id="savingsProjectionChart" width="400" height="200"></canvas>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid-item grid-item-wide" data-order="8">
-                    <div class="analytics-card height-tall" data-card-type="subcategory-breakdown">
-                        <div class="card-drag-handle">⋮⋮</div>
-                        <h4>Subcategory Breakdown</h4>
-                        <div class="chart-wrapper">
-                            <canvas id="subcategoryBarChart" width="400" height="160"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
 
-    <!-- Custom Alert Modal -->
-    <div id="customAlert" class="modal alert-modal">
-        <div class="modal-content alert-content">
-            <div class="alert-header">
-                <div class="alert-icon" id="alertIcon">ℹ️</div>
-                <h3 id="alertTitle">Alert</h3>
-            </div>
-            <div class="alert-body">
-                <p id="alertMessage">This is an alert message.</p>
-            </div>
-            <div class="alert-footer">
-                <button id="alertOkButton" class="btn btn-primary">OK</button>
-                <button id="alertCancelButton" class="btn btn-secondary" style="display: none;">Cancel</button>
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalTitle">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmModalBody">
+                    Are you sure you want to proceed?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmModalAction">Confirm</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Bootstrap 5.3.0 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JavaScript -->
     <script src="script.js"></script>
 </body>
+
 </html>

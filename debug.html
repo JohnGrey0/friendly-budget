@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Family Budget Tool</title>
+    
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    
+    <style>
+        body {
+            padding-top: 60px;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-calculator me-2"></i>
+                Debug - Family Budget Tool
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="debug-info">
+            <h3>Debug Information</h3>
+            <p><strong>Bootstrap CSS Loaded:</strong> <span id="bootstrapStatus">Checking...</span></p>
+            <p><strong>Bootstrap Icons Loaded:</strong> <span id="iconsStatus">Checking...</span></p>
+            <p><strong>Bootstrap JS Loaded:</strong> <span id="bootstrapJsStatus">Checking...</span></p>
+            <p><strong>Custom JS Loaded:</strong> <span id="customJsStatus">Checking...</span></p>
+            <p><strong>Page Loaded:</strong> <span id="pageStatus">Loading...</span></p>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-check-circle me-2"></i>Test Card
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p>If you can see this styled card with icons, Bootstrap is working correctly.</p>
+                        <button class="btn btn-primary" onclick="testFunction()">Test Button</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <h6>Test Results:</h6>
+                    <ul id="testResults">
+                        <li>Initializing tests...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5.3.0 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function updateStatus(elementId, status, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = status;
+                element.className = isSuccess ? 'text-success fw-bold' : 'text-danger fw-bold';
+            }
+        }
+
+        function addTestResult(message, isSuccess = true) {
+            const results = document.getElementById('testResults');
+            if (results) {
+                const li = document.createElement('li');
+                li.textContent = message;
+                li.className = isSuccess ? 'text-success' : 'text-danger';
+                results.appendChild(li);
+            }
+        }
+
+        function testFunction() {
+            addTestResult('Button click test - SUCCESS!', true);
+            
+            // Test if we can create bootstrap components
+            try {
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                addTestResult('Bootstrap DOM manipulation - SUCCESS!', true);
+            } catch (error) {
+                addTestResult('Bootstrap DOM manipulation - FAILED: ' + error.message, false);
+            }
+        }
+
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const results = document.getElementById('testResults');
+            results.innerHTML = '';
+            
+            updateStatus('pageStatus', 'Page DOM Ready', true);
+            addTestResult('DOM Content Loaded - SUCCESS!', true);
+
+            // Test Bootstrap CSS
+            const testEl = document.createElement('div');
+            testEl.className = 'container';
+            document.body.appendChild(testEl);
+            const styles = window.getComputedStyle(testEl);
+            if (styles.paddingLeft !== '0px') {
+                updateStatus('bootstrapStatus', 'Loaded Successfully', true);
+                addTestResult('Bootstrap CSS - SUCCESS!', true);
+            } else {
+                updateStatus('bootstrapStatus', 'Failed to Load', false);
+                addTestResult('Bootstrap CSS - FAILED!', false);
+            }
+            document.body.removeChild(testEl);
+
+            // Test Bootstrap Icons
+            setTimeout(() => {
+                const iconTest = document.querySelector('.bi-calculator');
+                if (iconTest && window.getComputedStyle(iconTest, '::before').content !== 'none') {
+                    updateStatus('iconsStatus', 'Loaded Successfully', true);
+                    addTestResult('Bootstrap Icons - SUCCESS!', true);
+                } else {
+                    updateStatus('iconsStatus', 'Failed to Load', false);
+                    addTestResult('Bootstrap Icons - FAILED!', false);
+                }
+            }, 1000);
+
+            // Test Bootstrap JS
+            setTimeout(() => {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    updateStatus('bootstrapJsStatus', 'Loaded Successfully', true);
+                    addTestResult('Bootstrap JS - SUCCESS!', true);
+                } else {
+                    updateStatus('bootstrapJsStatus', 'Failed to Load', false);
+                    addTestResult('Bootstrap JS - FAILED!', false);
+                }
+            }, 1500);
+
+            // Test custom JS loading
+            setTimeout(() => {
+                updateStatus('customJsStatus', 'Debug Mode - Skipped', true);
+                addTestResult('Custom JS - DEBUG MODE', true);
+            }, 2000);
+        });
+
+        // Test error handling
+        window.addEventListener('error', function(e) {
+            addTestResult('JavaScript Error: ' + e.message, false);
+        });
+    </script>
+</body>
+</html>
