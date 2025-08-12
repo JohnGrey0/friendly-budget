@@ -3195,9 +3195,13 @@ class ResponsiveBudgetTool {
         modalTitle.textContent = title;
         modalBody.textContent = message;
 
+        // Show modal
+        const bsModal = new bootstrap.Modal(modal);
+        
         // Set up one-time event listener for confirm
         const handleConfirm = () => {
             onConfirm();
+            bsModal.hide(); // Close the modal after confirmation
             confirmBtn.removeEventListener('click', handleConfirm);
             modal.removeEventListener('hidden.bs.modal', handleCancel);
         };
@@ -3214,8 +3218,6 @@ class ResponsiveBudgetTool {
         confirmBtn.addEventListener('click', handleConfirm);
         modal.addEventListener('hidden.bs.modal', handleCancel, { once: true });
 
-        // Show modal
-        const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
     }
 
@@ -3226,27 +3228,111 @@ class ResponsiveBudgetTool {
     /**
      * Share budget
      */
-    shareBudget() {
-        const budgetData = {
-            people: this.people,
-            expenses: this.expenses,
-            settings: this.settings
-        };
+    async shareBudget() {
+        try {
+            // Validate that we have data to share
+            if (this.people.length === 0 && this.expenses.length === 0) {
+                this.showToast('No budget data to share. Please add people and expenses first.', 'warning');
+                return;
+            }
 
-        const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encodeURIComponent(JSON.stringify(budgetData))}`;
+            // Category mapping for shorter encoding
+            const categoryMap = {
+                'bills': '1', 'food': '2', 'transport': '3', 'entertainment': '4',
+                'savings': '5', 'emergency': '6', 'housing': '7', 'healthcare': '8',
+                'utilities': '9', 'insurance': '10', 'debt': '11', 'other': '12'
+            };
+            
+            // Sharing method mapping
+            const sharingMap = { 'even': 'e', 'percentage': 'p', 'custom': 'c' };
 
-        if (navigator.share) {
-            navigator.share({
-                title: 'Family Budget Tool - Shared Budget',
-                text: 'Check out my budget breakdown!',
-                url: shareUrl
-            }).then(() => {
-                this.showToast('Budget shared successfully!', 'success');
-            }).catch(() => {
-                this.copyToClipboard(shareUrl);
-            });
-        } else {
-            this.copyToClipboard(shareUrl);
+            // Create ultra-compressed shareable data
+            const shareData = {
+                // People data: [name, payPerPeriod, payPeriods, id]
+                p: this.people.map(person => [
+                    person.name,
+                    person.payPerPeriod || person.biWeeklyPay || 0,
+                    person.payPeriods || 26, // Always include payPeriods
+                    person.id || null // Always include ID (null if not set)
+                ]),
+                // Expenses data: [name, monthlyAmount, category, sharingMethod, subCategory]
+                e: this.expenses.map(expense => {
+                    const data = [
+                        expense.name,
+                        expense.monthlyAmount,
+                        categoryMap[expense.category] || '12', // Default to 'other'
+                        sharingMap[expense.sharingMethod] || 'e' // Default to 'even'
+                    ];
+                    // Only include subCategory if it exists and isn't empty
+                    if (expense.subcategory && expense.subcategory.trim() !== '') {
+                        data.push(expense.subcategory);
+                    }
+                    return data;
+                }),
+                // Settings (only include non-default values)
+                s: {}
+            };
+
+            // Add settings only if they differ from defaults
+            if (this.settings.emergencyFundTarget && this.settings.emergencyFundTarget > 0) {
+                shareData.s.ef = this.settings.emergencyFundTarget;
+            }
+            if (this.settings.emergencyFundTargetMonths && this.settings.emergencyFundTargetMonths !== 6) {
+                shareData.s.em = this.settings.emergencyFundTargetMonths;
+            }
+            if (this.settings.customPercentages && Object.keys(this.settings.customPercentages).length > 0) {
+                shareData.s.cp = this.settings.customPercentages;
+            }
+
+            // Remove empty settings object
+            if (Object.keys(shareData.s).length === 0) {
+                delete shareData.s;
+            }
+
+            // Compress and encode the data
+            const jsonString = JSON.stringify(shareData);
+            const encodedData = btoa(jsonString);
+            
+            // Create shareable URL - handle different protocols
+            let baseUrl;
+            if (window.location.protocol === 'file:') {
+                // For file:// protocol, clean the URL of any existing parameters or hash
+                baseUrl = window.location.href.split('?')[0].split('#')[0];
+            } else {
+                baseUrl = window.location.origin + window.location.pathname;
+            }
+            const shareUrl = `${baseUrl}?b=${encodedData}`;
+
+            // Log compression stats for debugging
+            const originalData = { people: this.people, expenses: this.expenses, settings: this.settings };
+            const originalSize = JSON.stringify(originalData).length;
+            const compressedSize = jsonString.length;
+            const reduction = Math.round((1 - compressedSize/originalSize) * 100);
+            console.log(`Budget sharing - Compression: ${originalSize} → ${compressedSize} chars (${reduction}% reduction)`);
+
+            // Check if Web Share API is supported
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Family Budget Tool - Shared Budget',
+                        text: 'Check out this budget breakdown!',
+                        url: shareUrl
+                    });
+                    this.showToast('Budget shared successfully!', 'success');
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        // If sharing failed (not user cancellation), fall back to clipboard
+                        await this.copyToClipboard(shareUrl);
+                    }
+                }
+            } else {
+                // Fall back to copying to clipboard
+                await this.copyToClipboard(shareUrl);
+            }
+
+        } catch (error) {
+            console.error('Error sharing budget:', error);
+            this.showToast('Error creating shareable link', 'error');
         }
     }
 
@@ -3296,6 +3382,86 @@ class ResponsiveBudgetTool {
 }
 
 // ==========================================================================
+// UTILITY FUNCTIONS
+// ==========================================================================
+
+/**
+ * Convert compressed share data back to full format
+ */
+function convertCompressedData(shareData) {
+    console.log('convertCompressedData called with:', shareData);
+    
+    // Category mapping (reverse of compression)
+    const categoryMap = {
+        '1': 'bills', '2': 'food', '3': 'transport', '4': 'entertainment',
+        '5': 'savings', '6': 'emergency', '7': 'housing', '8': 'healthcare',
+        '9': 'utilities', '10': 'insurance', '11': 'debt', '12': 'other'
+    };
+    
+    // Sharing method mapping (reverse)
+    const sharingMap = { 'e': 'even', 'p': 'percentage', 'c': 'custom' };
+
+    const result = {
+        people: [],
+        expenses: [],
+        settings: {
+            emergencyFundTarget: 0,
+            emergencyFundTargetMonths: 6,
+            customPercentages: {}
+        }
+    };
+
+    // Convert people data
+    if (shareData.p && Array.isArray(shareData.p)) {
+        console.log('Converting people data:', shareData.p);
+        result.people = shareData.p.map((personData, index) => {
+            const person = {
+                id: personData[3] || (index + 1), // Use provided ID or generate one
+                name: personData[0] || `Person ${index + 1}`,
+                payPerPeriod: personData[1] || 0, // The stored value is actually payPerPeriod
+                payPeriods: personData[2] || 26 // Default to bi-weekly
+            };
+            
+            // For backward compatibility, set biWeeklyPay to equal payPerPeriod
+            person.biWeeklyPay = person.payPerPeriod;
+            
+            console.log('Converted person:', person);
+            return person;
+        });
+    }
+
+    // Convert expenses data
+    if (shareData.e && Array.isArray(shareData.e)) {
+        console.log('Converting expenses data:', shareData.e);
+        result.expenses = shareData.e.map((expenseData, index) => ({
+            id: index + 1,
+            name: expenseData[0] || `Expense ${index + 1}`,
+            monthlyAmount: expenseData[1] || 0,
+            category: categoryMap[expenseData[2]] || 'other',
+            sharingMethod: sharingMap[expenseData[3]] || 'even',
+            subcategory: expenseData[4] || ''
+        }));
+    }
+
+    // Convert settings
+    if (shareData.s && typeof shareData.s === 'object') {
+        console.log('Converting settings data:', shareData.s);
+        if (shareData.s.ef !== undefined) {
+            result.settings.emergencyFundTarget = shareData.s.ef;
+        }
+        if (shareData.s.em !== undefined) {
+            result.settings.emergencyFundTargetMonths = shareData.s.em;
+        }
+        if (shareData.s.cp && typeof shareData.s.cp === 'object') {
+            result.settings.customPercentages = shareData.s.cp;
+        }
+    }
+
+    console.log('Final converted result:', result);
+    return result;
+}
+
+// ==========================================================================
 // INITIALIZATION
 // ==========================================================================
 
@@ -3303,17 +3469,39 @@ class ResponsiveBudgetTool {
 document.addEventListener('DOMContentLoaded', () => {
     // Check for shared data in URL
     const urlParams = new URLSearchParams(window.location.search);
-    const sharedData = urlParams.get('data');
+    const compressedData = urlParams.get('b'); // New compressed format
+    const legacyData = urlParams.get('data'); // Old format for backwards compatibility
     
-    if (sharedData) {
+    if (compressedData) {
         try {
-            const parsedData = JSON.parse(decodeURIComponent(sharedData));
+            // Decode compressed data
+            const jsonString = atob(compressedData);
+            const shareData = JSON.parse(jsonString);
+            
+            // Convert compressed data back to full format
+            const budgetData = convertCompressedData(shareData);
+            
             // Store shared data temporarily
-            localStorage.setItem('sharedBudgetData', JSON.stringify(parsedData));
+            localStorage.setItem('sharedBudgetData', JSON.stringify(budgetData));
             // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error) {
-            console.error('Error parsing shared data:', error);
+            console.error('Error parsing compressed shared data:', error);
+            // Try to show user-friendly error
+            setTimeout(() => {
+                if (window.budgetTool) {
+                    window.budgetTool.showToast('Invalid or corrupted share link', 'error');
+                }
+            }, 1000);
+        }
+    } else if (legacyData) {
+        try {
+            // Handle legacy format
+            const parsedData = JSON.parse(decodeURIComponent(legacyData));
+            localStorage.setItem('sharedBudgetData', JSON.stringify(parsedData));
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (error) {
+            console.error('Error parsing legacy shared data:', error);
         }
     }
 
@@ -3322,16 +3510,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle shared data if present
     const sharedBudgetData = localStorage.getItem('sharedBudgetData');
+    console.log('Checking for shared data in localStorage:', sharedBudgetData);
     if (sharedBudgetData) {
         try {
             const data = JSON.parse(sharedBudgetData);
+            console.log('Parsed shared data:', data);
+            console.log('People count:', data.people?.length || 0);
+            console.log('Expenses count:', data.expenses?.length || 0);
+            
             budgetTool.showConfirm(
                 'Load Shared Budget?',
                 'A shared budget was detected. Would you like to load it? This will replace your current budget data.',
                 () => {
+                    console.log('User confirmed loading shared data');
                     budgetTool.people = data.people || [];
                     budgetTool.expenses = data.expenses || [];
                     budgetTool.settings = { ...budgetTool.settings, ...data.settings };
+                    console.log('Data loaded into budgetTool:', {
+                        people: budgetTool.people,
+                        expenses: budgetTool.expenses
+                    });
                     budgetTool.saveData();
                     budgetTool.render();
                     budgetTool.showToast('Shared budget loaded successfully!', 'success');
@@ -3342,6 +3540,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             localStorage.removeItem('sharedBudgetData');
         }
+    } else {
+        console.log('No shared data found in localStorage');
     }
 });
 
