@@ -3246,47 +3246,57 @@ class ResponsiveBudgetTool {
             // Sharing method mapping
             const sharingMap = { 'even': 'e', 'percentage': 'p', 'custom': 'c' };
 
-            // Create ultra-compressed shareable data
-            const shareData = {
-                // People data: [name, payPerPeriod, payPeriods, id]
-                p: this.people.map(person => [
-                    person.name,
-                    person.payPerPeriod || person.biWeeklyPay || 0,
-                    person.payPeriods || 26, // Always include payPeriods
-                    person.id || null // Always include ID (null if not set)
-                ]),
-                // Expenses data: [name, monthlyAmount, category, sharingMethod, subCategory]
-                e: this.expenses.map(expense => {
-                    const data = [
-                        expense.name,
-                        expense.monthlyAmount,
-                        categoryMap[expense.category] || '12', // Default to 'other'
-                        sharingMap[expense.sharingMethod] || 'e' // Default to 'even'
-                    ];
-                    // Only include subCategory if it exists and isn't empty
-                    if (expense.subcategory && expense.subcategory.trim() !== '') {
-                        data.push(expense.subcategory);
+            // Create ultra-compressed shareable data with minimal property names
+            const shareData = {};
+            
+            // People data (use 'p')
+            shareData.p = this.people.map(person => {
+                const data = [person.name, person.payPerPeriod || person.biWeeklyPay || 0];
+                // Only include payPeriods if different from default
+                if (person.payPeriods && person.payPeriods !== 26) {
+                    data.push(person.payPeriods);
+                }
+                // Only include ID if there are custom percentages for this person
+                if (this.settings.customPercentages && this.settings.customPercentages[person.id]) {
+                    // If we're adding ID but payPeriods wasn't added, we need a placeholder
+                    if (data.length === 2) {
+                        data.push(26); // Add default payPeriods as placeholder
                     }
-                    return data;
-                }),
-                // Settings (only include non-default values)
-                s: {}
-            };
+                    data.push(person.id);
+                }
+                return data;
+            });
+            
+            // Expenses data (use 'e')
+            shareData.e = this.expenses.map(expense => {
+                const data = [
+                    expense.name,
+                    expense.monthlyAmount,
+                    categoryMap[expense.category] || '12', // Default to 'other'
+                    sharingMap[expense.sharingMethod] || 'e' // Default to 'even'
+                ];
+                // Only include subCategory if it exists and isn't empty
+                if (expense.subcategory && expense.subcategory.trim() !== '') {
+                    data.push(expense.subcategory);
+                }
+                return data;
+            });
 
-            // Add settings only if they differ from defaults
+            // Settings (use 's', only include non-default values)
+            const settings = {};
             if (this.settings.emergencyFundTarget && this.settings.emergencyFundTarget > 0) {
-                shareData.s.ef = this.settings.emergencyFundTarget;
+                settings.f = this.settings.emergencyFundTarget; // 'f' instead of 'ef'
             }
             if (this.settings.emergencyFundTargetMonths && this.settings.emergencyFundTargetMonths !== 6) {
-                shareData.s.em = this.settings.emergencyFundTargetMonths;
+                settings.m = this.settings.emergencyFundTargetMonths; // 'm' instead of 'em'
             }
             if (this.settings.customPercentages && Object.keys(this.settings.customPercentages).length > 0) {
-                shareData.s.cp = this.settings.customPercentages;
+                settings.c = this.settings.customPercentages; // 'c' instead of 'cp'
             }
-
-            // Remove empty settings object
-            if (Object.keys(shareData.s).length === 0) {
-                delete shareData.s;
+            
+            // Only include settings if not empty
+            if (Object.keys(settings).length > 0) {
+                shareData.s = settings;
             }
 
             // Compress and encode the data
@@ -3413,11 +3423,26 @@ function convertCompressedData(shareData) {
     if (shareData.p && Array.isArray(shareData.p)) {
         result.people = shareData.p.map((personData, index) => {
             const person = {
-                id: personData[3] || (index + 1), // Use provided ID or generate one
+                id: index + 1, // Default ID
                 name: personData[0] || `Person ${index + 1}`,
-                payPerPeriod: personData[1] || 0, // The stored value is actually payPerPeriod
-                payPeriods: personData[2] || 26 // Default to bi-weekly
+                payPerPeriod: personData[1] || 0,
+                payPeriods: 26 // Default to bi-weekly
             };
+            
+            // Handle variable-length array structure
+            if (personData.length >= 3) {
+                // Check if third element is payPeriods (number) or ID
+                if (typeof personData[2] === 'number' && personData[2] !== person.id) {
+                    person.payPeriods = personData[2];
+                    // Check if fourth element is ID
+                    if (personData.length >= 4) {
+                        person.id = personData[3];
+                    }
+                } else {
+                    // Third element is ID, payPeriods remains default
+                    person.id = personData[2];
+                }
+            }
             
             // For backward compatibility, set biWeeklyPay to equal payPerPeriod
             person.biWeeklyPay = person.payPerPeriod;
@@ -3440,14 +3465,15 @@ function convertCompressedData(shareData) {
 
     // Convert settings
     if (shareData.s && typeof shareData.s === 'object') {
-        if (shareData.s.ef !== undefined) {
-            result.settings.emergencyFundTarget = shareData.s.ef;
+        // Handle both old and new property names for backward compatibility
+        if (shareData.s.f !== undefined || shareData.s.ef !== undefined) {
+            result.settings.emergencyFundTarget = shareData.s.f || shareData.s.ef;
         }
-        if (shareData.s.em !== undefined) {
-            result.settings.emergencyFundTargetMonths = shareData.s.em;
+        if (shareData.s.m !== undefined || shareData.s.em !== undefined) {
+            result.settings.emergencyFundTargetMonths = shareData.s.m || shareData.s.em;
         }
-        if (shareData.s.cp && typeof shareData.s.cp === 'object') {
-            result.settings.customPercentages = shareData.s.cp;
+        if (shareData.s.c || shareData.s.cp) {
+            result.settings.customPercentages = shareData.s.c || shareData.s.cp;
         }
     }
 
