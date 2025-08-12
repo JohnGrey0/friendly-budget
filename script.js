@@ -3389,8 +3389,6 @@ class ResponsiveBudgetTool {
  * Convert compressed share data back to full format
  */
 function convertCompressedData(shareData) {
-    console.log('convertCompressedData called with:', shareData);
-    
     // Category mapping (reverse of compression)
     const categoryMap = {
         '1': 'bills', '2': 'food', '3': 'transport', '4': 'entertainment',
@@ -3413,7 +3411,6 @@ function convertCompressedData(shareData) {
 
     // Convert people data
     if (shareData.p && Array.isArray(shareData.p)) {
-        console.log('Converting people data:', shareData.p);
         result.people = shareData.p.map((personData, index) => {
             const person = {
                 id: personData[3] || (index + 1), // Use provided ID or generate one
@@ -3425,14 +3422,12 @@ function convertCompressedData(shareData) {
             // For backward compatibility, set biWeeklyPay to equal payPerPeriod
             person.biWeeklyPay = person.payPerPeriod;
             
-            console.log('Converted person:', person);
             return person;
         });
     }
 
     // Convert expenses data
     if (shareData.e && Array.isArray(shareData.e)) {
-        console.log('Converting expenses data:', shareData.e);
         result.expenses = shareData.e.map((expenseData, index) => ({
             id: index + 1,
             name: expenseData[0] || `Expense ${index + 1}`,
@@ -3445,7 +3440,6 @@ function convertCompressedData(shareData) {
 
     // Convert settings
     if (shareData.s && typeof shareData.s === 'object') {
-        console.log('Converting settings data:', shareData.s);
         if (shareData.s.ef !== undefined) {
             result.settings.emergencyFundTarget = shareData.s.ef;
         }
@@ -3457,7 +3451,6 @@ function convertCompressedData(shareData) {
         }
     }
 
-    console.log('Final converted result:', result);
     return result;
 }
 
@@ -3510,26 +3503,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle shared data if present
     const sharedBudgetData = localStorage.getItem('sharedBudgetData');
-    console.log('Checking for shared data in localStorage:', sharedBudgetData);
     if (sharedBudgetData) {
         try {
             const data = JSON.parse(sharedBudgetData);
-            console.log('Parsed shared data:', data);
-            console.log('People count:', data.people?.length || 0);
-            console.log('Expenses count:', data.expenses?.length || 0);
-            
             budgetTool.showConfirm(
                 'Load Shared Budget?',
                 'A shared budget was detected. Would you like to load it? This will replace your current budget data.',
                 () => {
-                    console.log('User confirmed loading shared data');
                     budgetTool.people = data.people || [];
                     budgetTool.expenses = data.expenses || [];
                     budgetTool.settings = { ...budgetTool.settings, ...data.settings };
-                    console.log('Data loaded into budgetTool:', {
-                        people: budgetTool.people,
-                        expenses: budgetTool.expenses
-                    });
                     budgetTool.saveData();
                     budgetTool.render();
                     budgetTool.showToast('Shared budget loaded successfully!', 'success');
@@ -3540,8 +3523,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             localStorage.removeItem('sharedBudgetData');
         }
-    } else {
-        console.log('No shared data found in localStorage');
     }
 });
 
