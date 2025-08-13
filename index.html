@@ -103,7 +103,7 @@
                         <div class="tab-pane fade show active" id="people-panel" role="tabpanel">
                             <div class="row g-4">
                                 <!-- Add Person Form -->
-                                <div class="col-12 col-lg-6 col-xl-5">
+                                <div class="col-12 col-lg-5 col-xl-4">
                                     <div class="card h-100">
                                         <div class="card-header bg-primary text-white">
                                             <h5 class="card-title mb-0">
@@ -112,24 +112,26 @@
                                         </div>
                                         <div class="card-body">
                                             <form id="addPersonForm">
-                                                <div class="mb-3">
-                                                    <label for="personName" class="form-label">Name *</label>
-                                                    <input type="text" class="form-control" id="personName"
-                                                        placeholder="Enter name" required>
-                                                </div>
-
-                                                <div class="row">
-                                                    <div class="col-12 col-sm-6 mb-3">
+                                                <div class="row g-3">
+                                                    <!-- Row 1: Name and Bi-weekly Pay Amount -->
+                                                    <div class="col-6">
+                                                        <label for="personName" class="form-label">Name *</label>
+                                                        <input type="text" class="form-control" id="personName"
+                                                            placeholder="Enter name" required>
+                                                    </div>
+                                                    <div class="col-6">
                                                         <label for="biWeeklyPay" class="form-label" id="payAmountLabel">Pay Amount Per Period *</label>
                                                         <div class="input-group">
                                                             <span class="input-group-text">$</span>
                                                             <input type="number" class="form-control" id="biWeeklyPay"
                                                                 placeholder="0.00" step="0.01" min="0" required>
                                                         </div>
-                                                        <small class="text-muted" id="payAmountHelp">Enter your pay amount for the selected schedule</small>
                                                     </div>
+                                                </div>
 
-                                                    <div class="col-12 col-sm-6 mb-3">
+                                                <div class="row g-3 mt-2">
+                                                    <!-- Row 2: Pay Schedule and Add Button -->
+                                                    <div class="col-6">
                                                         <label for="payPeriods" class="form-label">Pay Schedule</label>
                                                         <select class="form-select" id="payPeriods" onchange="budgetTool.updatePayLabel()">
                                                             <option value="26" selected>Bi-weekly (26/year)</option>
@@ -138,18 +140,43 @@
                                                             <option value="52">Weekly (52/year)</option>
                                                         </select>
                                                     </div>
+                                                    <div class="col-6 d-flex align-items-end">
+                                                        <button type="submit" class="btn btn-primary w-100">
+                                                            <i class="bi bi-plus-circle me-1"></i>Add
+                                                        </button>
+                                                    </div>
                                                 </div>
-
-                                                <button type="submit" class="btn btn-primary w-100">
-                                                    <i class="bi bi-plus-circle me-2"></i>Add Person
-                                                </button>
+                                                
+                                                <div class="mt-2 d-none">
+                                                    <small class="text-muted" id="payAmountHelp">Enter your pay amount for the selected schedule</small>
+                                                </div>
                                             </form>
                                         </div>
                                     </div>
                                 </div>
 
+                                <!-- Household Members -->
+                                <div class="col-12 col-lg-7 col-xl-8">
+                                    <div class="card h-100">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-people me-2"></i>Household Members
+                                            </h5>
+                                            <span class="badge bg-primary" id="peopleCount">0</span>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <div id="peopleList" class="people-container">
+                                                <!-- Dynamic individual member content will be inserted here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Global Settings and Household Overview -->
+                            <div class="row mt-4 g-4">
                                 <!-- Global Settings -->
-                                <div class="col-12 col-lg-6 col-xl-5">
+                                <div class="col-12 col-lg-6">
                                     <div class="card h-100">
                                         <div class="card-header bg-success text-white">
                                             <h5 class="card-title mb-0">
@@ -215,23 +242,17 @@
                                     </div>
                                 </div>
 
-                                <!-- Spacer for better centering on extra large screens -->
-                                <div class="col-xl-2 d-none d-xl-block"></div>
-                            </div>
-
-                            <!-- People List -->
-                            <div class="row mt-4">
-                                <div class="col-12">
-                                    <div class="card">
-                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                <!-- Household Overview -->
+                                <div class="col-12 col-lg-6">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-info text-white">
                                             <h5 class="card-title mb-0">
-                                                <i class="bi bi-people me-2"></i>Household Members
+                                                <i class="bi bi-house-heart me-2"></i>Household Overview
                                             </h5>
-                                            <span class="badge bg-primary" id="peopleCount">0</span>
                                         </div>
                                         <div class="card-body p-0">
-                                            <div id="peopleList" class="people-container">
-                                                <!-- Dynamic content will be inserted here -->
+                                            <div id="householdOverview" class="household-overview-container">
+                                                <!-- Dynamic household summary content will be inserted here -->
                                             </div>
                                         </div>
                                     </div>
