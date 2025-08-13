@@ -787,7 +787,7 @@ class ResponsiveBudgetTool {
                     const personGradient = colorGradients[index % colorGradients.length];
 
                     return `
-                        <div class="col-12 col-sm-6 col-lg-4">
+                        <div class="col-12 col-sm-6 col-lg-6">
                             <div class="person-card-compact p-3 rounded" style="background: ${personGradient}; color: white;">
                                 <!-- Person Header -->
                                 <div class="d-flex align-items-center mb-3">
@@ -1250,9 +1250,9 @@ class ResponsiveBudgetTool {
                         </div>
                         
                         <div class="collapse show" id="${categoryId}">
-                            <div class="list-group list-group-flush">
+                            <div class="list-group list-group-flush p-2">
                                 ${expenses.map((expense, index) => `
-                                    <div class="list-group-item px-2 py-1 ${index % 2 === 0 ? 'bg-body-secondary bg-opacity-50' : ''}">
+                                    <div class="list-group-item px-2 py-1 rounded mb-1 ${index % 2 === 0 ? 'bg-body-secondary bg-opacity-50' : ''}">
                                         <!-- Main expense row - 3 column layout -->
                                         <div class="row align-items-start g-1">
                                             <!-- Column 1: Name and Subcategory -->
