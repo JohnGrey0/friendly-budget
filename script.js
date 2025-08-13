@@ -2190,9 +2190,8 @@ class ResponsiveBudgetTool {
         const newIncome = originalIncome * (1 + changePercent / 100);
         const newBalance = newIncome - originalExpenses;
         
-        // Calculate proper savings rate using scaled savings calculation
-        const newTotalSavings = this.calculateScaledSavings(originalIncome, newExpenses, originalExpenses);
-        const newSavingsRate = newIncome > 0 ? Math.round((newTotalSavings / newIncome) * 100) : 0;
+        // Calculate savings rate: new savings (balance) as percentage of new income
+        const newSavingsRate = newIncome > 0 ? Math.round((newBalance / newIncome) * 100) : 0;
 
         // Update percentage display
         const percentElement = document.getElementById('incomeChangePercent');
