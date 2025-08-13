@@ -1018,20 +1018,88 @@ class ResponsiveBudgetTool {
             input.className = 'form-select form-select-sm inline-edit';
             input.innerHTML = `
                 <option value="">No subcategory</option>
-                <option value="food" ${expense.subCategory === 'food' ? 'selected' : ''}>Food</option>
-                <option value="transport" ${expense.subCategory === 'transport' ? 'selected' : ''}>Transport</option>
-                <option value="entertainment" ${expense.subCategory === 'entertainment' ? 'selected' : ''}>Entertainment</option>
-                <option value="utilities" ${expense.subCategory === 'utilities' ? 'selected' : ''}>Utilities</option>
-                <option value="insurance" ${expense.subCategory === 'insurance' ? 'selected' : ''}>Insurance</option>
-                <option value="healthcare" ${expense.subCategory === 'healthcare' ? 'selected' : ''}>Healthcare</option>
-                <option value="education" ${expense.subCategory === 'education' ? 'selected' : ''}>Education</option>
-                <option value="housing" ${expense.subCategory === 'housing' ? 'selected' : ''}>Housing</option>
+                
+                <!-- Housing & Home -->
+                <option value="rent-mortgage" ${expense.subCategory === 'rent-mortgage' ? 'selected' : ''}>Rent/Mortgage</option>
+                <option value="utilities-electric" ${expense.subCategory === 'utilities-electric' ? 'selected' : ''}>Utilities - Electric</option>
+                <option value="utilities-gas" ${expense.subCategory === 'utilities-gas' ? 'selected' : ''}>Utilities - Gas</option>
+                <option value="utilities-water" ${expense.subCategory === 'utilities-water' ? 'selected' : ''}>Utilities - Water/Sewer</option>
+                <option value="utilities-internet" ${expense.subCategory === 'utilities-internet' ? 'selected' : ''}>Internet/Cable</option>
+                <option value="utilities-phone" ${expense.subCategory === 'utilities-phone' ? 'selected' : ''}>Phone/Mobile</option>
+                <option value="home-maintenance" ${expense.subCategory === 'home-maintenance' ? 'selected' : ''}>Home Maintenance</option>
+                <option value="property-tax" ${expense.subCategory === 'property-tax' ? 'selected' : ''}>Property Tax</option>
+                <option value="hoa-fees" ${expense.subCategory === 'hoa-fees' ? 'selected' : ''}>HOA Fees</option>
+                
+                <!-- Transportation -->
+                <option value="car-payment" ${expense.subCategory === 'car-payment' ? 'selected' : ''}>Car Payment</option>
+                <option value="gas-fuel" ${expense.subCategory === 'gas-fuel' ? 'selected' : ''}>Gas/Fuel</option>
+                <option value="car-insurance" ${expense.subCategory === 'car-insurance' ? 'selected' : ''}>Auto Insurance</option>
+                <option value="car-maintenance" ${expense.subCategory === 'car-maintenance' ? 'selected' : ''}>Car Maintenance</option>
+                <option value="public-transport" ${expense.subCategory === 'public-transport' ? 'selected' : ''}>Public Transport</option>
+                <option value="parking" ${expense.subCategory === 'parking' ? 'selected' : ''}>Parking</option>
+                <option value="rideshare" ${expense.subCategory === 'rideshare' ? 'selected' : ''}>Rideshare/Taxi</option>
+                
+                <!-- Food & Dining -->
+                <option value="groceries" ${expense.subCategory === 'groceries' ? 'selected' : ''}>Groceries</option>
+                <option value="dining-out" ${expense.subCategory === 'dining-out' ? 'selected' : ''}>Dining Out</option>
+                <option value="fast-food" ${expense.subCategory === 'fast-food' ? 'selected' : ''}>Fast Food</option>
+                <option value="coffee-drinks" ${expense.subCategory === 'coffee-drinks' ? 'selected' : ''}>Coffee/Drinks</option>
+                <option value="meal-delivery" ${expense.subCategory === 'meal-delivery' ? 'selected' : ''}>Meal Delivery</option>
+                
+                <!-- Healthcare -->
+                <option value="health-insurance" ${expense.subCategory === 'health-insurance' ? 'selected' : ''}>Health Insurance</option>
+                <option value="dental-vision" ${expense.subCategory === 'dental-vision' ? 'selected' : ''}>Dental/Vision</option>
+                <option value="prescriptions" ${expense.subCategory === 'prescriptions' ? 'selected' : ''}>Prescriptions</option>
+                <option value="doctor-visits" ${expense.subCategory === 'doctor-visits' ? 'selected' : ''}>Doctor Visits</option>
+                <option value="mental-health" ${expense.subCategory === 'mental-health' ? 'selected' : ''}>Mental Health</option>
+                
+                <!-- Insurance -->
+                <option value="life-insurance" ${expense.subCategory === 'life-insurance' ? 'selected' : ''}>Life Insurance</option>
+                <option value="disability-insurance" ${expense.subCategory === 'disability-insurance' ? 'selected' : ''}>Disability Insurance</option>
+                <option value="home-insurance" ${expense.subCategory === 'home-insurance' ? 'selected' : ''}>Home/Renters Insurance</option>
+                
+                <!-- Debt & Finance -->
+                <option value="credit-cards" ${expense.subCategory === 'credit-cards' ? 'selected' : ''}>Credit Card Payments</option>
+                <option value="student-loans" ${expense.subCategory === 'student-loans' ? 'selected' : ''}>Student Loans</option>
+                <option value="personal-loans" ${expense.subCategory === 'personal-loans' ? 'selected' : ''}>Personal Loans</option>
+                <option value="business-loans" ${expense.subCategory === 'business-loans' ? 'selected' : ''}>Business Loans</option>
+                
+                <!-- Savings & Investment -->
+                <option value="emergency-fund" ${expense.subCategory === 'emergency-fund' ? 'selected' : ''}>Emergency Fund</option>
+                <option value="retirement-401k" ${expense.subCategory === 'retirement-401k' ? 'selected' : ''}>401k/403b</option>
+                <option value="retirement-ira" ${expense.subCategory === 'retirement-ira' ? 'selected' : ''}>IRA</option>
+                <option value="stocks-bonds" ${expense.subCategory === 'stocks-bonds' ? 'selected' : ''}>Stocks/Bonds</option>
+                <option value="savings-goals" ${expense.subCategory === 'savings-goals' ? 'selected' : ''}>Savings Goals</option>
+                
+                <!-- Entertainment & Lifestyle -->
+                <option value="streaming-services" ${expense.subCategory === 'streaming-services' ? 'selected' : ''}>Streaming Services</option>
+                <option value="gaming" ${expense.subCategory === 'gaming' ? 'selected' : ''}>Gaming</option>
+                <option value="movies-events" ${expense.subCategory === 'movies-events' ? 'selected' : ''}>Movies/Events</option>
+                <option value="hobbies" ${expense.subCategory === 'hobbies' ? 'selected' : ''}>Hobbies</option>
+                <option value="gym-fitness" ${expense.subCategory === 'gym-fitness' ? 'selected' : ''}>Gym/Fitness</option>
+                <option value="travel-vacation" ${expense.subCategory === 'travel-vacation' ? 'selected' : ''}>Travel/Vacation</option>
+                
+                <!-- Personal Care -->
                 <option value="clothing" ${expense.subCategory === 'clothing' ? 'selected' : ''}>Clothing</option>
-                <option value="personal-care" ${expense.subCategory === 'personal-care' ? 'selected' : ''}>Personal Care</option>
-                <option value="subscriptions" ${expense.subCategory === 'subscriptions' ? 'selected' : ''}>Subscriptions</option>
-                <option value="debt-payments" ${expense.subCategory === 'debt-payments' ? 'selected' : ''}>Debt Payments</option>
-                <option value="investments" ${expense.subCategory === 'investments' ? 'selected' : ''}>Investments</option>
-                <option value="retirement" ${expense.subCategory === 'retirement' ? 'selected' : ''}>Retirement</option>
+                <option value="haircare-beauty" ${expense.subCategory === 'haircare-beauty' ? 'selected' : ''}>Hair/Beauty</option>
+                <option value="personal-items" ${expense.subCategory === 'personal-items' ? 'selected' : ''}>Personal Items</option>
+                
+                <!-- Family & Children -->
+                <option value="childcare" ${expense.subCategory === 'childcare' ? 'selected' : ''}>Childcare</option>
+                <option value="school-supplies" ${expense.subCategory === 'school-supplies' ? 'selected' : ''}>School Supplies</option>
+                <option value="kids-activities" ${expense.subCategory === 'kids-activities' ? 'selected' : ''}>Kids Activities</option>
+                <option value="baby-supplies" ${expense.subCategory === 'baby-supplies' ? 'selected' : ''}>Baby Supplies</option>
+                
+                <!-- Business & Education -->
+                <option value="education-tuition" ${expense.subCategory === 'education-tuition' ? 'selected' : ''}>Tuition</option>
+                <option value="books-supplies" ${expense.subCategory === 'books-supplies' ? 'selected' : ''}>Books/Supplies</option>
+                <option value="professional-dev" ${expense.subCategory === 'professional-dev' ? 'selected' : ''}>Professional Development</option>
+                <option value="business-expenses" ${expense.subCategory === 'business-expenses' ? 'selected' : ''}>Business Expenses</option>
+                
+                <!-- Miscellaneous -->
+                <option value="gifts-donations" ${expense.subCategory === 'gifts-donations' ? 'selected' : ''}>Gifts/Donations</option>
+                <option value="pet-expenses" ${expense.subCategory === 'pet-expenses' ? 'selected' : ''}>Pet Expenses</option>
+                <option value="legal-fees" ${expense.subCategory === 'legal-fees' ? 'selected' : ''}>Legal Fees</option>
                 <option value="other" ${expense.subCategory === 'other' ? 'selected' : ''}>Other</option>
             `;
         } else if (field === 'sharingMethod') {
@@ -2190,8 +2258,10 @@ class ResponsiveBudgetTool {
         const newIncome = originalIncome * (1 + changePercent / 100);
         const newBalance = newIncome - originalExpenses;
         
-        // Calculate savings rate: new savings (balance) as percentage of new income
-        const newSavingsRate = newIncome > 0 ? Math.round((newBalance / newIncome) * 100) : 0;
+        // Calculate savings rate using the same method as expense scenario
+        // This ensures consistent behavior between income and expense changes
+        const newTotalSavings = this.calculateScaledSavings(newIncome, originalExpenses, originalExpenses);
+        const newSavingsRate = newIncome > 0 ? Math.round((newTotalSavings / newIncome) * 100) : 0;
 
         // Update percentage display
         const percentElement = document.getElementById('incomeChangePercent');
