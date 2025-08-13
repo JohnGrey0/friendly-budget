@@ -445,10 +445,10 @@ class ResponsiveBudgetTool {
         const help = document.getElementById('payAmountHelp');
         
         const scheduleLabels = {
-            52: { label: 'Weekly Pay Amount *', help: 'Enter your weekly pay amount' },
-            26: { label: 'Bi-weekly Pay Amount *', help: 'Enter your bi-weekly pay amount' },
-            24: { label: 'Semi-monthly Pay Amount *', help: 'Enter your semi-monthly pay amount' },
-            12: { label: 'Monthly Pay Amount *', help: 'Enter your monthly pay amount' }
+            52: { label: 'Paycheck', help: 'Enter your weekly paycheck amount' },
+            26: { label: 'Paycheck', help: 'Enter your bi-weekly paycheck amount' },
+            24: { label: 'Paycheck', help: 'Enter your semi-monthly paycheck amount' },
+            12: { label: 'Paycheck', help: 'Enter your monthly paycheck amount' }
         };
         
         const scheduleInfo = scheduleLabels[payPeriods] || scheduleLabels[26];
@@ -1940,76 +1940,8 @@ class ResponsiveBudgetTool {
             </div>
         `;
 
-        // All Categories and Subcategories List
-        html += `
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Category & Subcategory Breakdown</h5>
-                    </div>
-                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-        `;
-
-        // Group expenses by category and subcategory
-        const categoryMap = {};
-        this.expenses.forEach(expense => {
-            const category = expense.category || 'Other';
-            const subcategory = expense.subcategory || 'General';
-            
-            if (!categoryMap[category]) {
-                categoryMap[category] = { total: 0, subcategories: {} };
-            }
-            
-            if (!categoryMap[category].subcategories[subcategory]) {
-                categoryMap[category].subcategories[subcategory] = 0;
-            }
-            
-            const amount = expense.monthlyAmount || 0;
-            categoryMap[category].total += amount;
-            categoryMap[category].subcategories[subcategory] += amount;
-        });
-
-        // Sort categories by total amount
-        const sortedCategories = Object.entries(categoryMap)
-            .sort(([,a], [,b]) => b.total - a.total);
-
-        sortedCategories.forEach(([categoryName, categoryData]) => {
-            const categoryPercent = analytics.totalExpenses > 0 ? 
-                Math.round((categoryData.total / analytics.totalExpenses) * 100) : 0;
-            
-            html += `
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-1">${this.capitalize(categoryName)}</h6>
-                        <span class="badge bg-primary">$${this.formatNumber(categoryData.total)} (${categoryPercent}%)</span>
-                    </div>
-            `;
-
-            // Sort subcategories by amount
-            const sortedSubcategories = Object.entries(categoryData.subcategories)
-                .sort(([,a], [,b]) => b - a);
-
-            sortedSubcategories.forEach(([subcategoryName, amount]) => {
-                const subPercent = categoryData.total > 0 ? 
-                    Math.round((amount / categoryData.total) * 100) : 0;
-                
-                html += `
-                    <div class="d-flex justify-content-between text-muted ps-3">
-                        <span>• ${this.capitalize(subcategoryName)}</span>
-                        <span>$${this.formatNumber(amount)} (${subPercent}%)</span>
-                    </div>
-                `;
-            });
-
-            html += `</div>`;
-        });
-
-        html += `
-                    </div>
-                </div>
-            </div>
-        `;
-
+        // All Categories and Subcategories List - REMOVED (redundant with chart)
+        
         // Savings Growth Projection
         html += `
             <div class="col-lg-6">
@@ -2052,29 +1984,18 @@ class ResponsiveBudgetTool {
             </div>
         `;
 
-        // Expense Distribution Chart
+        // Spending by Category Chart (Enhanced)
         html += `
             <div class="col-lg-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Expense Distribution</h5>
+                        <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Spending by Category</h5>
                     </div>
-                    <div class="card-body text-center">
-                        <canvas id="expenseDistributionChart" width="400" height="400"></canvas>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Subcategory Breakdown Graph
-        html += `
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Subcategory Breakdown</h5>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="subcategoryChart" width="800" height="400"></canvas>
+                    <div class="card-body text-center" style="height: 400px; position: relative;">
+                        <canvas id="expenseDistributionChart"></canvas>
+                        <div class="mt-2">
+                            <small class="text-muted">Visual breakdown of monthly spending across categories</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2140,12 +2061,21 @@ class ResponsiveBudgetTool {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 10
+                        }
+                    },
                     plugins: {
                         legend: {
                             position: 'bottom',
                             labels: {
                                 boxWidth: 12,
-                                padding: 15
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
                             }
                         },
                         tooltip: {
@@ -2156,58 +2086,6 @@ class ResponsiveBudgetTool {
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                     const percentage = ((value / total) * 100).toFixed(1);
                                     return `${label}: $${this.formatNumber(value)} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Subcategory Bar Chart
-        const subcategoryCtx = document.getElementById('subcategoryChart');
-        if (subcategoryCtx && Object.keys(analytics.subcategoryBreakdown).length > 0) {
-            const subcategoryData = Object.entries(analytics.subcategoryBreakdown)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 15); // Show top 15 subcategories
-
-            this.charts.subcategory = new Chart(subcategoryCtx, {
-                type: 'bar',
-                data: {
-                    labels: subcategoryData.map(([name]) => this.capitalize(name)),
-                    datasets: [{
-                        label: 'Monthly Amount',
-                        data: subcategoryData.map(([,amount]) => amount),
-                        backgroundColor: '#36A2EB',
-                        borderColor: '#1E88E5',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: (value) => '$' + this.formatNumber(value)
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 45
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => {
-                                    return `${context.label}: $${this.formatNumber(context.parsed.y)}`;
                                 }
                             }
                         }
@@ -3233,7 +3111,7 @@ class ResponsiveBudgetTool {
 
     getSharingMethodLabel(method) {
         const labels = {
-            percentage: '📊 Weighted by Income',
+            percentage: '📊 By Income',
             even: '⚖️ Split Evenly',
             custom: '🎛️ Custom Split'
         };
