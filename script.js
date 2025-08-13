@@ -561,7 +561,9 @@ class ResponsiveBudgetTool {
             return;
         }
         
-        const originalValue = person[field];
+        const originalValue = field === 'biWeeklyPay' ? 
+            (person.payPerPeriod || person.biWeeklyPay) : 
+            person[field];
         const originalContent = element.innerHTML;
         
         // Create appropriate input based on field type
@@ -621,23 +623,39 @@ class ResponsiveBudgetTool {
         const saveEdit = () => {
             const newValue = input.value.trim();
             
-            // Validate
+            // Check if value actually changed
+            let processedNewValue;
             if (field === 'biWeeklyPay') {
-                const numValue = parseFloat(newValue);
-                if (isNaN(numValue) || numValue < 0) {
+                processedNewValue = parseFloat(newValue);
+                if (isNaN(processedNewValue) || processedNewValue < 0) {
                     this.showToast('Please enter a valid pay amount', 'error');
                     input.focus();
                     return;
                 }
-                person[field] = numValue;
             } else if (field === 'payPeriods') {
-                person[field] = parseInt(newValue);
+                processedNewValue = parseInt(newValue);
             } else if (field === 'name' && !newValue) {
                 this.showToast('Name cannot be empty', 'error');
                 input.focus();
                 return;
             } else {
-                person[field] = newValue;
+                processedNewValue = newValue;
+            }
+            
+            // Only save if value actually changed
+            if (processedNewValue === originalValue || (field === 'biWeeklyPay' && Math.abs(processedNewValue - originalValue) < 0.01)) {
+                // Value didn't change, just restore original display
+                cancelEdit();
+                return;
+            }
+            
+            // Update the person data
+            if (field === 'biWeeklyPay') {
+                // Update both payPerPeriod and biWeeklyPay for consistency
+                person.payPerPeriod = processedNewValue;
+                person.biWeeklyPay = processedNewValue;
+            } else {
+                person[field] = processedNewValue;
             }
 
             // Save and re-render
