@@ -690,10 +690,18 @@ class ResponsiveBudgetTool {
      * Render people list
      */
     renderPeople() {
-        const container = document.getElementById('peopleList');
+        const peopleContainer = document.getElementById('peopleList');
+        const overviewContainer = document.getElementById('householdOverview');
         
         if (this.people.length === 0) {
-            container.innerHTML = `
+            overviewContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-house-heart"></i>
+                    <h3>No household data yet</h3>
+                    <p>Add household members to see overview statistics.</p>
+                </div>
+            `;
+            peopleContainer.innerHTML = `
                 <div class="empty-state">
                     <i class="bi bi-people"></i>
                     <h3>No household members yet</h3>
@@ -724,130 +732,116 @@ class ResponsiveBudgetTool {
             'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
         ];
 
-        // Add household summary if there are multiple people
-        let householdSummary = '';
-        if (this.people.length > 1) {
+        // Render household overview
+        if (this.people.length >= 1) {
             const householdTakeHome = totalHouseholdIncome - totalHouseholdExpenses;
             // Use proper savings calculation that includes savings categories and excess funds
             const totalHouseholdSavings = this.calculateTotalSavings(totalHouseholdIncome, totalHouseholdExpenses);
             const householdSavingsRate = totalHouseholdIncome > 0 ? 
                 Math.round((totalHouseholdSavings / totalHouseholdIncome) * 100) : 0;
 
-            householdSummary = `
-                <div class="card mb-3" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white;">
-                    <div class="card-body">
-                        <h6 class="card-title mb-3 text-white">
-                            <i class="bi bi-house-heart me-2"></i>Household Overview
-                        </h6>
-                        <div class="row text-center">
-                            <div class="col-6 col-lg-3 mb-2">
-                                <div class="fw-bold fs-5">$${this.formatNumber(totalHouseholdIncome)}</div>
-                                <small class="opacity-75">Monthly Income</small>
-                            </div>
-                            <div class="col-6 col-lg-3 mb-2">
-                                <div class="fw-bold fs-5">$${this.formatNumber(totalHouseholdExpenses)}</div>
-                                <small class="opacity-75">Monthly Expenses</small>
-                            </div>
-                            <div class="col-6 col-lg-3 mb-2">
-                                <div class="fw-bold fs-5 ${householdTakeHome >= 0 ? 'text-light' : 'text-warning'}">
-                                    $${this.formatNumber(Math.abs(householdTakeHome))}
-                                </div>
-                                <small class="opacity-75">${householdTakeHome >= 0 ? 'Remainder' : 'Deficit'}</small>
-                            </div>
-                            <div class="col-6 col-lg-3 mb-2">
-                                <div class="fw-bold fs-5">${householdSavingsRate}%</div>
-                                <small class="opacity-75">Savings Rate</small>
-                            </div>
+            overviewContainer.innerHTML = `
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 col-lg-3 mb-3">
+                            <div class="fw-bold fs-4 text-primary">$${this.formatNumber(totalHouseholdIncome)}</div>
+                            <small class="text-muted">Monthly Income</small>
                         </div>
-                        <div class="mt-3">
-                            <div class="d-flex justify-content-between mb-1">
-                                <small class="opacity-75">Household Financial Health</small>
-                                <small class="opacity-75">${householdSavingsRate}%</small>
+                        <div class="col-6 col-lg-3 mb-3">
+                            <div class="fw-bold fs-4 text-warning">$${this.formatNumber(totalHouseholdExpenses)}</div>
+                            <small class="text-muted">Monthly Expenses</small>
+                        </div>
+                        <div class="col-6 col-lg-3 mb-3">
+                            <div class="fw-bold fs-4 ${householdTakeHome >= 0 ? 'text-success' : 'text-danger'}">
+                                $${this.formatNumber(Math.abs(householdTakeHome))}
                             </div>
-                            <div class="progress" style="height: 8px; background-color: rgba(255,255,255,0.2);">
-                                <div class="progress-bar bg-light" style="width: ${Math.min(100, Math.max(0, householdSavingsRate))}%"></div>
-                            </div>
+                            <small class="text-muted">${householdTakeHome >= 0 ? 'Remainder' : 'Deficit'}</small>
+                        </div>
+                        <div class="col-6 col-lg-3 mb-3">
+                            <div class="fw-bold fs-4 text-info">${householdSavingsRate}%</div>
+                            <small class="text-muted">Savings Rate</small>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-muted">Household Financial Health</small>
+                            <small class="text-muted">${householdSavingsRate}%</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: ${Math.min(100, Math.max(0, householdSavingsRate))}%"></div>
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        container.innerHTML = householdSummary + this.people.map((person, index) => {
-            const income = this.calculatePersonIncome(person);
-            const contributionPercentage = totalHouseholdIncome > 0 ? 
-                Math.round((income.monthly / totalHouseholdIncome) * 100) : 0;
-            
-            // Get unique color gradient for this person
-            const personGradient = colorGradients[index % colorGradients.length];
+        // Render individual household members
+        peopleContainer.innerHTML = `
+            <div class="row g-2 p-3">
+                ${this.people.map((person, index) => {
+                    const income = this.calculatePersonIncome(person);
+                    const contributionPercentage = totalHouseholdIncome > 0 ? 
+                        Math.round((income.monthly / totalHouseholdIncome) * 100) : 0;
+                    
+                    // Get unique color gradient for this person
+                    const personGradient = colorGradients[index % colorGradients.length];
 
-            return `
-                <div class="person-card fade-in" style="border: 2px solid transparent; background: ${personGradient}; color: white; margin-bottom: 1.5rem;">
-                    <div class="card-body p-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="person-avatar me-3" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);">
-                                ${person.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0 text-white editable" onclick="budgetTool.editPerson(${person.id}, 'name')" title="Click to edit name">${this.escapeHtml(person.name)}</h5>
-                                    <div class="text-end">
-                                        <span class="badge bg-light text-dark">${contributionPercentage}%</span>
-                                        <div class="small opacity-75">of household income</div>
+                    return `
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="person-card-compact p-3 rounded" style="background: ${personGradient}; color: white;">
+                                <!-- Person Header -->
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="person-avatar-small me-2" style="background: rgba(255,255,255,0.2); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+                                        ${person.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold editable" onclick="budgetTool.editPerson(${person.id}, 'name')" title="Click to edit name">${this.escapeHtml(person.name)}</div>
+                                        <small class="opacity-75">${contributionPercentage}% of household</small>
+                                    </div>
+                                    <button class="btn btn-outline-light btn-sm py-0 px-1" onclick="budgetTool.removePerson(${person.id})" title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Income Grid -->
+                                <div class="row g-2 text-center">
+                                    <div class="col-6">
+                                        <div class="p-2 rounded d-flex flex-column justify-content-center" style="background: rgba(255,255,255,0.15); min-height: 60px;">
+                                            <div class="small opacity-75">${this.getPayPeriodLabel(person.payPeriods)}</div>
+                                            <div class="fw-bold editable" onclick="budgetTool.editPerson(${person.id}, 'biWeeklyPay')" title="Click to edit pay">$${this.formatNumber(income.payPeriod)}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-2 rounded d-flex flex-column justify-content-center" style="background: rgba(255,255,255,0.15); min-height: 60px;">
+                                            <div class="small opacity-75">Monthly</div>
+                                            <input type="text" class="form-control fw-bold text-center" value="$${this.formatNumber(income.monthly)}" readonly style="background: transparent; border: none; color: inherit; pointer-events: none;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Pay Periods Info -->
+                                <div class="mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.2);">
+                                    <div class="row g-2 text-center">
+                                        <div class="col-6">
+                                            <div class="p-2 rounded d-flex flex-column justify-content-center" style="background: rgba(255,255,255,0.15); min-height: 60px;">
+                                                <div class="small opacity-75">Pay Periods</div>
+                                                <div class="fw-bold editable" onclick="budgetTool.editPerson(${person.id}, 'payPeriods')" title="Click to edit">${person.payPeriods}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="p-2 rounded d-flex flex-column justify-content-center" style="background: rgba(255,255,255,0.15); min-height: 60px;">
+                                                <div class="small opacity-75">Yearly</div>
+                                                <input type="text" class="form-control fw-bold text-center" value="$${this.formatNumber(income.yearly)}" readonly style="background: transparent; border: none; color: inherit; pointer-events: none;">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Income Breakdown -->
-                        <div class="row g-2 mb-3">
-                            <div class="col-6 col-lg-3">
-                                <div class="d-flex justify-content-between align-items-center p-2 rounded income-box editable-box" onclick="budgetTool.editPerson(${person.id}, 'biWeeklyPay')" title="Click to edit pay" style="background: rgba(255,255,255,0.15); cursor: pointer;">
-                                    <small class="opacity-75">${this.getPayPeriodLabel(person.payPeriods)}:</small>
-                                    <div class="fw-bold income-value">$${this.formatNumber(income.payPeriod)}</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-lg-3">
-                                <div class="d-flex justify-content-between align-items-center p-2 rounded income-box" style="background: rgba(255,255,255,0.15);">
-                                    <small class="opacity-75">Monthly:</small>
-                                    <div class="fw-bold income-value">$${this.formatNumber(income.monthly)}</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-lg-3">
-                                <div class="d-flex justify-content-between align-items-center p-2 rounded income-box" style="background: rgba(255,255,255,0.15);">
-                                    <small class="opacity-75">Yearly:</small>
-                                    <div class="fw-bold income-value">$${this.formatNumber(income.yearly)}</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-lg-3">
-                                <div class="d-flex justify-content-between align-items-center p-2 rounded income-box editable-box" onclick="budgetTool.editPerson(${person.id}, 'payPeriods')" title="Click to edit pay periods" style="background: rgba(255,255,255,0.15); cursor: pointer;">
-                                    <small class="opacity-75">Pay Periods:</small>
-                                    <div class="fw-bold income-value">${person.payPeriods}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Contribution Bar -->
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between mb-1">
-                                <small class="opacity-75">Household Contribution</small>
-                                <small class="opacity-75">${contributionPercentage}%</small>
-                            </div>
-                            <div class="progress" style="height: 8px; background-color: rgba(255,255,255,0.2);">
-                                <div class="progress-bar bg-light" style="width: ${contributionPercentage}%"></div>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="d-flex justify-content-end gap-2">
-                            <button class="btn btn-outline-light btn-sm" onclick="budgetTool.removePerson(${person.id})" title="Remove">
-                                <i class="bi bi-trash me-1"></i>Remove
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+                    `;
+                }).join('')}
+            </div>
+        `;
     }
 
     // ==========================================================================
@@ -1230,113 +1224,101 @@ class ResponsiveBudgetTool {
             categoryTotals[b] - categoryTotals[a]
         );
 
-        container.innerHTML = sortedCategories.map(category => {
+        // Create responsive grid layout for categories
+        const categoryColumns = sortedCategories.map(category => {
             const expenses = groupedExpenses[category];
             const total = categoryTotals[category];
             const categoryId = `category-${category}`;
             
             return `
-                <div class="expense-category-group mb-3">
-                    <div class="expense-category-header" data-bs-toggle="collapse" 
-                         data-bs-target="#${categoryId}" aria-expanded="true" 
-                         aria-controls="${categoryId}">
-                        <div class="d-flex justify-content-between align-items-center w-100">
-                            <div class="expense-category-info">
-                                <div class="expense-category-title">
+                <div class="col-12 col-lg-6 col-xl-4 mb-3">
+                    <div class="expense-category-group h-100">
+                        <div class="expense-category-header p-2 rounded mb-2" data-bs-toggle="collapse" 
+                             data-bs-target="#${categoryId}" aria-expanded="true" 
+                             aria-controls="${categoryId}" style="background: var(--bs-primary); color: white; cursor: pointer;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
                                     <i class="bi bi-chevron-down category-chevron me-2"></i>
-                                    <span class="category-badge category-${category} me-2">${this.capitalize(category)}</span>
-                                    <span class="category-count text-muted">(${expenses.length} item${expenses.length > 1 ? 's' : ''})</span>
+                                    <span class="fw-bold">${this.capitalize(category)}</span>
+                                    <span class="badge bg-light text-dark ms-2">${expenses.length}</span>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold">$${this.formatNumber(total)}</div>
+                                    <small class="opacity-75">per month</small>
                                 </div>
                             </div>
-                            <div class="expense-category-total">
-                                <div class="category-total-amount">$${this.formatNumber(total)}</div>
-                                <div class="category-total-label text-muted small">per month</div>
-                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="collapse show" id="${categoryId}">
-                        <div class="expense-category-content">
-                            ${expenses.map(expense => `
-                                <div class="expense-card p-3 fade-in">
-                                    <!-- Main expense info row -->
-                                    <div class="row align-items-start mb-3">
-                                        <div class="col-12 col-md-6">
-                                            <div class="expense-header">
-                                                <div class="expense-name editable" onclick="budgetTool.editExpense(${expense.id}, 'name')" title="Click to edit">${this.escapeHtml(expense.name)}</div>
-                                                ${expense.subCategory ? `<div class="expense-subcategory editable" onclick="budgetTool.editExpense(${expense.id}, 'subCategory')" title="Click to edit">${this.escapeHtml(expense.subCategory)}</div>` : '<div class="expense-subcategory editable text-muted" onclick="budgetTool.editExpense(' + expense.id + ', \'subCategory\')" title="Click to add">No subcategory</div>'}
+                        
+                        <div class="collapse show" id="${categoryId}">
+                            <div class="list-group list-group-flush">
+                                ${expenses.map((expense, index) => `
+                                    <div class="list-group-item px-2 py-1 ${index % 2 === 0 ? 'bg-body-secondary bg-opacity-50' : ''}">
+                                        <!-- Main expense row - 3 column layout -->
+                                        <div class="row align-items-start g-1">
+                                            <!-- Column 1: Name and Subcategory -->
+                                            <div class="col-4">
+                                                <div class="fw-bold editable lh-sm small" onclick="budgetTool.editExpense(${expense.id}, 'name')" title="Click to edit">
+                                                    ${this.escapeHtml(expense.name)}
+                                                </div>
+                                                ${expense.subCategory ? `
+                                                    <div class="text-muted editable lh-1" style="font-size: 0.75rem;" onclick="budgetTool.editExpense(${expense.id}, 'subCategory')" title="Click to edit">
+                                                        ${this.escapeHtml(expense.subCategory)}
+                                                    </div>
+                                                ` : `
+                                                    <div class="text-muted editable lh-1" style="font-size: 0.75rem;" onclick="budgetTool.editExpense(${expense.id}, 'subCategory')" title="Click to add">
+                                                        Add subcategory
+                                                    </div>
+                                                `}
                                             </div>
-                                        </div>
-                                        <div class="col-12 col-md-6 text-md-end">
-                                            <div class="expense-amount editable" onclick="budgetTool.editExpense(${expense.id}, 'monthlyAmount')" title="Click to edit">$${this.formatNumber(expense.monthlyAmount)}</div>
-                                            <div class="d-flex justify-content-md-end align-items-center gap-2">
-                                                <div class="text-muted small">per month</div>
-                                                <button class="btn btn-outline-danger btn-sm" onclick="budgetTool.removeExpense(${expense.id})" title="Remove">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
+                                            
+                                            <!-- Column 2: Sharing Method and Individual Splits -->
+                                            <div class="col-4">
+                                                <div class="mb-1">
+                                                    <span class="badge bg-secondary editable small" onclick="budgetTool.editExpense(${expense.id}, 'sharingMethod')" title="Click to edit">
+                                                        ${this.getSharingMethodLabel(expense.sharingMethod)}
+                                                    </span>
+                                                </div>
+                                                ${this.people.length > 0 ? `
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    ${this.people.map(person => {
+                                                        const personShare = this.calculatePersonShare(expense, person);
+                                                        return `
+                                                            <span class="badge bg-body-secondary text-body px-1 py-0" style="font-size: 0.65rem;" title="${this.escapeHtml(person.name)}: $${this.formatNumber(personShare)}">
+                                                                ${this.escapeHtml(person.name.split(' ')[0])}: $${this.formatNumber(personShare)}
+                                                            </span>
+                                                        `;
+                                                    }).join('')}
+                                                </div>
+                                                ` : ''}
                                             </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Expense details in grid layout -->
-                                    <div class="row g-3">
-                                        <div class="col-12 col-md-6 col-lg-4">
-                                            <div class="expense-detail-compact">
-                                                <div class="expense-detail-label">Sharing Method</div>
-                                                <div class="expense-detail-value">
-                                                    <span class="sharing-badge sharing-${expense.sharingMethod} editable" onclick="budgetTool.editExpense(${expense.id}, 'sharingMethod')" title="Click to edit">${this.getSharingMethodLabel(expense.sharingMethod)}</span>
+                                            
+                                            <!-- Column 3: Monthly Amount and Remove Button -->
+                                            <div class="col-4 text-end">
+                                                <div class="fw-bold editable lh-1 small" onclick="budgetTool.editExpense(${expense.id}, 'monthlyAmount')" title="Click to edit">
+                                                    $${this.formatNumber(expense.monthlyAmount)}
+                                                </div>
+                                                <div class="text-muted lh-1" style="font-size: 0.7rem;">monthly</div>
+                                                <div class="mt-1">
+                                                    <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="budgetTool.removeExpense(${expense.id})" title="Remove expense">
+                                                        <i class="bi bi-trash small"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <!-- Individual splits section - full width -->
-                                    ${this.people.length > 0 ? `
-                                    <div class="individual-splits-section mt-3 pt-3" style="border-top: 1px solid var(--bs-border-color);">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <h6 class="mb-0 text-muted">
-                                                <i class="bi bi-people me-2"></i>Individual Splits
-                                            </h6>
-                                            ${expense.sharingMethod === 'custom' ? `
-                                                <button class="btn btn-outline-primary btn-sm" onclick="budgetTool.editCustomSplits(${expense.id})" title="Edit custom splits">
-                                                    <i class="bi bi-sliders me-1"></i>Edit Splits
-                                                </button>
-                                            ` : ''}
-                                        </div>
-                                        <div class="row g-2">
-                                            ${this.people.map(person => {
-                                                const personShare = this.calculatePersonShare(expense, person);
-                                                const sharePercentage = expense.monthlyAmount > 0 ? Math.round((personShare / expense.monthlyAmount) * 100) : 0;
-                                                const payPeriodAmount = this.convertToPayPeriod(personShare, person.payPeriods);
-                                                const payPeriodLabel = this.getPayPeriodLabel(person.payPeriods);
-                                                return `
-                                                    <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
-                                                        <div class="person-split-card p-2 rounded" style="background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color);">
-                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                <div class="person-info">
-                                                                    <div class="person-name fw-medium" title="${this.escapeHtml(person.name)}">${this.escapeHtml(person.name)}</div>
-                                                                    <small class="text-muted">${sharePercentage}%</small>
-                                                                </div>
-                                                                <div class="person-amount text-end">
-                                                                    <div class="fw-bold">$${this.formatNumber(payPeriodAmount)}</div>
-                                                                    <small class="text-muted">per ${payPeriodLabel.toLowerCase()}</small>
-                                                                    <div class="small text-muted mt-1">$${this.formatNumber(personShare)}/month</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                `;
-                                            }).join('')}
-                                        </div>
-                                    </div>
-                                    ` : ''}
-                                </div>
-                            `).join('')}
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
-        }).join('');
+        });
+
+        container.innerHTML = `
+            <div class="row">
+                ${categoryColumns.join('')}
+            </div>
+        `;
 
         // Add event listeners for collapse/expand animations
         container.querySelectorAll('.expense-category-header').forEach(header => {
