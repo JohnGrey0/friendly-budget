@@ -855,8 +855,20 @@ class ResponsiveBudgetTool {
         const name = document.getElementById('expenseName').value.trim();
         const monthlyAmount = parseFloat(document.getElementById('monthlyAmount').value) || 0;
         const category = document.getElementById('category').value;
-        const subCategory = document.getElementById('subCategory').value;
+        let subCategory = document.getElementById('subCategory').value;
         const sharingMethod = document.getElementById('expenseSharingMethod').value;
+
+        // Handle custom subcategory
+        if (subCategory === 'other') {
+            const customSubCategory = document.getElementById('customSubCategory').value.trim();
+            if (customSubCategory) {
+                subCategory = customSubCategory;
+            } else {
+                this.showToast('Please enter a custom subcategory or select a different option', 'error');
+                document.getElementById('customSubCategory').focus();
+                return;
+            }
+        }
 
         // Validation
         if (!name) {
@@ -888,6 +900,13 @@ class ResponsiveBudgetTool {
 
         // Clear form
         document.getElementById('addExpenseForm').reset();
+        
+        // Hide custom subcategory field
+        const customSubCategoryContainer = document.getElementById('customSubCategoryContainer');
+        if (customSubCategoryContainer) {
+            customSubCategoryContainer.classList.add('d-none');
+        }
+        
         document.getElementById('expenseName').focus();
 
         this.showToast(`${name} added successfully!`, 'success');
@@ -1102,6 +1121,25 @@ class ResponsiveBudgetTool {
                 <option value="legal-fees" ${expense.subCategory === 'legal-fees' ? 'selected' : ''}>Legal Fees</option>
                 <option value="other" ${expense.subCategory === 'other' ? 'selected' : ''}>Other</option>
             `;
+            
+            // Add custom subcategory option if current value is not in predefined list
+            const predefinedSubcategories = [
+                '', 'rent-mortgage', 'utilities-electric', 'utilities-gas', 'utilities-water', 'utilities-internet', 
+                'utilities-phone', 'home-maintenance', 'property-tax', 'hoa-fees', 'car-payment', 'gas-fuel', 
+                'car-insurance', 'car-maintenance', 'public-transport', 'parking', 'rideshare', 'groceries', 
+                'dining-out', 'fast-food', 'coffee-drinks', 'meal-delivery', 'health-insurance', 'dental-vision', 
+                'prescriptions', 'doctor-visits', 'mental-health', 'life-insurance', 'disability-insurance', 
+                'home-insurance', 'credit-cards', 'student-loans', 'personal-loans', 'business-loans', 
+                'emergency-fund', 'retirement-401k', 'retirement-ira', 'stocks-bonds', 'savings-goals', 
+                'streaming-services', 'gaming', 'movies-events', 'hobbies', 'gym-fitness', 'travel-vacation', 
+                'clothing', 'haircare-beauty', 'personal-items', 'childcare', 'school-supplies', 'kids-activities', 
+                'baby-supplies', 'education-tuition', 'books-supplies', 'professional-dev', 'business-expenses', 
+                'gifts-donations', 'pet-expenses', 'legal-fees', 'other'
+            ];
+            
+            if (expense.subCategory && !predefinedSubcategories.includes(expense.subCategory)) {
+                input.innerHTML += `<option value="${expense.subCategory}" selected>${expense.subCategory} (Custom)</option>`;
+            }
         } else if (field === 'sharingMethod') {
             input = document.createElement('select');
             input.className = 'form-select form-select-sm inline-edit';
@@ -1140,6 +1178,13 @@ class ResponsiveBudgetTool {
         // Handle save
         const saveEdit = () => {
             const newValue = input.value.trim();
+            
+            // Check if value actually changed
+            if (newValue === originalValue || (originalValue === null && newValue === '') || (originalValue === undefined && newValue === '')) {
+                // No change, just restore original content
+                cancelEdit();
+                return;
+            }
             
             // Validate
             if (field === 'monthlyAmount') {
@@ -3577,6 +3622,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize the budget tool
     window.budgetTool = new ResponsiveBudgetTool();
+
+    // Add subcategory change listener for custom input
+    const subCategorySelect = document.getElementById('subCategory');
+    const customSubCategoryContainer = document.getElementById('customSubCategoryContainer');
+    const customSubCategoryInput = document.getElementById('customSubCategory');
+
+    if (subCategorySelect && customSubCategoryContainer && customSubCategoryInput) {
+        subCategorySelect.addEventListener('change', function() {
+            if (this.value === 'other') {
+                customSubCategoryContainer.classList.remove('d-none');
+                customSubCategoryInput.focus();
+            } else {
+                customSubCategoryContainer.classList.add('d-none');
+                customSubCategoryInput.value = '';
+            }
+        });
+    }
 
     // Handle shared data if present
     const sharedBudgetData = localStorage.getItem('sharedBudgetData');
